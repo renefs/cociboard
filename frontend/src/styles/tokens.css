@@ -1,0 +1,31 @@
+:root {
+  /* Warm, food-friendly palette */
+  --color-bg: #fff8f0;
+  --color-surface: #ffffff;
+  --color-text: #3b2a20;
+  --color-text-muted: #7a6455;
+  --color-primary: #b9461f;
+  --color-primary-contrast: #ffffff;
+  --color-accent: #e0a526;
+  --color-fresh: #5c8a3a;
+  --color-border: #ecd9c6;
+  --color-focus: #1f6feb;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+
+  --text-sm: 0.8125rem;
+  --text-base: 1rem;
+  --text-xl: 1.5rem;
+
+  --shadow-sm: 0 1px 2px rgb(59 42 32 / 12%);
+}
