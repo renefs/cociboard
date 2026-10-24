@@ -1,12 +1,13 @@
 /// <reference types="vitest/config" />
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 
-export default defineConfig({
+// The API target can be overridden, e.g. COCIBOARD_API_URL=http://localhost:8765 npm run dev.
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "http://localhost:8000",
+      "/api": loadEnv(mode, ".", "COCIBOARD_")["COCIBOARD_API_URL"] ?? "http://localhost:8000",
     },
   },
   test: {
@@ -15,4 +16,4 @@ export default defineConfig({
     globals: false,
     restoreMocks: true,
   },
-});
+}));

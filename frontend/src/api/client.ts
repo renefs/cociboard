@@ -1,10 +1,12 @@
 import type {
+  Candidate,
   HealthResponse,
   MealSlot,
   Recipe,
   RecipeCreate,
   RecipeFilters,
   RecipeUpdate,
+  SlotFill,
   SlotMoveRequest,
   WeekPlan,
 } from "./types";
@@ -97,5 +99,37 @@ export function moveSlot(weekStart: string, move: SlotMoveRequest): Promise<Week
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(move),
+  });
+}
+
+export function clearWeek(weekStart: string): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}`, { method: "DELETE" });
+}
+
+/** Replace the whole week atomically (used to undo "Suggest" and "Clear week"). */
+export function replaceWeek(weekStart: string, slots: SlotFill[]): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}`, {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ slots }),
+  });
+}
+
+export function suggestWeek(weekStart: string, seed?: number): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}/suggest`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(seed === undefined ? {} : { seed }),
+  });
+}
+
+export function getCandidates(
+  weekStart: string,
+  day: number,
+  slot: MealSlot,
+  signal?: AbortSignal,
+): Promise<Candidate[]> {
+  return request<Candidate[]>(`/weeks/${weekStart}/days/${day}/${slot}/candidates`, {
+    signal: signal ?? null,
   });
 }

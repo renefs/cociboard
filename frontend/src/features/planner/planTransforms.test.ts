@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makePlan, makeRecipe } from "../../test/fixtures";
-import { assignInPlan, clearInPlan, moveInPlan } from "./planTransforms";
+import { assignInPlan, clearInPlan, countFilled, moveInPlan, planToFills } from "./planTransforms";
 import { recipeAt } from "./slots";
 
 const lunchOnly = makeRecipe({ id: 1, name: "L", meal_type: "lunch" });
@@ -51,5 +51,22 @@ describe("planTransforms", () => {
     const plan = makePlan("2026-10-26", { "0:lunch": both });
     expect(moveInPlan(plan, { day: 0, slot: "lunch" }, { day: 0, slot: "lunch" })).toBe(plan);
     expect(moveInPlan(plan, { day: 2, slot: "lunch" }, { day: 3, slot: "lunch" })).toBe(plan);
+  });
+});
+
+describe("whole-week helpers", () => {
+  it("counts filled slots", () => {
+    expect(countFilled(makePlan())).toBe(0);
+    expect(countFilled(makePlan("2026-10-26", { "0:lunch": lunchOnly, "6:dinner": both }))).toBe(2);
+  });
+
+  it("turns a plan into assignments in reading order", () => {
+    const plan = makePlan("2026-10-26", { "3:dinner": dinnerOnly, "0:lunch": lunchOnly, "3:lunch": both });
+    expect(planToFills(plan)).toEqual([
+      { day: 0, slot: "lunch", recipe_id: 1 },
+      { day: 3, slot: "lunch", recipe_id: 3 },
+      { day: 3, slot: "dinner", recipe_id: 2 },
+    ]);
+    expect(planToFills(makePlan())).toEqual([]);
   });
 });

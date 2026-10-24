@@ -80,7 +80,46 @@ export function formatWeekRange(weekStart: string): string {
   return `${SHORT_DATE.format(start)} – ${LONG_DATE.format(end)}`;
 }
 
+/** "26 Oct – 1 Nov 2026": the compact range shown in the planner header. */
+export function formatWeekRangeShort(weekStart: string): string {
+  const start = parseIsoDate(weekStart);
+  const end = addDays(start, 6);
+  return `${SHORT_DATE.format(start)} – ${SHORT_DATE.format(end)} ${end.getFullYear()}`;
+}
+
 /** Name of day index 0-6, e.g. "Monday". */
 export function dayName(day: number): string {
   return DAY_NAMES[day] ?? "";
+}
+
+/** The Monday ``weeks`` weeks after (or before, when negative) ``weekStart``. */
+export function shiftWeek(weekStart: string, weeks: number): string {
+  return toIsoDate(addDays(parseIsoDate(weekStart), weeks * 7));
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Parse a YYYY-MM-DD string; null when malformed or not a real calendar date. */
+export function parseStrictIsoDate(value: string | null): Date | null {
+  if (!value || !ISO_DATE.test(value)) return null;
+  const date = parseIsoDate(value);
+  return toIsoDate(date) === value ? date : null;
+}
+
+/**
+ * The week shown for a URL query string: the Monday of the date in `?week=`, or the week of
+ * `now` when the parameter is missing or invalid.
+ */
+export function weekFromSearch(search: string, now: Date): string {
+  const date = parseStrictIsoDate(new URLSearchParams(search).get("week"));
+  return weekStartOf(date ?? now);
+}
+
+/** The query string for `weekStart`: other parameters are kept, the current week is implicit. */
+export function searchForWeek(search: string, weekStart: string, now: Date): string {
+  const params = new URLSearchParams(search);
+  if (weekStart === weekStartOf(now)) params.delete("week");
+  else params.set("week", weekStart);
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }

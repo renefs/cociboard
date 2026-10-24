@@ -1,22 +1,37 @@
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import type { MealSlot, Recipe } from "../../api/types";
+import { getCandidates } from "../../api/client";
+import type { Candidate, MealSlot, Recipe } from "../../api/types";
 import { RecipeCard } from "../recipes/RecipeCard";
-import { useRecipes } from "../recipes/useRecipes";
 import { Modal } from "./Modal";
-import { filterRecipes } from "./slots";
+import { matchesQuery } from "./slots";
 
 interface RecipePickerProps {
   title: string;
+  weekStart: string;
+  day: number;
   slot: MealSlot;
   onPick: (recipe: Recipe) => void;
   onClose: () => void;
 }
 
-/** Lists only the recipes that fit `slot`, with instant search. */
-export function RecipePicker({ title, slot, onPick, onClose }: RecipePickerProps) {
+/** Filter candidates by name or ingredient, keeping the backend's variety order. */
+export function filterCandidates(candidates: readonly Candidate[], query: string): Candidate[] {
+  return candidates.filter((candidate) => matchesQuery(candidate.recipe, query));
+}
+
+/**
+ * Lists the recipes that fit the slot, best for variety first (the server ranks them and
+ * explains why), with instant search.
+ */
+export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: RecipePickerProps) {
   const [query, setQuery] = useState("");
-  const { data, isPending, isError, refetch } = useRecipes({});
-  const recipes = useMemo(() => filterRecipes(data ?? [], { slot, query }), [data, slot, query]);
+  const { data, isPending, isError, refetch } = useQuery({
+    queryKey: ["candidates", weekStart, day, slot],
+    queryFn: ({ signal }) => getCandidates(weekStart, day, slot, signal),
+    gcTime: 0, // always rank against the plan as it is now
+  });
+  const candidates = useMemo(() => filterCandidates(data ?? [], query), [data, query]);
 
   return (
     <Modal title={title} onClose={onClose} focusInput>
@@ -39,22 +54,44 @@ export function RecipePicker({ title, slot, onPick, onClose }: RecipePickerProps
             </button>
           </p>
         )}
-        {data && recipes.length === 0 && (
+        {data && candidates.length === 0 && (
           <p className="status-message">No {slot} recipes match.</p>
         )}
-        {recipes.map((recipe) => (
+        {candidates.map((candidate) => (
           <RecipeCard
-            key={recipe.id}
-            recipe={recipe}
+            key={candidate.recipe.id}
+            recipe={candidate.recipe}
             density="compact"
+            extra={<PickHint candidate={candidate} />}
             actions={
-              <button type="button" className="btn btn-primary" onClick={() => onPick(recipe)}>
-                Choose <span className="visually-hidden">{recipe.name}</span>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => onPick(candidate.recipe)}
+              >
+                Choose <span className="visually-hidden">{candidate.recipe.name}</span>
               </button>
             }
           />
         ))}
       </div>
     </Modal>
+  );
+}
+
+function PickHint({ candidate }: { candidate: Candidate }) {
+  const negative = candidate.score_delta < 0;
+  return (
+    <p className={negative ? "pick-hint pick-hint--warn" : "pick-hint"}>
+      {candidate.good_pick && (
+        <span className="badge badge--small good-pick">
+          <span aria-hidden="true">★</span> Good pick
+        </span>
+      )}
+      <span className="pick-reason">
+        {negative && <span aria-hidden="true">⚠ </span>}
+        {candidate.reason}
+      </span>
+    </p>
   );
 }

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-24
+
+### Added
+- Variety analysis (`variety.py`, pure and unit-tested): repeated recipes (info for batch
+  cooking), the same main protein in consecutive meals, one protein in more than four meals,
+  too few vegetable-forward meals and too little fish. A 0-100 score (`null` for an empty
+  plan). `GET /api/weeks/{week_start}/variety`, and `variety` in every week plan response.
+- Suggestions (`suggest.py`): `POST /api/weeks/{week_start}/suggest` fills only empty slots
+  with compatible recipes, greedily maximising the variety score and avoiding repeats
+  (optional `seed` for repeatable results). `GET .../days/{day}/{slot}/candidates` ranks the
+  compatible recipes with `score_delta`, a short `reason` and `good_pick`.
+- `DELETE /api/weeks/{week_start}` clears a week; `PUT /api/weeks/{week_start}` replaces a
+  week atomically (used by Undo).
+- Week navigation in the planner header (previous, This week, next, date range), the week in
+  the URL (`?week=YYYY-MM-DD`, Back and Forward work) and prefetching of neighbouring weeks.
+- Toolbar with Suggest and Clear week (confirmation dialog); both offer Undo in a toast.
+- Variety summary: colour-coded score badge, expandable issue list (click an issue to
+  highlight its slots), warning markers with accessible text on affected slots and a
+  per-protein count.
+- Recipe panel: "×N this week" usage badges and a "Best for variety" sort.
+- Tap-to-assign picker ranked by variety, with the reason as a hint and "Good pick" marks.
+- `COCIBOARD_API_URL` overrides the API target of the Vite dev proxy.
+- ADR-0007 (variety rules, scoring and suggestions).
+
+### Changed
+- Recipe names in slots no longer break mid-word: automatic hyphenation, three-line clamp and
+  the full name as tooltip; in the seven-column grid the remove button moved above the name
+  so names get the full column width.
+- The planner header shows a compact date range ("26 Oct – 1 Nov 2026").
+- The picker loads its recipes from the candidates endpoint instead of the full catalogue.
+
 ## [0.3.0] - 2026-10-24
 
 ### Added

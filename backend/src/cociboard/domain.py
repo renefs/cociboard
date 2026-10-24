@@ -47,6 +47,23 @@ class RecipeProperty(StrEnum):
     batch_cooking = "batch_cooking"
 
 
+class IssueKind(StrEnum):
+    """Kinds of variety findings (see ``variety.py``)."""
+
+    repeated_recipe = "repeated_recipe"
+    consecutive_protein = "consecutive_protein"
+    protein_overload = "protein_overload"
+    few_vegetarian = "few_vegetarian"
+    little_fish = "little_fish"
+
+
+class IssueSeverity(StrEnum):
+    """``warning`` marks slots in the grid; ``info`` is a gentle suggestion."""
+
+    info = "info"
+    warning = "warning"
+
+
 def fits_slot(meal_type: MealType, slot: MealSlot) -> bool:
     """Return whether a recipe of ``meal_type`` may be placed in ``slot``."""
     return meal_type is MealType.both or meal_type.value == slot.value

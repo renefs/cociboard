@@ -8,10 +8,17 @@ interface DraggableRecipeCardProps {
   /** Whether this recipe is the one currently being placed in select mode. */
   selected: boolean;
   onAdd: (recipe: Recipe) => void;
+  /** Times the recipe is planned in the shown week. */
+  usageCount?: number;
 }
 
 /** A compact recipe card for the panel: draggable, with an "Add" button for tap-to-place. */
-export function DraggableRecipeCard({ recipe, selected, onAdd }: DraggableRecipeCardProps) {
+export function DraggableRecipeCard({
+  recipe,
+  selected,
+  onAdd,
+  usageCount = 0,
+}: DraggableRecipeCardProps) {
   const source: DragSource = { kind: "recipe", recipe };
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
     id: recipeDragId(recipe),
@@ -27,6 +34,7 @@ export function DraggableRecipeCard({ recipe, selected, onAdd }: DraggableRecipe
       <RecipeCard
         recipe={recipe}
         density="compact"
+        usageCount={usageCount}
         actions={
           <span className="card-actions">
             <button

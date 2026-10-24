@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { assignSlot, clearSlot, getWeek, moveSlot } from "../../api/client";
 import type { Recipe, SlotRef, WeekPlan } from "../../api/types";
 import { describePlanError } from "./planErrors";
 import { assignInPlan, clearInPlan, moveInPlan } from "./planTransforms";
+import { shiftWeek } from "./weekMath";
 
 export const weekKey = (weekStart: string) => ["week", weekStart] as const;
 
@@ -11,6 +13,23 @@ export function useWeekPlan(weekStart: string) {
     queryKey: weekKey(weekStart),
     queryFn: ({ signal }) => getWeek(weekStart, signal),
   });
+}
+
+const PREFETCH_STALE_MS = 30_000;
+
+/** Warm the cache for the previous and next week so navigating feels instant. */
+export function usePrefetchNeighbours(weekStart: string): void {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    for (const offset of [-1, 1]) {
+      const neighbour = shiftWeek(weekStart, offset);
+      void queryClient.prefetchQuery({
+        queryKey: weekKey(neighbour),
+        queryFn: ({ signal }) => getWeek(neighbour, signal),
+        staleTime: PREFETCH_STALE_MS,
+      });
+    }
+  }, [weekStart, queryClient]);
 }
 
 type Change =

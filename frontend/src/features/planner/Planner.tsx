@@ -16,6 +16,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { RecipePanel } from "../recipes/RecipePanel";
+import { VarietySummary } from "../variety/VarietySummary";
+import {
+  findIssue,
+  issueSlotKeys,
+  usageCounts,
+  warningsBySlot,
+} from "../variety/varietyLogic";
 import { MEAL_TYPE_META } from "../recipes/recipeMeta";
 import { DraggableRecipeCard } from "./DraggableRecipeCard";
 import {
@@ -34,15 +41,20 @@ import { RecipePicker } from "./RecipePicker";
 import { MouseAndPenSensor, POINTER_ACTIVATION, TOUCH_ACTIVATION, collisionDetection } from "./sensors";
 import { SlotActions } from "./SlotActions";
 import { describeSlot, fitsSlot, recipeAt } from "./slots";
-import { Toast, type ToastMessage } from "./Toast";
-import { usePlanActions, useWeekPlan } from "./useWeekPlan";
-import { dayName, formatWeekRange, weekStartOf } from "./weekMath";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { Toast, type ToastAction, type ToastMessage } from "./Toast";
+import { useWeekNavigation } from "./useWeekNavigation";
+import { usePlanActions, usePrefetchNeighbours, useWeekPlan } from "./useWeekPlan";
+import { useWeekTools } from "./useWeekTools";
+import { countFilled } from "./planTransforms";
+import { dayName, formatWeekRange, formatWeekRangeShort } from "./weekMath";
 import { WeekGrid } from "./WeekGrid";
 
 type Ui =
   | { kind: "none" }
   | { kind: "picker"; day: number; slot: MealSlot }
-  | { kind: "actions"; day: number; slot: MealSlot };
+  | { kind: "actions"; day: number; slot: MealSlot }
+  | { kind: "confirm-clear" };
 
 const SCREEN_READER: ScreenReaderInstructions = {
   draggable:
@@ -56,7 +68,8 @@ interface PlannerProps {
 
 export function Planner({ now: nowProp }: PlannerProps) {
   const now = useMemo(() => nowProp ?? new Date(), [nowProp]);
-  const weekStart = weekStartOf(now);
+  const { weekStart, isCurrentWeek, previous, next, today } = useWeekNavigation(now);
+  usePrefetchNeighbours(weekStart);
   const { data: plan, isPending, isError, refetch } = useWeekPlan(weekStart);
 
   const [ui, setUi] = useState<Ui>({ kind: "none" });
@@ -65,12 +78,35 @@ export function Planner({ now: nowProp }: PlannerProps) {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const toastId = useRef(0);
 
-  const notify = useCallback((kind: ToastMessage["kind"], text: string) => {
+  // A highlight belongs to the issues of one week.
+  const [highlight, setHighlight] = useState<{ week: string; id: string } | null>(null);
+  const highlightedId = highlight?.week === weekStart ? highlight.id : null;
+  const setHighlightedId = useCallback(
+    (id: string | null) => setHighlight(id === null ? null : { week: weekStart, id }),
+    [weekStart],
+  );
+
+  const notify = useCallback((kind: ToastMessage["kind"], text: string, action?: ToastAction) => {
     toastId.current += 1;
-    setToast({ id: toastId.current, kind, text });
+    setToast({ id: toastId.current, kind, text, ...(action ? { action } : {}) });
   }, []);
   const dismissToast = useCallback(() => setToast(null), []);
   const actions = usePlanActions(weekStart, (message) => notify("error", message));
+  const tools = useWeekTools(weekStart, notify);
+
+  const warnings = useMemo(() => (plan ? warningsBySlot(plan.variety) : undefined), [plan]);
+  const highlightedIssue = plan ? findIssue(plan.variety, highlightedId) : null;
+  const highlighted = useMemo(() => issueSlotKeys(highlightedIssue), [highlightedIssue]);
+  const usage = useMemo(() => (plan ? usageCounts(plan) : undefined), [plan]);
+
+  // Bring the highlighted slots into view (the grid can be long on mobile).
+  useEffect(() => {
+    if (!highlightedId) return;
+    const first = document.querySelector<HTMLElement>(".slot--highlight");
+    if (typeof first?.scrollIntoView === "function") {
+      first.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [highlightedId]);
 
   const sensors = useSensors(
     useSensor(MouseAndPenSensor, { activationConstraint: POINTER_ACTIVATION }),
@@ -179,8 +215,51 @@ export function Planner({ now: nowProp }: PlannerProps) {
         <section className="planner" aria-labelledby="planner-heading">
           <header className="planner-head">
             <h2 id="planner-heading">Weekly planner</h2>
-            <p className="week-range">Week of {formatWeekRange(weekStart)}</p>
+            <nav className="week-nav" aria-label="Week navigation">
+              <button type="button" className="icon-button week-step" aria-label="Previous week" onClick={previous}>
+                <span aria-hidden="true">‹</span>
+              </button>
+              <button type="button" className="btn week-today" disabled={isCurrentWeek} onClick={today}>
+                This week
+              </button>
+              <button type="button" className="icon-button week-step" aria-label="Next week" onClick={next}>
+                <span aria-hidden="true">›</span>
+              </button>
+              <p className="week-range" aria-live="polite">
+                <span className="visually-hidden">Week of </span>
+                {formatWeekRangeShort(weekStart)}
+              </p>
+            </nav>
           </header>
+
+          <div className="planner-toolbar">
+            <div className="toolbar-buttons" role="group" aria-label="Week actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!plan || tools.busy || countFilled(plan) === 14}
+                title="Fill the empty slots with varied recipes"
+                onClick={() => void tools.suggest()}
+              >
+                <span aria-hidden="true">✨ </span>Suggest
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={!plan || tools.busy || countFilled(plan) === 0}
+                onClick={() => setUi({ kind: "confirm-clear" })}
+              >
+                Clear week
+              </button>
+            </div>
+            {plan && (
+              <VarietySummary
+                variety={plan.variety}
+                highlightedId={highlightedIssue ? highlightedId : null}
+                onHighlight={setHighlightedId}
+              />
+            )}
+          </div>
 
           {selecting && (
             <div className="select-banner" role="status">
@@ -200,6 +279,8 @@ export function Planner({ now: nowProp }: PlannerProps) {
               selecting={selecting}
               onActivate={onActivate}
               onRemove={(day, slot) => actions.clear({ day, slot })}
+              warnings={warnings}
+              highlighted={highlighted}
             />
           ) : isError ? (
             <p className="status-message" role="alert">
@@ -216,11 +297,14 @@ export function Planner({ now: nowProp }: PlannerProps) {
         <RecipeArea>
           <RecipePanel
             density="compact"
+            {...(usage ? { usage } : {})}
+            proteinCounts={plan?.variety.protein_counts ?? {}}
             renderCard={(recipe) => (
               <DraggableRecipeCard
                 recipe={recipe}
                 selected={selecting?.id === recipe.id}
                 onAdd={toggleSelect}
+                usageCount={usage?.get(recipe.id) ?? 0}
               />
             )}
           />
@@ -232,6 +316,8 @@ export function Planner({ now: nowProp }: PlannerProps) {
       {ui.kind === "picker" && (
         <RecipePicker
           title={`${plan && recipeAt(plan, ui) ? "Replace" : "Add"} ${ui.slot} on ${dayName(ui.day)}`}
+          weekStart={weekStart}
+          day={ui.day}
           slot={ui.slot}
           onClose={closeUi}
           onPick={(recipe) => {
@@ -241,6 +327,23 @@ export function Planner({ now: nowProp }: PlannerProps) {
         />
       )}
       {ui.kind === "actions" && plan && <ActionsFor plan={plan} ui={ui} actions={actions} setUi={setUi} />}
+
+      {ui.kind === "confirm-clear" && plan && (
+        <ConfirmDialog
+          title="Clear this week?"
+          confirmLabel="Clear week"
+          onCancel={closeUi}
+          onConfirm={() => {
+            closeUi();
+            void tools.clear();
+          }}
+        >
+          <p>
+            This removes {countFilled(plan)} {countFilled(plan) === 1 ? "meal" : "meals"} from{" "}
+            {formatWeekRange(weekStart)}. You can undo it right afterwards.
+          </p>
+        </ConfirmDialog>
+      )}
 
       <Toast toast={toast} onDismiss={dismissToast} />
     </DndContext>
