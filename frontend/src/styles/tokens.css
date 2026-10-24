@@ -29,3 +29,10 @@
 
   --shadow-sm: 0 1px 2px rgb(59 42 32 / 12%);
 }
+
+:root {
+  --color-chip-bg: #fff1e0;
+  --color-chip-active: #b9461f;
+  --text-lg: 1.125rem;
+  --sidebar-width: 26rem;
+}

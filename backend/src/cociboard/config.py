@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="COCIBOARD_")
 
     database_url: str = "sqlite:///./cociboard.db"
+    seed_on_startup: bool = True
     cors_origins: list[str] = ["http://localhost:5173"]
 
 

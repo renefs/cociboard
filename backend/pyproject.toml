@@ -1,12 +1,13 @@
 [project]
 name = "cociboard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Weekly menu planner backend"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pydantic-settings>=2.4",
+    "sqlmodel>=0.0.22",
 ]
 
 [dependency-groups]

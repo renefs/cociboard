@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-24
+
+### Added
+- Recipe domain: `MealType` (lunch, dinner, both), `MealSlot`, `Protein`, `RecipeProperty`
+  and the pure, unit-tested `fits_slot` rule.
+- SQLite persistence with SQLModel (JSON columns for ingredients and properties) and
+  separate API schemas with validation.
+- CRUD API under `/api/recipes` with `slot`, `q` and repeated `property` filters and
+  404 / 409 / 422 handling.
+- Idempotent seed of 24 Spanish/Mediterranean-friendly recipes, run on startup when the
+  database is empty (`COCIBOARD_SEED_ON_STARTUP`) and via `make seed`.
+- Frontend recipe panel: search, All / Lunch / Dinner chips, property filter, recipe cards
+  with collapsible ingredients, labelled property icons and a legend.
+- TanStack Query for data fetching; responsive layout with a recipe sidebar from 900px and a
+  placeholder for the weekly planner.
+- ADR-0003 (recipe data model) and ADR-0004 (TanStack Query and icons).
+
+### Changed
+- Version bumped to 0.2.0.
+
 ## [0.1.0] - 2026-10-24
 
 ### Added
