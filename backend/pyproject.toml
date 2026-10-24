@@ -1,6 +1,6 @@
 [project]
 name = "cociboard"
-version = "0.5.0"
+version = "0.5.1"
 description = "Weekly menu planner backend"
 requires-python = ">=3.12,<3.14"
 dependencies = [

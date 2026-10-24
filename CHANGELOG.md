@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-24
+
+Fixes from [review 0001](docs/reviews/0001-v0.5.0-review.md).
+
+### Fixed
+- Plan requests of one week are now sent one at a time in call order (FIFO per week) while
+  optimistic updates stay immediate, so quick consecutive changes no longer race and cause
+  spurious 404/500 errors, rollbacks or flicker (review finding 1).
+- A unique-constraint violation on a slot (for example a concurrent write from a second tab)
+  in assign, move, suggest and replace now answers `409` ("The plan changed meanwhile; reload
+  and try again") instead of 500, after rolling the session back. The UI shows the same
+  message and refetches (review finding 2).
+- `update_recipe` compares meal types with `!=` instead of `is not` (review finding 3).
+
 ## [0.5.0] - 2026-10-24
 
 ### Added

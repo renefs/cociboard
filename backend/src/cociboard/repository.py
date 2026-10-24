@@ -133,7 +133,7 @@ def update_recipe(
     new_name = changes.get("name")
     if isinstance(new_name, str) and _name_taken(session, new_name, exclude_id=recipe_id):
         raise DuplicateRecipeNameError(new_name)
-    if data.meal_type is not None and data.meal_type is not recipe.meal_type:
+    if data.meal_type is not None and data.meal_type != recipe.meal_type:
         conflicts = incompatible_assignments(session, recipe_id, data.meal_type)
         if conflicts and not force:
             raise MealTypeConflictError(conflicts)

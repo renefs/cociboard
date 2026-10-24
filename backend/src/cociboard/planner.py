@@ -3,6 +3,7 @@
 import random
 from datetime import date
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
 from cociboard import repository
@@ -34,6 +35,19 @@ class IncompatibleSlotError(Exception):
 
 class EmptySlotError(Exception):
     """The source slot of a move holds no recipe."""
+
+
+class PlanConflictError(Exception):
+    """A concurrent write broke the one-recipe-per-slot constraint; the change was rolled back."""
+
+
+def _commit(session: Session) -> None:
+    """Commit, turning a unique-constraint violation into :class:`PlanConflictError`."""
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise PlanConflictError from None
 
 
 def _check_position(week_start: date, day: int) -> None:
@@ -118,7 +132,7 @@ def assign_slot(
     else:
         existing.recipe_id = recipe_id
         session.add(existing)
-    session.commit()
+    _commit(session)
     return get_week_plan(session, week_start)
 
 
@@ -166,7 +180,7 @@ def move_slot(
         source.recipe_id, target.recipe_id = target.recipe_id, source.recipe_id
         session.add(source)
         session.add(target)
-    session.commit()
+    _commit(session)
     return get_week_plan(session, week_start)
 
 
@@ -194,7 +208,7 @@ def replace_week(session: Session, week_start: date, slots: list[SlotFill]) -> W
     session.exec(delete(MealAssignment).where(col(MealAssignment.week_start) == week_start))
     for (day, slot), recipe_id in chosen.items():
         session.add(MealAssignment(week_start=week_start, day=day, slot=slot, recipe_id=recipe_id))
-    session.commit()
+    _commit(session)
     return get_week_plan(session, week_start)
 
 
@@ -217,7 +231,7 @@ def suggest_week(session: Session, week_start: date, seed: int | None = None) ->
                 recipe_id=meal.recipe_id,
             )
         )
-    session.commit()
+    _commit(session)
     return get_week_plan(session, week_start)
 
 

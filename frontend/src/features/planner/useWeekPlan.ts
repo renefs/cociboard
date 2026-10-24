@@ -64,6 +64,26 @@ function send(weekStart: string, change: Change): Promise<WeekPlan> {
   }
 }
 
+/**
+ * Tail of the request chain per week. Every plan request waits for the previous one of the
+ * same week to settle (success or failure) so the server sees them in call order.
+ */
+const requestChains = new Map<string, Promise<unknown>>();
+
+function sendInOrder(weekStart: string, change: Change): Promise<WeekPlan> {
+  const previous = requestChains.get(weekStart) ?? Promise.resolve();
+  const request = previous.then(() => send(weekStart, change));
+  const tail = request.then(
+    () => undefined,
+    () => undefined,
+  );
+  requestChains.set(weekStart, tail);
+  void tail.then(() => {
+    if (requestChains.get(weekStart) === tail) requestChains.delete(weekStart);
+  });
+  return request;
+}
+
 export interface PlanActions {
   assign: (to: SlotRef, recipe: Recipe) => void;
   clear: (from: SlotRef) => void;
@@ -74,7 +94,8 @@ export interface PlanActions {
  * Plan mutations with optimistic updates. The cache is updated immediately; on failure
  * it is rolled back to the snapshot taken before the change and `onError` receives a
  * user-facing message. The plan is refetched once the last in-flight change settles, so
- * overlapping responses never overwrite a newer optimistic state.
+ * overlapping responses never overwrite a newer optimistic state. Requests of one week are
+ * sent one at a time in call order (see `sendInOrder`) while the cache updates immediately.
  */
 export function usePlanActions(weekStart: string, onError: (message: string) => void): PlanActions {
   const queryClient = useQueryClient();
@@ -83,7 +104,7 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
 
   const mutation = useMutation<WeekPlan, unknown, Change, { previous: WeekPlan | undefined }>({
     mutationKey,
-    mutationFn: (change) => send(weekStart, change),
+    mutationFn: (change) => sendInOrder(weekStart, change),
     onMutate: async (change) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<WeekPlan>(key);
