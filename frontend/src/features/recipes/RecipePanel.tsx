@@ -1,7 +1,13 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { RECIPE_PROPERTIES, type MealSlot, type RecipeProperty } from "../../api/types";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  RECIPE_PROPERTIES,
+  type MealSlot,
+  type Protein,
+  type RecipeProperty,
+} from "../../api/types";
 import { Legend } from "./Legend";
 import type { Recipe } from "../../api/types";
+import { sortByVariety } from "../variety/varietyLogic";
 import { RecipeCard, type CardDensity } from "./RecipeCard";
 import { PROPERTY_META } from "./recipeMeta";
 import { useRecipes } from "./useRecipes";
@@ -29,12 +35,26 @@ interface RecipePanelProps {
   density?: CardDensity;
   /** Custom card rendering (the planner adds drag handles and an "Add" button). */
   renderCard?: (recipe: Recipe) => ReactNode;
+  /**
+   * How often each recipe is planned this week (recipe id -> count). Providing it enables
+   * the "Best for variety" sort, together with `proteinCounts`.
+   */
+  usage?: ReadonlyMap<number, number>;
+  proteinCounts?: Partial<Record<Protein, number>>;
 }
 
-export function RecipePanel({ density = "comfortable", renderCard }: RecipePanelProps = {}) {
+type SortMode = "name" | "variety";
+
+export function RecipePanel({
+  density = "comfortable",
+  renderCard,
+  usage,
+  proteinCounts,
+}: RecipePanelProps = {}) {
   const [search, setSearch] = useState("");
   const [meal, setMeal] = useState<MealFilter>("all");
   const [properties, setProperties] = useState<RecipeProperty[]>([]);
+  const [sort, setSort] = useState<SortMode>("name");
   const q = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
 
   const { data, isPending, isError, refetch } = useRecipes({
@@ -42,6 +62,12 @@ export function RecipePanel({ density = "comfortable", renderCard }: RecipePanel
     q,
     properties,
   });
+
+  const recipes = useMemo(
+    () =>
+      data && usage && sort === "variety" ? sortByVariety(data, usage, proteinCounts ?? {}) : data,
+    [data, usage, proteinCounts, sort],
+  );
 
   const toggleProperty = (property: RecipeProperty) =>
     setProperties((current) =>
@@ -79,6 +105,28 @@ export function RecipePanel({ density = "comfortable", renderCard }: RecipePanel
           ))}
         </div>
 
+        {usage && (
+          <div className="chip-group" role="group" aria-label="Sort recipes">
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={sort === "name"}
+              onClick={() => setSort("name")}
+            >
+              A–Z
+            </button>
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={sort === "variety"}
+              onClick={() => setSort("variety")}
+              title="Recipes you haven't planned yet and proteins you've used least come first"
+            >
+              Best for variety
+            </button>
+          </div>
+        )}
+
         <details className="property-filter">
           <summary>
             Properties{properties.length > 0 ? ` (${properties.length} selected)` : ""}
@@ -112,12 +160,17 @@ export function RecipePanel({ density = "comfortable", renderCard }: RecipePanel
             </button>
           </p>
         )}
-        {data && data.length === 0 && <p className="status-message">No recipes match.</p>}
-        {data && data.map((recipe) =>
+        {recipes && recipes.length === 0 && <p className="status-message">No recipes match.</p>}
+        {recipes?.map((recipe) =>
             renderCard ? (
               <div key={recipe.id}>{renderCard(recipe)}</div>
             ) : (
-              <RecipeCard key={recipe.id} recipe={recipe} density={density} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                density={density}
+                usageCount={usage?.get(recipe.id) ?? 0}
+              />
             ),
           )}
       </div>

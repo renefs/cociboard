@@ -1,6 +1,7 @@
 // Pure transforms of a week plan, used for optimistic updates. They mirror the
 // backend rules in `planner.py`: invalid operations return the plan unchanged.
-import type { DayPlan, Recipe, SlotRef, WeekPlan } from "../../api/types";
+import type { DayPlan, Recipe, SlotFill, SlotRef, WeekPlan } from "../../api/types";
+import { MEAL_SLOTS } from "../../api/types";
 import { fitsSlot, recipeAt, sameSlot } from "./slots";
 
 function withSlots(plan: WeekPlan, changes: { ref: SlotRef; recipe: Recipe | null }[]): WeekPlan {
@@ -34,4 +35,21 @@ export function moveInPlan(plan: WeekPlan, from: SlotRef, to: SlotRef): WeekPlan
     { ref: to, recipe: moved },
     { ref: from, recipe: displaced },
   ]);
+}
+
+/** Number of filled slots. */
+export function countFilled(plan: WeekPlan): number {
+  return plan.days.reduce((total, day) => total + MEAL_SLOTS.filter((slot) => day[slot]).length, 0);
+}
+
+/** The plan as a list of assignments, the body of a whole-week restore. */
+export function planToFills(plan: WeekPlan): SlotFill[] {
+  const fills: SlotFill[] = [];
+  for (const day of plan.days) {
+    for (const slot of MEAL_SLOTS) {
+      const recipe = day[slot];
+      if (recipe) fills.push({ day: day.day, slot, recipe_id: recipe.id });
+    }
+  }
+  return fills;
 }

@@ -15,12 +15,20 @@ export function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
   };
 }
 
-import type { DayPlan, MealSlot, WeekPlan } from "../api/types";
+import type { DayPlan, MealSlot, VarietyReport, WeekPlan } from "../api/types";
+
+export const NO_VARIETY: VarietyReport = {
+  score: null,
+  filled_slots: 0,
+  issues: [],
+  protein_counts: {},
+};
 
 /** A week plan with empty slots; `placements` maps "day:slot" to a recipe. */
 export function makePlan(
   weekStart = "2026-10-26",
   placements: Partial<Record<`${number}:${MealSlot}`, Recipe>> = {},
+  variety: VarietyReport = NO_VARIETY,
 ): WeekPlan {
   const [year, month, day] = weekStart.split("-").map(Number) as [number, number, number];
   const days: DayPlan[] = Array.from({ length: 7 }, (_, index) => {
@@ -33,5 +41,5 @@ export function makePlan(
       dinner: placements[`${index}:dinner`] ?? null,
     };
   });
-  return { week_start: weekStart, days };
+  return { week_start: weekStart, days, variety };
 }

@@ -14,17 +14,33 @@ interface RecipeCardProps {
   density?: CardDensity;
   /** Extra controls (e.g. an "Add" button) shown next to the title. */
   actions?: ReactNode;
+  /** How often the recipe is planned this week; shown as a badge when above zero. */
+  usageCount?: number;
+  /** Extra content below the details (the picker adds its variety hint here). */
+  extra?: ReactNode;
 }
 
-export function RecipeCard({ recipe, density = "comfortable", actions }: RecipeCardProps) {
-  return density === "compact" ? (
-    <CompactCard recipe={recipe} actions={actions} />
-  ) : (
-    <ComfortableCard recipe={recipe} actions={actions} />
+/** "×2 this week" badge for recipes already in the plan. */
+export function UsageBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  const words = `Planned ${count} ${count === 1 ? "time" : "times"}`;
+  return (
+    <span className="badge badge--small usage-badge" title={`${words} this week`}>
+      <span aria-hidden="true">×{count}</span>
+      <span className="visually-hidden">{words}</span> this week
+    </span>
   );
 }
 
-function ComfortableCard({ recipe, actions }: Omit<RecipeCardProps, "density">) {
+export function RecipeCard({ recipe, density = "comfortable", ...rest }: RecipeCardProps) {
+  return density === "compact" ? (
+    <CompactCard recipe={recipe} {...rest} />
+  ) : (
+    <ComfortableCard recipe={recipe} {...rest} />
+  );
+}
+
+function ComfortableCard({ recipe, actions, usageCount = 0, extra }: Omit<RecipeCardProps, "density">) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -58,6 +74,7 @@ function ComfortableCard({ recipe, actions }: Omit<RecipeCardProps, "density">) 
           <span className="visually-hidden">Main protein: </span>
           {protein.label}
         </span>
+        <UsageBadge count={usageCount} />
       </p>
 
       <ul className="ingredients" id={listId} aria-label="Ingredients">
@@ -86,12 +103,13 @@ function ComfortableCard({ recipe, actions }: Omit<RecipeCardProps, "density">) 
           ))}
         </ul>
       )}
+      {extra}
     </article>
   );
 }
 
 /** Dense variant used while planning: name, icons and a one-line ingredient summary. */
-function CompactCard({ recipe, actions }: Omit<RecipeCardProps, "density">) {
+function CompactCard({ recipe, actions, usageCount = 0, extra }: Omit<RecipeCardProps, "density">) {
   const [expanded, setExpanded] = useState(false);
   const summaryId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -124,6 +142,7 @@ function CompactCard({ recipe, actions }: Omit<RecipeCardProps, "density">) {
           <span className="visually-hidden">Main protein: </span>
           {protein.label}
         </span>
+        <UsageBadge count={usageCount} />
         {recipe.properties.length > 0 && (
           <ul className="property-icons property-icons--small" aria-label="Properties">
             {recipe.properties.map((property) => (
@@ -134,6 +153,7 @@ function CompactCard({ recipe, actions }: Omit<RecipeCardProps, "density">) {
           </ul>
         )}
       </div>
+      {extra}
 
       <div className="ingredients-row">
         <p

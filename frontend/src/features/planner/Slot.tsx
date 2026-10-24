@@ -6,6 +6,9 @@ import { canDrop, isDragSource, slotDragId, slotDropId, type DragSource, type Dr
 import { fitsSlot, sameSlot, slotHint, slotLabel } from "./slots";
 import { dayName } from "./weekMath";
 
+/** Seed recipe names are Spanish; the language drives automatic hyphenation of long names. */
+const RECIPE_LANG = "es";
+
 interface SlotProps {
   day: number;
   slot: MealSlot;
@@ -16,9 +19,23 @@ interface SlotProps {
   /** Tap on an empty slot, a filled slot, or (in select mode) a target slot. */
   onActivate: (day: number, slot: MealSlot) => void;
   onRemove: (day: number, slot: MealSlot) => void;
+  /** Messages of the variety warnings this slot takes part in. */
+  warnings?: readonly string[];
+  /** Whether the slot belongs to the variety issue chosen in the summary. */
+  highlighted?: boolean;
 }
 
-export function Slot({ day, slot, recipe, plan, selecting, onActivate, onRemove }: SlotProps) {
+export function Slot({
+  day,
+  slot,
+  recipe,
+  plan,
+  selecting,
+  onActivate,
+  onRemove,
+  warnings = [],
+  highlighted = false,
+}: SlotProps) {
   const { active } = useDndContext();
   const raw: unknown = active?.data.current;
   const source: DragSource | null = isDragSource(raw) ? raw : null;
@@ -46,6 +63,8 @@ export function Slot({ day, slot, recipe, plan, selecting, onActivate, onRemove 
     dragBlocked || selectBlocked ? "slot--blocked" : "",
     selecting && selectAllowed ? "slot--select-ok" : "",
     selecting && selectAllowed && !recipe ? "slot--pulse" : "",
+    warnings.length > 0 ? "slot--warning" : "",
+    highlighted ? "slot--highlight" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -58,7 +77,15 @@ export function Slot({ day, slot, recipe, plan, selecting, onActivate, onRemove 
       aria-label={`${dayName(day)} ${slot}`}
       data-select-target={selecting && selectAllowed ? "true" : undefined}
     >
-      <span className="slot-label">{slotLabel(slot)}</span>
+      <div className="slot-head">
+        <span className="slot-label">{slotLabel(slot)}</span>
+        {warnings.length > 0 && (
+          <span className="slot-warning" title={warnings.join("\n")}>
+            <span aria-hidden="true">⚠</span>
+            <span className="visually-hidden">Variety warning: {warnings.join(" ")}</span>
+          </span>
+        )}
+      </div>
       {recipe ? (
         <FilledSlot
           day={day}
@@ -127,7 +154,9 @@ function FilledSlot({ day, slot, recipe, selecting, disabled, onActivate, onRemo
         disabled={disabled}
         onClick={() => onActivate(day, slot)}
       >
-        <span className="slot-name">{recipe.name}</span>
+        <span className="slot-name" lang={RECIPE_LANG} title={recipe.name}>
+          {recipe.name}
+        </span>
         <span className="slot-icons">
           <MetaIcon meta={meal} />
           <span className="slot-protein" aria-hidden="true">

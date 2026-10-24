@@ -1,5 +1,6 @@
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
+import { slotKey } from "../variety/varietyLogic";
 import { Slot } from "./Slot";
 import { dayName, formatShortDate, isToday } from "./weekMath";
 
@@ -9,10 +10,22 @@ interface WeekGridProps {
   selecting?: Recipe | null;
   onActivate: (day: number, slot: MealSlot) => void;
   onRemove: (day: number, slot: MealSlot) => void;
+  /** Slot key ("day:slot") -> variety warning messages. */
+  warnings?: ReadonlyMap<string, readonly string[]>;
+  /** Slot keys to highlight (the issue chosen in the variety summary). */
+  highlighted?: ReadonlySet<string>;
 }
 
 /** Seven days with a lunch and a dinner slot each (14 slots). */
-export function WeekGrid({ plan, now, selecting = null, onActivate, onRemove }: WeekGridProps) {
+export function WeekGrid({
+  plan,
+  now,
+  selecting = null,
+  onActivate,
+  onRemove,
+  warnings,
+  highlighted,
+}: WeekGridProps) {
   return (
     <div className="week-grid">
       {plan.days.map((day) => {
@@ -39,6 +52,8 @@ export function WeekGrid({ plan, now, selecting = null, onActivate, onRemove }: 
                 selecting={selecting}
                 onActivate={onActivate}
                 onRemove={onRemove}
+                warnings={warnings?.get(slotKey({ day: day.day, slot }))}
+                highlighted={highlighted?.has(slotKey({ day: day.day, slot })) ?? false}
               />
             ))}
           </section>

@@ -37,6 +37,12 @@ export function slotHint(recipe: Recipe, slot: MealSlot): string | null {
 }
 
 /** Case-insensitive search in name and ingredients (same rule as the backend). */
+export function matchesQuery(recipe: Recipe, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [recipe.name, ...recipe.ingredients].some((text) => text.toLowerCase().includes(needle));
+}
+
 export function filterRecipes(
   recipes: readonly Recipe[],
   options: { slot?: MealSlot | undefined; query?: string | undefined },
@@ -44,8 +50,7 @@ export function filterRecipes(
   const needle = options.query?.trim().toLowerCase() ?? "";
   return recipes.filter((recipe) => {
     if (options.slot && !fitsSlot(recipe.meal_type, options.slot)) return false;
-    if (!needle) return true;
-    return [recipe.name, ...recipe.ingredients].some((text) => text.toLowerCase().includes(needle));
+    return !needle || matchesQuery(recipe, needle);
   });
 }
 

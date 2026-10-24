@@ -85,3 +85,23 @@ describe("RecipePanel", () => {
     expect(await screen.findByRole("heading", { name: "Lentejas estofadas" })).toBeInTheDocument();
   });
 });
+
+describe("RecipePanel variety features", () => {
+  it("shows usage badges and a 'Best for variety' sort only when usage is provided", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    expect(screen.queryByRole("button", { name: "Best for variety" })).not.toBeInTheDocument();
+    unmount();
+
+    renderWithQuery(<RecipePanel usage={new Map([[1, 2]])} proteinCounts={{ legumes: 2 }} />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    expect(screen.getByTitle("Planned 2 times this week")).toBeInTheDocument();
+    const order = () => screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(order()).toEqual(["Lentejas estofadas", "Tortilla de patatas"]);
+    await user.click(screen.getByRole("button", { name: "Best for variety" }));
+    expect(order()).toEqual(["Tortilla de patatas", "Lentejas estofadas"]);
+    await user.click(screen.getByRole("button", { name: "A–Z" }));
+    expect(order()).toEqual(["Lentejas estofadas", "Tortilla de patatas"]);
+  });
+});

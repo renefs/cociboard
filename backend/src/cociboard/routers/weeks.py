@@ -9,7 +9,15 @@ from sqlmodel import Session
 from cociboard import planner, repository
 from cociboard.db import get_session
 from cociboard.domain import MealSlot, week_start_for
-from cociboard.schemas import SlotAssign, SlotMove, WeekPlanRead
+from cociboard.schemas import (
+    CandidateRead,
+    SlotAssign,
+    SlotMove,
+    SuggestRequest,
+    VarietyReport,
+    WeekPlanRead,
+    WeekReplace,
+)
 
 router = APIRouter(prefix="/weeks", tags=["weeks"])
 
@@ -53,6 +61,59 @@ def get_week(week_start: date, session: SessionDep) -> WeekPlanRead:
     """Return the plan of the week starting on Monday ``week_start``."""
     try:
         return planner.get_week_plan(session, week_start)
+    except planner.InvalidWeekError as exc:
+        raise _translate(exc) from None
+
+
+@router.put("/{week_start}", response_model=WeekPlanRead)
+def replace_week(week_start: date, body: WeekReplace, session: SessionDep) -> WeekPlanRead:
+    """Replace the whole plan of a week atomically (used by undo)."""
+    try:
+        return planner.replace_week(session, week_start, body.slots)
+    except (
+        repository.RecipeNotFoundError,
+        planner.InvalidWeekError,
+        planner.IncompatibleSlotError,
+    ) as exc:
+        raise _translate(exc) from None
+
+
+@router.delete("/{week_start}", response_model=WeekPlanRead)
+def clear_week(week_start: date, session: SessionDep) -> WeekPlanRead:
+    """Clear every slot of a week."""
+    try:
+        return planner.clear_week(session, week_start)
+    except planner.InvalidWeekError as exc:
+        raise _translate(exc) from None
+
+
+@router.get("/{week_start}/variety", response_model=VarietyReport)
+def get_variety(week_start: date, session: SessionDep) -> VarietyReport:
+    """Variety analysis of a week (also embedded in every week plan response)."""
+    try:
+        return planner.get_variety(session, week_start)
+    except planner.InvalidWeekError as exc:
+        raise _translate(exc) from None
+
+
+@router.post("/{week_start}/suggest", response_model=WeekPlanRead)
+def suggest_week(
+    week_start: date, session: SessionDep, body: SuggestRequest | None = None
+) -> WeekPlanRead:
+    """Fill the empty slots with varied recipes. Optional ``seed`` makes it repeatable."""
+    try:
+        return planner.suggest_week(session, week_start, body.seed if body else None)
+    except planner.InvalidWeekError as exc:
+        raise _translate(exc) from None
+
+
+@router.get("/{week_start}/days/{day}/{slot}/candidates", response_model=list[CandidateRead])
+def get_candidates(
+    week_start: date, day: DayPath, slot: MealSlot, session: SessionDep
+) -> list[CandidateRead]:
+    """Recipes that fit the slot, best for variety first."""
+    try:
+        return planner.slot_candidates(session, week_start, day, slot)
     except planner.InvalidWeekError as exc:
         raise _translate(exc) from None
 

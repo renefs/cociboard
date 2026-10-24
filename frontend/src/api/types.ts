@@ -76,10 +76,54 @@ export interface DayPlan {
   dinner: Recipe | null;
 }
 
+export type IssueKind =
+  | "repeated_recipe"
+  | "consecutive_protein"
+  | "protein_overload"
+  | "few_vegetarian"
+  | "little_fish";
+export type IssueSeverity = "info" | "warning";
+
+export interface SlotPosition {
+  day: number;
+  slot: MealSlot;
+}
+
+export interface VarietyIssue {
+  kind: IssueKind;
+  severity: IssueSeverity;
+  message: string;
+  /** Slots involved; empty for plan-wide hints such as "little fish". */
+  slots: SlotPosition[];
+}
+
+export interface VarietyReport {
+  /** 0-100, or null while the plan is empty */
+  score: number | null;
+  filled_slots: number;
+  issues: VarietyIssue[];
+  protein_counts: Partial<Record<Protein, number>>;
+}
+
 export interface WeekPlan {
   /** ISO date of the Monday that starts the week */
   week_start: string;
   days: DayPlan[];
+  variety: VarietyReport;
+}
+
+export interface SlotFill {
+  day: number;
+  slot: MealSlot;
+  recipe_id: number;
+}
+
+/** A recipe that fits a slot, with its effect on the variety score. */
+export interface Candidate {
+  recipe: Recipe;
+  score_delta: number;
+  reason: string;
+  good_pick: boolean;
 }
 
 export interface SlotRef {

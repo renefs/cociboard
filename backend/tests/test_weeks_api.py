@@ -168,3 +168,60 @@ def test_deleting_recipe_removes_its_assignments(
     rows = session.exec(select(MealAssignment)).all()
     assert [(r.day, r.recipe_id) for r in rows] == [(1, keep)]
     assert names(client.get(f"/api/weeks/{MONDAY}").json()) == {(1, "lunch"): "Keep"}
+
+
+def test_week_plan_includes_variety_and_matches_variety_endpoint(client: TestClient) -> None:
+    empty = client.get(f"/api/weeks/{MONDAY}").json()
+    assert empty["variety"]["score"] is None
+    assert empty["variety"]["filled_slots"] == 0
+    a = make(client, "Same", "both")
+    put(client, 0, "lunch", a)
+    plan = put(client, 1, "lunch", a).json()
+    assert plan["variety"]["score"] == 75
+    [issue] = plan["variety"]["issues"]
+    assert issue["kind"] == "repeated_recipe"
+    assert issue["slots"] == [{"day": 0, "slot": "lunch"}, {"day": 1, "slot": "lunch"}]
+    assert client.get(f"/api/weeks/{MONDAY}/variety").json() == plan["variety"]
+
+
+def test_variety_endpoint_rejects_non_monday(client: TestClient) -> None:
+    assert client.get("/api/weeks/2026-10-27/variety").status_code == 422
+
+
+def test_clear_week_removes_only_that_week(client: TestClient, session: Session) -> None:
+    a = make(client, "A", "both")
+    put(client, 0, "lunch", a)
+    put(client, 3, "dinner", a)
+    put(client, 0, "lunch", a, week="2026-11-02")
+    plan = client.delete(f"/api/weeks/{MONDAY}")
+    assert plan.status_code == 200
+    assert names(plan.json()) == {}
+    assert plan.json()["variety"]["score"] is None
+    assert names(client.get("/api/weeks/2026-11-02").json()) == {(0, "lunch"): "A"}
+    assert client.delete(f"/api/weeks/{MONDAY}").status_code == 200  # idempotent
+    assert client.delete("/api/weeks/2026-10-27").status_code == 422
+
+
+def test_replace_week_is_atomic_and_validates(client: TestClient) -> None:
+    a = make(client, "A", "both")
+    b = make(client, "B", "dinner")
+    put(client, 0, "lunch", a)
+    body = {
+        "slots": [
+            {"day": 1, "slot": "dinner", "recipe_id": b},
+            {"day": 2, "slot": "lunch", "recipe_id": a},
+        ]
+    }
+    plan = client.put(f"/api/weeks/{MONDAY}", json=body).json()
+    assert names(plan) == {(1, "dinner"): "B", (2, "lunch"): "A"}
+
+    bad = {"slots": [{"day": 0, "slot": "lunch", "recipe_id": b}]}
+    assert client.put(f"/api/weeks/{MONDAY}", json=bad).status_code == 422
+    missing = {"slots": [{"day": 0, "slot": "lunch", "recipe_id": 999}]}
+    assert client.put(f"/api/weeks/{MONDAY}", json=missing).status_code == 404
+    assert names(client.get(f"/api/weeks/{MONDAY}").json()) == {
+        (1, "dinner"): "B",
+        (2, "lunch"): "A",
+    }
+    assert client.put(f"/api/weeks/{MONDAY}", json={"slots": []}).status_code == 200
+    assert names(client.get(f"/api/weeks/{MONDAY}").json()) == {}

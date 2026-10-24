@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty
+from cociboard.domain import IssueKind, IssueSeverity, MealSlot, MealType, Protein, RecipeProperty
 
 
 class HealthResponse(BaseModel):
@@ -135,6 +135,60 @@ class SlotMove(BaseModel):
     to_slot: MealSlot
 
 
+class SlotPosition(BaseModel):
+    """A slot of the weekly grid."""
+
+    day: int
+    slot: MealSlot
+
+
+class VarietyIssue(BaseModel):
+    """One finding of the variety analysis."""
+
+    kind: IssueKind
+    severity: IssueSeverity
+    message: str
+    slots: list[SlotPosition]
+
+
+class VarietyReport(BaseModel):
+    """Variety analysis of a week plan. ``score`` is null while the plan is empty."""
+
+    score: int | None = Field(ge=0, le=100)
+    filled_slots: int
+    issues: list[VarietyIssue]
+    protein_counts: dict[Protein, int]
+
+
+class SlotFill(BaseModel):
+    """One slot of a whole-week replacement."""
+
+    day: int = Field(ge=0, le=6)
+    slot: MealSlot
+    recipe_id: int
+
+
+class WeekReplace(BaseModel):
+    """Body of ``PUT /api/weeks/{week_start}``: the complete new plan of the week."""
+
+    slots: list[SlotFill]
+
+
+class SuggestRequest(BaseModel):
+    """Optional body of ``POST /api/weeks/{week_start}/suggest``."""
+
+    seed: int | None = None
+
+
+class CandidateRead(BaseModel):
+    """A recipe that fits a slot, with the effect it would have on variety."""
+
+    recipe: RecipeRead
+    score_delta: int
+    reason: str
+    good_pick: bool
+
+
 class DayPlanRead(BaseModel):
     """One day of a week plan."""
 
@@ -149,3 +203,4 @@ class WeekPlanRead(BaseModel):
 
     week_start: date
     days: list[DayPlanRead]
+    variety: VarietyReport

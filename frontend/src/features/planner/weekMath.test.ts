@@ -5,6 +5,10 @@ import {
   daysBetween,
   formatShortDate,
   formatWeekRange,
+  formatWeekRangeShort,
+  searchForWeek,
+  shiftWeek,
+  weekFromSearch,
   isToday,
   mondayOf,
   parseIsoDate,
@@ -45,7 +49,41 @@ describe("weekMath", () => {
   it("formats dates and ranges in English", () => {
     expect(formatShortDate("2026-10-26")).toBe("26 Oct");
     expect(formatWeekRange("2026-10-26")).toBe("26 Oct – 1 November 2026");
+    expect(formatWeekRangeShort("2026-10-26")).toBe("26 Oct – 1 Nov 2026");
+    expect(formatWeekRangeShort("2026-12-28")).toBe("28 Dec – 3 Jan 2027");
     expect(dayName(0)).toBe("Monday");
     expect(dayName(6)).toBe("Sunday");
+  });
+});
+
+describe("week navigation helpers", () => {
+  const now = new Date(2026, 9, 28); // Wednesday, week of 2026-10-26
+
+  it("shifts by whole weeks across month and year boundaries", () => {
+    expect(shiftWeek("2026-10-26", 1)).toBe("2026-11-02");
+    expect(shiftWeek("2026-10-26", -1)).toBe("2026-10-19");
+    expect(shiftWeek("2026-12-28", 1)).toBe("2027-01-04");
+    expect(shiftWeek("2026-03-23", 1)).toBe("2026-03-30"); // across the DST change
+  });
+
+  it("reads the week from the query string, normalising to the Monday", () => {
+    expect(weekFromSearch("?week=2026-11-02", now)).toBe("2026-11-02");
+    expect(weekFromSearch("?week=2026-11-05", now)).toBe("2026-11-02");
+    expect(weekFromSearch("?x=1&week=2026-11-02", now)).toBe("2026-11-02");
+  });
+
+  it("falls back to the current week for missing or invalid parameters", () => {
+    expect(weekFromSearch("", now)).toBe("2026-10-26");
+    expect(weekFromSearch("?week=", now)).toBe("2026-10-26");
+    expect(weekFromSearch("?week=banana", now)).toBe("2026-10-26");
+    expect(weekFromSearch("?week=2026-02-31", now)).toBe("2026-10-26");
+    expect(weekFromSearch("?week=2026-2-3", now)).toBe("2026-10-26");
+  });
+
+  it("builds the query string: the current week is implicit and other params are kept", () => {
+    expect(searchForWeek("", "2026-11-02", now)).toBe("?week=2026-11-02");
+    expect(searchForWeek("?week=2026-11-02", "2026-10-26", now)).toBe("");
+    expect(searchForWeek("?a=1&week=2026-11-02", "2026-10-26", now)).toBe("?a=1");
+    expect(searchForWeek("?a=1", "2026-11-09", now)).toBe("?a=1&week=2026-11-09");
   });
 });
