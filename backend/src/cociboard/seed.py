@@ -208,7 +208,7 @@ SEED_RECIPES: list[RecipeCreate] = [
         [P.quick, P.dairy_free, P.kid_friendly],
         "Short pasta with tomato sauce and tinned bonito.",
     ),
-    # Dinner only (7)
+    # Dinner only (10)
     _r(
         "Tortilla de patatas",
         D,
@@ -296,7 +296,50 @@ SEED_RECIPES: list[RecipeCreate] = [
         [P.quick, P.kid_friendly],
         "Grilled beef burger in a bun with cheese, lettuce and tomato.",
     ),
-    # Both (11)
+    _r(
+        "Puré de calabaza y zanahoria",
+        D,
+        Protein.none,
+        35,
+        [
+            "Calabaza",
+            "Zanahoria",
+            "Patata",
+            "Cebolla",
+            "Caldo de verduras",
+            "Aceite de oliva",
+            "Sal",
+        ],
+        [
+            P.vegan,
+            P.vegetarian,
+            P.gluten_free,
+            P.dairy_free,
+            P.light,
+            P.kid_friendly,
+            P.batch_cooking,
+        ],
+        "Smooth pumpkin and carrot purée that keeps well.",
+    ),
+    _r(
+        "Tortilla francesa",
+        D,
+        Protein.eggs,
+        10,
+        ["Huevos", "Aceite de oliva", "Sal"],
+        [P.vegetarian, P.gluten_free, P.dairy_free, P.quick, P.light, P.kid_friendly],
+        "Plain folded omelette, ready in minutes.",
+    ),
+    _r(
+        "Tosta de aguacate",
+        D,
+        Protein.none,
+        10,
+        ["Pan de hogaza", "Aguacate", "Tomate", "Limón", "Aceite de oliva", "Sal"],
+        [P.vegan, P.vegetarian, P.dairy_free, P.quick, P.light],
+        "Toasted country bread topped with mashed avocado and tomato.",
+    ),
+    # Both (13)
     _r(
         "Gazpacho andaluz",
         B,
@@ -459,6 +502,24 @@ SEED_RECIPES: list[RecipeCreate] = [
         ],
         [P.kid_friendly, P.batch_cooking],
         "Meatballs in a light gravy with creamy mashed potatoes and peas.",
+    ),
+    _r(
+        "Salmón con brócoli",
+        B,
+        Protein.fish,
+        25,
+        ["Lomos de salmón", "Brócoli", "Ajo", "Limón", "Aceite de oliva", "Sal"],
+        [P.gluten_free, P.dairy_free, P.quick, P.light],
+        "Pan-seared salmon with steamed broccoli and garlic.",
+    ),
+    _r(
+        "Pechuga de pollo a la plancha con tomate",
+        B,
+        Protein.poultry,
+        20,
+        ["Pechuga de pollo", "Tomate", "Ajo", "Orégano", "Aceite de oliva", "Sal"],
+        [P.gluten_free, P.dairy_free, P.quick, P.light, P.kid_friendly],
+        "Grilled chicken breast with sliced tomato and oregano.",
     ),
 ]
 
