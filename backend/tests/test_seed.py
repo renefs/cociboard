@@ -33,11 +33,11 @@ def test_seed_if_empty_respects_user_data(session: Session) -> None:
 
 
 def test_seed_catalogue_shape() -> None:
-    assert len(SEED_RECIPES) == 24
+    assert len(SEED_RECIPES) == 25
     names = [r.name.lower() for r in SEED_RECIPES]
     assert len(set(names)) == len(names)
     counts = Counter(r.meal_type for r in SEED_RECIPES)
-    assert counts == {MealType.lunch: 8, MealType.dinner: 6, MealType.both: 10}
+    assert counts == {MealType.lunch: 8, MealType.dinner: 6, MealType.both: 11}
     assert len({r.protein for r in SEED_RECIPES}) >= 7
 
 
@@ -59,7 +59,7 @@ def test_startup_seeds_when_enabled(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     try:
         with TestClient(create_app()) as client:
             assert len(client.get("/api/recipes").json()) == len(SEED_RECIPES)
-            assert len(client.get("/api/recipes?slot=dinner").json()) == 16
+            assert len(client.get("/api/recipes?slot=dinner").json()) == 17
     finally:
         get_engine().dispose()
         get_settings.cache_clear()
