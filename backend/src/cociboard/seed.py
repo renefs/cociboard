@@ -37,7 +37,7 @@ def _r(
 
 
 SEED_RECIPES: list[RecipeCreate] = [
-    # Lunch only (8)
+    # Lunch only (10)
     _r(
         "Lentejas estofadas",
         L,
@@ -177,7 +177,38 @@ SEED_RECIPES: list[RecipeCreate] = [
         [P.kid_friendly, P.batch_cooking],
         "Meatballs in tomato sauce served with white rice.",
     ),
-    # Dinner only (6)
+    _r(
+        "Lasaña",
+        L,
+        Protein.meat,
+        75,
+        [
+            "Placas de lasaña",
+            "Carne picada mixta",
+            "Tomate triturado",
+            "Cebolla",
+            "Zanahoria",
+            "Ajo",
+            "Leche",
+            "Mantequilla",
+            "Harina",
+            "Nuez moscada",
+            "Queso rallado",
+            "Aceite de oliva",
+        ],
+        [P.kid_friendly, P.batch_cooking],
+        "Oven-baked pasta layers with meat sauce, béchamel and cheese.",
+    ),
+    _r(
+        "Pasta con tomate y bonito",
+        L,
+        Protein.fish,
+        25,
+        ["Pasta corta", "Tomate frito", "Bonito en aceite", "Cebolla", "Ajo", "Aceite de oliva"],
+        [P.quick, P.dairy_free, P.kid_friendly],
+        "Short pasta with tomato sauce and tinned bonito.",
+    ),
+    # Dinner only (7)
     _r(
         "Tortilla de patatas",
         D,
@@ -247,6 +278,23 @@ SEED_RECIPES: list[RecipeCreate] = [
         ],
         [P.vegetarian, P.gluten_free, P.dairy_free],
         "Manchego vegetable stew topped with a fried egg.",
+    ),
+    _r(
+        "Hamburguesa",
+        D,
+        Protein.meat,
+        20,
+        [
+            "Carne picada de ternera",
+            "Pan de hamburguesa",
+            "Queso en lonchas",
+            "Lechuga",
+            "Tomate",
+            "Cebolla",
+            "Aceite de oliva",
+        ],
+        [P.quick, P.kid_friendly],
+        "Grilled beef burger in a bun with cheese, lettuce and tomato.",
     ),
     # Both (11)
     _r(
