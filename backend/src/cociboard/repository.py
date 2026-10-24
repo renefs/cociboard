@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
-from cociboard.domain import MealSlot, RecipeProperty, fits_slot
+from cociboard.domain import MealSlot, MealType, RecipeProperty, fits_slot
 from cociboard.models import MealAssignment, Recipe
 from cociboard.schemas import RecipeCreate, RecipeUpdate
 
@@ -17,6 +17,14 @@ class RecipeNotFoundError(Exception):
 
 class DuplicateRecipeNameError(Exception):
     """Raised when a recipe name is already taken."""
+
+
+class MealTypeConflictError(Exception):
+    """Raised when a new meal type no longer fits slots the recipe occupies."""
+
+    def __init__(self, conflicts: list[MealAssignment]) -> None:
+        super().__init__(f"{len(conflicts)} planned meals no longer fit")
+        self.conflicts = conflicts
 
 
 def _name_taken(session: Session, name: str, exclude_id: int | None = None) -> bool:
@@ -89,13 +97,48 @@ def create_recipe(session: Session, data: RecipeCreate) -> Recipe:
     return _commit(session, recipe)
 
 
-def update_recipe(session: Session, recipe_id: int, data: RecipeUpdate) -> Recipe:
-    """Apply a partial update to a recipe."""
+def incompatible_assignments(
+    session: Session, recipe_id: int, meal_type: MealType
+) -> list[MealAssignment]:
+    """Return the planned slots of a recipe that would not fit ``meal_type``."""
+    statement = (
+        select(MealAssignment)
+        .where(col(MealAssignment.recipe_id) == recipe_id)
+        .order_by(col(MealAssignment.week_start), col(MealAssignment.day), col(MealAssignment.slot))
+    )
+    return [a for a in session.exec(statement) if not fits_slot(meal_type, a.slot)]
+
+
+def count_usage(session: Session, recipe_id: int) -> int:
+    """Return in how many planned slots (all weeks) a recipe is used."""
+    get_recipe(session, recipe_id)
+    statement = (
+        select(func.count())
+        .select_from(MealAssignment)
+        .where(col(MealAssignment.recipe_id) == recipe_id)
+    )
+    return session.exec(statement).one()
+
+
+def update_recipe(
+    session: Session, recipe_id: int, data: RecipeUpdate, force: bool = False
+) -> Recipe:
+    """Apply a partial update to a recipe.
+
+    A meal-type change that no longer fits planned slots raises
+    :class:`MealTypeConflictError`; with ``force`` those assignments are removed instead.
+    """
     recipe = get_recipe(session, recipe_id)
     changes = data.changes()
     new_name = changes.get("name")
     if isinstance(new_name, str) and _name_taken(session, new_name, exclude_id=recipe_id):
         raise DuplicateRecipeNameError(new_name)
+    if data.meal_type is not None and data.meal_type is not recipe.meal_type:
+        conflicts = incompatible_assignments(session, recipe_id, data.meal_type)
+        if conflicts and not force:
+            raise MealTypeConflictError(conflicts)
+        for assignment in conflicts:
+            session.delete(assignment)
     if "properties" in changes:
         changes["properties"] = [p.value for p in data.properties or []]
     for key, value in changes.items():

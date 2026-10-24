@@ -9,7 +9,7 @@ with a version bump and a CHANGELOG entry.
 
 ## Milestones
 
-### v0.1.0 — Project scaffold
+### v0.1.0 — Project scaffold (done)
 - Monorepo layout: `backend/` (FastAPI) and `frontend/` (React + TypeScript + Vite).
 - Tooling: uv, ruff, mypy (strict), pytest; npm, ESLint, `tsc --noEmit` (strict), Vitest.
 - `GET /api/health` returns status and version; the frontend shows the app shell and
@@ -17,7 +17,7 @@ with a version bump and a CHANGELOG entry.
 - Docs: README, CHANGELOG, CLAUDE.md conventions, ADR-0001 (tech stack), ADR-0002
   (versioning and change log), Makefile with `dev`, `test`, `lint`, `typecheck`.
 
-### v0.2.0 — Recipes
+### v0.2.0 — Recipes (done)
 - Recipe domain: name, meal type (`lunch` / `dinner` / `both`), ingredients,
   properties (e.g. vegetarian, vegan, gluten-free, quick, spicy), main protein
   (for variety analysis), optional prep time.
@@ -26,7 +26,7 @@ with a version bump and a CHANGELOG entry.
 - Frontend recipe panel: cards with name, meal-type badge, ingredient list and
   property icons with accessible labels/tooltips; search and meal-type filters.
 
-### v0.3.0 — Weekly planner with drag and drop
+### v0.3.0 — Weekly planner with drag and drop (done)
 - Weekly grid, 7 days × {lunch, dinner}; responsive (columns on desktop, stacked day
   cards on mobile).
 - Drag and drop with @dnd-kit (mouse, touch and keyboard sensors).
@@ -36,7 +36,7 @@ with a version bump and a CHANGELOG entry.
 - Week plans persisted per ISO week under `/api/weeks/{week_start}`; move between
   slots, remove from a slot.
 
-### v0.4.0 — Variety and week management
+### v0.4.0 — Variety and week management (done)
 - Variety analysis (backend, unit-tested): repeated recipes in the week, same main
   protein on consecutive meals, too many of one protein; a variety score.
 - UI: inline warnings on affected slots, a variety summary, recipe usage counts in
@@ -44,7 +44,7 @@ with a version bump and a CHANGELOG entry.
 - Week navigation (previous / next / this week), clear week, "suggest" auto-fill of
   empty slots that maximises variety.
 
-### v0.5.0 — Recipe management and polish
+### v0.5.0 — Recipe management and polish (done)
 - Create / edit / delete recipes from the UI (validated forms).
 - Accessibility pass (focus states, ARIA, contrast), empty and error states,
   loading states, final docs. Review fixes from the planning/review model.

@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.4.0** (variety analysis, suggestions and week navigation).
+Current version: **0.5.0** (recipe management, accessibility and polish).
 
 ## Stack
 
@@ -14,7 +14,34 @@ Current version: **0.4.0** (variety analysis, suggestions and week navigation).
 
 Rationale: [ADR-0001](docs/adr/0001-tech-stack.md), [ADR-0003](docs/adr/0003-recipe-data-model.md), [ADR-0004](docs/adr/0004-data-fetching-and-icons.md),
 [ADR-0005](docs/adr/0005-planner-interaction-design.md), [ADR-0006](docs/adr/0006-week-plan-data-model.md),
-[ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md).
+[ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md).
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser["Frontend (React + TypeScript + Vite)"]
+    App[App shell] --> Planner[features/planner<br/>week grid, drag and drop, picker, toolbar]
+    App --> Recipes[features/recipes<br/>panel, cards, form, details]
+    Planner --> Variety[features/variety<br/>summary]
+    Planner --> Query[TanStack Query cache]
+    Recipes --> Query
+    Query --> Client[api/client.ts + types.ts]
+  end
+  Client -- "HTTP /api (Vite proxy in dev)" --> Routers
+  subgraph Server["Backend (FastAPI)"]
+    Routers[routers/recipes, routers/weeks] --> Repo[repository.py<br/>planner.py]
+    Routers --> Rules[domain.py, variety.py, suggest.py<br/>pure business rules]
+    Repo --> Rules
+    Repo --> Models[models.py SQLModel]
+  end
+  Models --> DB[(SQLite file)]
+```
+
+The frontend never talks to the database: all state lives behind the API and is cached by
+TanStack Query (optimistic updates for the plan, invalidation after recipe edits). Business
+rules (slot compatibility, variety, suggestions) are pure functions in the backend and are
+unit-tested without the web layer.
 
 ## Setup
 
@@ -58,7 +85,8 @@ Interactive docs are served at http://localhost:8000/docs.
 | `GET /api/recipes` | List recipes, ordered by name. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
 | `POST /api/recipes` | Create (`201`; `409` duplicate name; `422` invalid) |
-| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`) |
+| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
+| `GET /api/recipes/{id}/usage` | `{ count }`: planned slots, across all weeks, that use the recipe (`404`) |
 | `DELETE /api/recipes/{id}` | Delete (`204`; `404`) |
 
 A recipe has `name` (1-80 chars, unique), optional `description`, `meal_type`
@@ -100,6 +128,36 @@ or seafood meals once 10 are filled (info). Score: `90 - 15 * warnings - 5 * inf
 `2` per distinct protein beyond the first (at most 10), clamped to 0-100. Details and the
 suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md).
 
+## How to plan a week
+
+1. **Look at the recipes.** The panel lists your catalogue; search by name or ingredient, filter
+   by meal type or property, and click a recipe's name for its full details. No recipes yet?
+   Use **New recipe** (or **Add your first recipe**).
+2. **Fill slots by hand.** Drag a recipe onto a lunch or dinner slot, or tap: tap an empty slot
+   and choose from the recipes that fit, or tap **Add** on a recipe and then a highlighted slot.
+   Dinner-only recipes never fit lunch slots and vice versa.
+3. **Let Cociboard suggest.** **Suggest** fills only the empty slots with varied recipes; use
+   **Undo** in the toast if you do not like the result, or run it again after clearing some
+   slots. Your own picks are never replaced.
+4. **Check the variety.** The badge shows the week's score. Open it to see the issues (a
+   repeated recipe, the same protein two meals in a row, too much of one protein) and click
+   one to highlight the slots involved. A warning mark on a slot means it takes part in an
+   issue; swap that meal or use **Best for variety** in the recipe panel and the picker's
+   "Good pick" hints.
+5. **Move on.** Use ‹ and › to plan other weeks. To change what a meal is, open its recipe and
+   **Edit**; to drop a meal, use its × or **Remove**.
+
+## Managing recipes
+
+- **New recipe** opens a form (a full-screen sheet on phones): name, meal type, main protein,
+  prep time, description, ingredients (Enter adds a row; pasting a list splits it into rows)
+  and properties. Errors are shown next to the fields.
+- Click a recipe name (or choose **View details** on a planned meal) to see everything, then
+  **Edit** or **Delete**. Deleting asks for confirmation and shows in how many planned meals the
+  recipe is used; those meals are removed with it.
+- If you change a recipe's meal type and it is planned in slots that no longer fit, the form
+  lists them and offers **Remove them and save**.
+
 ## Using the planner
 
 - **Weeks:** use the ‹ and › buttons or **This week** in the planner header; the address bar
@@ -135,7 +193,7 @@ backend/
   tests/
 frontend/
   src/api/              typed API client and types mirroring backend schemas
-  src/features/recipes/ recipe panel, cards (comfortable and compact), legend, icon metadata
+  src/features/recipes/ recipe panel, cards, form, details and delete dialogs, mutations, legend, icon metadata
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, pure logic
   src/features/variety/ variety summary and presentation helpers
   src/styles/           design tokens and global CSS

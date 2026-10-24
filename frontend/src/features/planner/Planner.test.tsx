@@ -441,3 +441,30 @@ describe("Planner picker ordering", () => {
     expect(within(dialog).getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Ensalada mixta");
   });
 });
+
+describe("Planner loading and error states", () => {
+  it("shows a skeleton grid while the week loads", () => {
+    vi.mocked(client.getWeek).mockReturnValue(new Promise(() => undefined));
+    renderWithQuery(<Planner now={NOW} />);
+    expect(screen.getByTestId("week-skeleton")).toBeInTheDocument();
+  });
+
+  it("shows an offline state with Retry that recovers", async () => {
+    const user = userEvent.setup();
+    let offline = true;
+    vi.mocked(client.getWeek).mockImplementation((week) =>
+      offline && week === WEEK ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve(serverPlan),
+    );
+    renderWithQuery(<Planner now={NOW} />);
+    const alert = await screen.findByText(/Can't load the week/);
+    expect(alert).toBeInTheDocument();
+    offline = false;
+    await user.click(within(alert.closest("[role=alert]") as HTMLElement).getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("group", { name: "Monday lunch" })).toBeInTheDocument();
+  });
+
+  it("keeps a polite live region mounted for toasts", async () => {
+    await renderPlanner();
+    expect(document.querySelector(".toast-region")).toHaveAttribute("aria-live", "polite");
+  });
+});

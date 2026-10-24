@@ -9,6 +9,9 @@ import { Legend } from "./Legend";
 import type { Recipe } from "../../api/types";
 import { sortByVariety } from "../variety/varietyLogic";
 import { RecipeCard, type CardDensity } from "./RecipeCard";
+import { RecipeDetailsModal, type Notify } from "./RecipeDetailsModal";
+import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
+import { RecipeListSkeleton } from "./RecipeListSkeleton";
 import { PROPERTY_META } from "./recipeMeta";
 import { useRecipes } from "./useRecipes";
 
@@ -34,7 +37,9 @@ function useDebounced<T>(value: T, delay: number): T {
 interface RecipePanelProps {
   density?: CardDensity;
   /** Custom card rendering (the planner adds drag handles and an "Add" button). */
-  renderCard?: (recipe: Recipe) => ReactNode;
+  renderCard?: (recipe: Recipe, open: (recipe: Recipe) => void) => ReactNode;
+  /** Receives confirmations and errors (the planner shows them as toasts). */
+  onNotify?: Notify;
   /**
    * How often each recipe is planned this week (recipe id -> count). Providing it enables
    * the "Best for variety" sort, together with `proteinCounts`.
@@ -50,11 +55,15 @@ export function RecipePanel({
   renderCard,
   usage,
   proteinCounts,
+  onNotify,
 }: RecipePanelProps = {}) {
   const [search, setSearch] = useState("");
   const [meal, setMeal] = useState<MealFilter>("all");
   const [properties, setProperties] = useState<RecipeProperty[]>([]);
   const [sort, setSort] = useState<SortMode>("name");
+  const [dialog, setDialog] = useState<
+    { kind: "none" } | { kind: "new" } | { kind: "details"; recipe: Recipe }
+  >({ kind: "none" });
   const q = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
 
   const { data, isPending, isError, refetch } = useRecipes({
@@ -69,6 +78,15 @@ export function RecipePanel({
     [data, usage, proteinCounts, sort],
   );
 
+  const filtersActive = search.trim() !== "" || meal !== "all" || properties.length > 0;
+  const clearFilters = () => {
+    setSearch("");
+    setMeal("all");
+    setProperties([]);
+  };
+  const openDetails = (recipe: Recipe) => setDialog({ kind: "details", recipe });
+  const closeDialog = () => setDialog({ kind: "none" });
+
   const toggleProperty = (property: RecipeProperty) =>
     setProperties((current) =>
       current.includes(property) ? current.filter((p) => p !== property) : [...current, property],
@@ -78,7 +96,12 @@ export function RecipePanel({
     <section
       className={density === "compact" ? "recipe-panel recipe-panel--compact" : "recipe-panel"}
       aria-labelledby="recipes-heading">
-      <h2 id="recipes-heading">Recipes</h2>
+      <div className="panel-head">
+        <h2 id="recipes-heading">Recipes</h2>
+        <button type="button" className="btn btn-primary" onClick={() => setDialog({ kind: "new" })}>
+          <span aria-hidden="true">+ </span>New recipe
+        </button>
+      </div>
 
       <div className="recipe-controls">
         <label className="search-field">
@@ -150,32 +173,66 @@ export function RecipePanel({
         </details>
       </div>
 
-      <div className="recipe-list" aria-live="polite">
-        {isPending && <p className="status-message">Loading recipes…</p>}
+      <div className="recipe-list" aria-live="polite" aria-busy={isPending}>
+        {isPending && (
+          <>
+            <p className="visually-hidden">Loading recipes…</p>
+            <RecipeListSkeleton />
+          </>
+        )}
         {isError && (
-          <p className="status-message" role="alert">
-            Could not load recipes.{" "}
-            <button type="button" className="link-button" onClick={() => void refetch()}>
+          <div className="state-box" role="alert">
+            <p>Can&apos;t load the recipes. Check that the server is running and your connection.</p>
+            <button type="button" className="btn" onClick={() => void refetch()}>
               Retry
             </button>
-          </p>
+          </div>
         )}
-        {recipes && recipes.length === 0 && <p className="status-message">No recipes match.</p>}
+        {recipes && recipes.length === 0 && filtersActive && (
+          <div className="state-box">
+            <p>No recipes match your search or filters.</p>
+            <button type="button" className="btn" onClick={clearFilters}>
+              Clear filters
+            </button>
+          </div>
+        )}
+        {recipes && recipes.length === 0 && !filtersActive && (
+          <div className="state-box">
+            <p>Your recipe catalogue is empty.</p>
+            <button type="button" className="btn btn-primary" onClick={() => setDialog({ kind: "new" })}>
+              Add your first recipe
+            </button>
+          </div>
+        )}
         {recipes?.map((recipe) =>
-            renderCard ? (
-              <div key={recipe.id}>{renderCard(recipe)}</div>
-            ) : (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                density={density}
-                usageCount={usage?.get(recipe.id) ?? 0}
-              />
-            ),
-          )}
+          renderCard ? (
+            <div key={recipe.id}>{renderCard(recipe, openDetails)}</div>
+          ) : (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              density={density}
+              usageCount={usage?.get(recipe.id) ?? 0}
+              onOpen={openDetails}
+            />
+          ),
+        )}
       </div>
 
       <Legend />
+
+      {dialog.kind === "new" && (
+        <RecipeFormModal
+          onClose={closeDialog}
+          onSaved={(info) => {
+            closeDialog();
+            onNotify?.("info", savedMessage(info));
+          }}
+        />
+      )}
+      {dialog.kind === "details" && (
+        <RecipeDetailsModal recipe={dialog.recipe} onClose={closeDialog} onNotify={onNotify} />
+      )}
     </section>
   );
 }

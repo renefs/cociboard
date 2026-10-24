@@ -18,6 +18,25 @@ interface RecipeCardProps {
   usageCount?: number;
   /** Extra content below the details (the picker adds its variety hint here). */
   extra?: ReactNode;
+  /** When given, the title becomes a button that opens the recipe details. */
+  onOpen?: ((recipe: Recipe) => void) | undefined;
+}
+
+function CardTitle({ recipe, onOpen }: Pick<RecipeCardProps, "recipe" | "onOpen">) {
+  if (!onOpen) return <h3 className="recipe-card-title">{recipe.name}</h3>;
+  return (
+    <h3 className="recipe-card-title">
+      <button
+        type="button"
+        className="card-title-button"
+        aria-haspopup="dialog"
+        title="Show details"
+        onClick={() => onOpen(recipe)}
+      >
+        {recipe.name}
+      </button>
+    </h3>
+  );
 }
 
 /** "×2 this week" badge for recipes already in the plan. */
@@ -40,7 +59,7 @@ export function RecipeCard({ recipe, density = "comfortable", ...rest }: RecipeC
   );
 }
 
-function ComfortableCard({ recipe, actions, usageCount = 0, extra }: Omit<RecipeCardProps, "density">) {
+function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<RecipeCardProps, "density">) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -52,7 +71,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra }: Omit<Recipe
   return (
     <article className="recipe-card" aria-label={recipe.name}>
       <header className="recipe-card-header">
-        <h3 className="recipe-card-title">{recipe.name}</h3>
+        <CardTitle recipe={recipe} onOpen={onOpen} />
         <span
           className="badge"
           style={{ "--badge-color": mealType.color } as CSSProperties}
@@ -109,7 +128,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra }: Omit<Recipe
 }
 
 /** Dense variant used while planning: name, icons and a one-line ingredient summary. */
-function CompactCard({ recipe, actions, usageCount = 0, extra }: Omit<RecipeCardProps, "density">) {
+function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<RecipeCardProps, "density">) {
   const [expanded, setExpanded] = useState(false);
   const summaryId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -120,7 +139,7 @@ function CompactCard({ recipe, actions, usageCount = 0, extra }: Omit<RecipeCard
   return (
     <article className="recipe-card recipe-card--compact" aria-label={recipe.name}>
       <header className="recipe-card-header">
-        <h3 className="recipe-card-title">{recipe.name}</h3>
+        <CardTitle recipe={recipe} onOpen={onOpen} />
         {actions}
       </header>
 

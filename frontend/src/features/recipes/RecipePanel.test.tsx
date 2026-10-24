@@ -70,17 +70,39 @@ describe("RecipePanel", () => {
     await waitFor(() => expect(lastFilters()?.properties).toEqual(["quick"]));
   });
 
-  it("shows an empty state", async () => {
+  it("offers to add the first recipe when the catalogue is empty", async () => {
     vi.mocked(client.listRecipes).mockResolvedValue([]);
     renderWithQuery(<RecipePanel />);
-    expect(await screen.findByText("No recipes match.")).toBeInTheDocument();
+    expect(await screen.findByText("Your recipe catalogue is empty.")).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Add your first recipe" }));
+    expect(await screen.findByRole("dialog", { name: "New recipe" })).toBeInTheDocument();
+  });
+
+  it("offers to clear filters when nothing matches", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.listRecipes).mockImplementation((filters) =>
+      Promise.resolve(filters?.slot === "dinner" ? [] : [lunch, dinner]),
+    );
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    await user.click(within(screen.getByRole("group", { name: "Meal type" })).getByRole("button", { name: "Dinner" }));
+    expect(await screen.findByText("No recipes match your search or filters.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(await screen.findByRole("heading", { name: "Lentejas estofadas" })).toBeInTheDocument();
+    expect(screen.queryByText("No recipes match your search or filters.")).not.toBeInTheDocument();
+  });
+
+  it("shows loading skeletons first", () => {
+    vi.mocked(client.listRecipes).mockReturnValue(new Promise(() => undefined));
+    renderWithQuery(<RecipePanel />);
+    expect(screen.getByTestId("recipe-skeleton")).toBeInTheDocument();
   });
 
   it("shows an error with retry", async () => {
     const user = userEvent.setup();
     vi.mocked(client.listRecipes).mockRejectedValueOnce(new Error("boom"));
     renderWithQuery(<RecipePanel />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load recipes.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Can't load the recipes.");
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("heading", { name: "Lentejas estofadas" })).toBeInTheDocument();
   });

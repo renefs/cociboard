@@ -21,7 +21,7 @@ interface ToastProps {
 const TOAST_MS = 6000;
 const TOAST_WITH_ACTION_MS = 10000;
 
-/** One toast at a time; errors use an alert role so assistive tech announces them. */
+/** One toast at a time; announced through an always-mounted polite live region. */
 export function Toast({ toast, onDismiss }: ToastProps) {
   useEffect(() => {
     if (!toast) return;
@@ -29,13 +29,18 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     return () => clearTimeout(timer);
   }, [toast, onDismiss]);
 
-  if (!toast) return null;
+  // The live region stays mounted so that screen readers announce toasts reliably.
+  return (
+    <div className="toast-region" aria-live="polite" aria-atomic="true">
+      {toast && <ToastBody toast={toast} onDismiss={onDismiss} />}
+    </div>
+  );
+}
+
+function ToastBody({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () => void }) {
   const { action } = toast;
   return (
-    <div
-      className={`toast toast--${toast.kind}`}
-      role={toast.kind === "error" ? "alert" : "status"}
-    >
+    <div className={`toast toast--${toast.kind}`} role={toast.kind === "error" ? "alert" : undefined}>
       <span className="toast-text">{toast.text}</span>
       {action && (
         <>

@@ -61,6 +61,26 @@ export interface RecipeCreate {
 
 export type RecipeUpdate = Partial<RecipeCreate>;
 
+/** Response of `GET /api/recipes/{id}/usage`. */
+export interface RecipeUsage {
+  count: number;
+}
+
+/** A planned slot affected by a recipe edit. */
+export interface ConflictSlot {
+  /** ISO date of the Monday that starts the week */
+  week_start: string;
+  day: number;
+  slot: MealSlot;
+}
+
+/** `detail` of the 409 answered when a meal-type change breaks planned meals. */
+export interface MealTypeConflictDetail {
+  code: "meal_type_conflict";
+  message: string;
+  conflicts: ConflictSlot[];
+}
+
 export interface RecipeFilters {
   slot?: MealSlot | undefined;
   q?: string | undefined;

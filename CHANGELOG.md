@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-24
+
+### Added
+- Recipe management in the UI: **New recipe** and **Edit** in a validated form (name 1-80,
+  meal type as a segmented control with icons, main protein select with icons, prep minutes,
+  description, ingredient rows with add/remove, Enter-for-new-row and multi-line paste
+  splitting, property toggle chips). Inline errors; a duplicate name (409) is shown on the
+  name field and 422 responses are mapped to fields. The form is a full-screen sheet on phones.
+- Recipe details modal (ingredients, description, labelled properties, prep time, protein)
+  reachable from recipe cards and from a planned slot's **View details**, with **Edit** and
+  **Delete**. Delete asks for confirmation and shows how many planned meals use the recipe.
+- `GET /api/recipes/{id}/usage` returns `{ count }` of planned slots using a recipe.
+- Changing a recipe's meal type so that it no longer fits planned slots answers `409` with a
+  structured `detail` listing `{ week_start, day, slot }`; `PATCH ...?force=true` removes those
+  planned meals and applies the change. The form lists the meals and offers "Remove them and save".
+- Loading skeletons for the recipe list and week grid; offline/error states with **Retry**;
+  empty states ("Clear filters" when nothing matches, "Add your first recipe" for an empty catalogue).
+- ADR-0008 (recipe edits versus planned meals), README architecture diagram (Mermaid) and a
+  "How to plan a week" guide.
+
+### Changed
+- Accessibility: toasts are announced through an always-mounted `aria-live` region, form
+  controls have programmatic labels, errors and descriptions are linked with `aria-describedby`,
+  focus is kept visible on every control (including the segmented meal type), placeholders and
+  badge/accent colours were darkened to reach WCAG AA contrast (a unit test guards the palette),
+  and animations (sheets, skeleton shimmer, smooth scrolling) honour `prefers-reduced-motion`.
+- Modals render in a portal on `document.body`; forms do not close on a backdrop click so typed
+  input is not lost by accident.
+- `ApiError` carries the response `detail`; `updateRecipe` takes an optional `force` flag.
+
 ## [0.4.0] - 2026-10-24
 
 ### Added
