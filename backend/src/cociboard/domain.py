@@ -1,5 +1,6 @@
 """Pure domain rules for recipes. No I/O, no framework imports."""
 
+from datetime import date, timedelta
 from enum import StrEnum
 
 
@@ -49,3 +50,26 @@ class RecipeProperty(StrEnum):
 def fits_slot(meal_type: MealType, slot: MealSlot) -> bool:
     """Return whether a recipe of ``meal_type`` may be placed in ``slot``."""
     return meal_type is MealType.both or meal_type.value == slot.value
+
+
+DAYS_IN_WEEK = 7
+
+
+def week_start_for(day: date) -> date:
+    """Return the Monday of the ISO week that contains ``day``."""
+    return day - timedelta(days=day.weekday())
+
+
+def is_week_start(day: date) -> bool:
+    """Whether ``day`` is a Monday, i.e. a valid week key."""
+    return day.weekday() == 0
+
+
+def is_valid_day_index(day: int) -> bool:
+    """Whether ``day`` is a valid day index (0 = Monday ... 6 = Sunday)."""
+    return 0 <= day < DAYS_IN_WEEK
+
+
+def date_of(week_start: date, day: int) -> date:
+    """Return the calendar date of day index ``day`` in the week starting ``week_start``."""
+    return week_start + timedelta(days=day)

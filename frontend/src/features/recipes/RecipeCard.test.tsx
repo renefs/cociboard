@@ -48,3 +48,30 @@ describe("RecipeCard", () => {
     expect(screen.queryByRole("list", { name: "Properties" })).not.toBeInTheDocument();
   });
 });
+
+describe("RecipeCard compact density", () => {
+  it("shows a one-line comma-separated ingredient summary with the full list on expand", async () => {
+    const user = userEvent.setup();
+    render(<RecipeCard recipe={makeRecipe()} density="compact" />);
+    const summary = screen.getByText(/Lentejas, Chorizo, Zanahoria/);
+    expect(summary).toHaveTextContent("Lentejas, Chorizo, Zanahoria, Cebolla, Laurel, Aceite");
+    expect(summary).toHaveAttribute("title", "Lentejas, Chorizo, Zanahoria, Cebolla, Laurel, Aceite");
+    expect(summary).not.toHaveClass("is-expanded");
+    await user.click(screen.getByRole("button", { name: "Show all" }));
+    expect(summary).toHaveClass("is-expanded");
+    expect(screen.getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps meal type, protein and property icons visible and renders actions", () => {
+    render(<RecipeCard recipe={makeRecipe()} density="compact" actions={<button>Add</button>} />);
+    expect(screen.getByTestId("meal-type-badge")).toHaveTextContent("Lunch");
+    expect(screen.getByText("Legumes")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Gluten-free" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+  });
+
+  it("has no expander for a short ingredient list", () => {
+    render(<RecipeCard recipe={makeRecipe({ ingredients: ["Huevos", "Patatas"] })} density="compact" />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});

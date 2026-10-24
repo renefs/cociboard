@@ -10,12 +10,13 @@ from sqlmodel import Session
 from cociboard import __version__
 from cociboard.config import get_settings
 from cociboard.db import get_engine, init_db
-from cociboard.routers import recipes
+from cociboard.routers import recipes, weeks
 from cociboard.schemas import HealthResponse
 from cociboard.seed import seed_if_empty
 
 router = APIRouter(prefix="/api")
 router.include_router(recipes.router)
+router.include_router(weeks.router)
 
 
 @router.get("/health", response_model=HealthResponse)

@@ -1,0 +1,49 @@
+import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
+import { MEAL_SLOTS } from "../../api/types";
+import { Slot } from "./Slot";
+import { dayName, formatShortDate, isToday } from "./weekMath";
+
+interface WeekGridProps {
+  plan: WeekPlan;
+  now: Date;
+  selecting?: Recipe | null;
+  onActivate: (day: number, slot: MealSlot) => void;
+  onRemove: (day: number, slot: MealSlot) => void;
+}
+
+/** Seven days with a lunch and a dinner slot each (14 slots). */
+export function WeekGrid({ plan, now, selecting = null, onActivate, onRemove }: WeekGridProps) {
+  return (
+    <div className="week-grid">
+      {plan.days.map((day) => {
+        const today = isToday(day.date, now);
+        return (
+          <section
+            key={day.day}
+            className={today ? "day day--today" : "day"}
+            aria-current={today ? "date" : undefined}
+            aria-label={`${dayName(day.day)} ${formatShortDate(day.date)}`}
+          >
+            <h3 className="day-head">
+              <span className="day-name">{dayName(day.day)}</span>{" "}
+              <span className="day-date">{formatShortDate(day.date)}</span>{" "}
+              {today && <span className="day-today">Today</span>}
+            </h3>
+            {MEAL_SLOTS.map((slot) => (
+              <Slot
+                key={slot}
+                day={day.day}
+                slot={slot}
+                recipe={day[slot]}
+                plan={plan}
+                selecting={selecting}
+                onActivate={onActivate}
+                onRemove={onRemove}
+              />
+            ))}
+          </section>
+        );
+      })}
+    </div>
+  );
+}

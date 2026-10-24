@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { RECIPE_PROPERTIES, type MealSlot, type RecipeProperty } from "../../api/types";
 import { Legend } from "./Legend";
-import { RecipeCard } from "./RecipeCard";
+import type { Recipe } from "../../api/types";
+import { RecipeCard, type CardDensity } from "./RecipeCard";
 import { PROPERTY_META } from "./recipeMeta";
 import { useRecipes } from "./useRecipes";
 
@@ -24,7 +25,13 @@ function useDebounced<T>(value: T, delay: number): T {
   return debounced;
 }
 
-export function RecipePanel() {
+interface RecipePanelProps {
+  density?: CardDensity;
+  /** Custom card rendering (the planner adds drag handles and an "Add" button). */
+  renderCard?: (recipe: Recipe) => ReactNode;
+}
+
+export function RecipePanel({ density = "comfortable", renderCard }: RecipePanelProps = {}) {
   const [search, setSearch] = useState("");
   const [meal, setMeal] = useState<MealFilter>("all");
   const [properties, setProperties] = useState<RecipeProperty[]>([]);
@@ -42,7 +49,9 @@ export function RecipePanel() {
     );
 
   return (
-    <section className="recipe-panel" aria-labelledby="recipes-heading">
+    <section
+      className={density === "compact" ? "recipe-panel recipe-panel--compact" : "recipe-panel"}
+      aria-labelledby="recipes-heading">
       <h2 id="recipes-heading">Recipes</h2>
 
       <div className="recipe-controls">
@@ -104,7 +113,13 @@ export function RecipePanel() {
           </p>
         )}
         {data && data.length === 0 && <p className="status-message">No recipes match.</p>}
-        {data && data.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
+        {data && data.map((recipe) =>
+            renderCard ? (
+              <div key={recipe.id}>{renderCard(recipe)}</div>
+            ) : (
+              <RecipeCard key={recipe.id} recipe={recipe} density={density} />
+            ),
+          )}
       </div>
 
       <Legend />

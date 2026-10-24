@@ -42,6 +42,13 @@ body {
   padding: var(--space-4);
 }
 
+@media (max-width: 899px) {
+  /* Plan first, recipes below: the grid is what people come for. */
+  .planner-layout {
+    gap: var(--space-4);
+  }
+}
+
 .app-lead {
   margin: 0;
   color: var(--color-text-muted);
@@ -64,29 +71,20 @@ body {
 
 /* ---------- Layout: planner + recipe area ---------- */
 
-.app-main {
-  display: grid;
-  gap: var(--space-6);
-  align-content: start;
-}
-
 h2 {
   margin: 0 0 var(--space-3);
   font-size: var(--text-lg);
 }
 
-.planner-placeholder {
-  padding: var(--space-4);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.planner-placeholder h2 {
-  color: var(--color-text-muted);
+.planner-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-content: start;
 }
 
 @media (min-width: 900px) {
-  .app-main {
+  .planner-layout {
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
     grid-template-areas: "recipes planner";
     align-items: start;
@@ -100,9 +98,8 @@ h2 {
     overflow-y: auto;
   }
 
-  .planner-placeholder {
+  .planner {
     grid-area: planner;
-    min-height: 20rem;
   }
 }
 

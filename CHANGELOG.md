@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-24
+
+### Added
+- Weekly planner: a 7-day grid with lunch and dinner slots. Day columns on wide screens,
+  a list of day cards on tablets and phones; today is highlighted.
+- Drag and drop with @dnd-kit (mouse, press-and-hold touch and keyboard): drag recipes from
+  the panel into slots, move or swap assigned recipes between slots, drop an assigned
+  recipe on the recipe list to remove it. Compatible slots highlight; incompatible slots
+  are dimmed with a "Not for lunch/dinner" hint and refuse the drop. Screen-reader
+  announcements in English.
+- Tap-to-assign: slot picker (bottom sheet on mobile, dialog on desktop) with search that
+  lists only compatible recipes, actions for filled slots (Replace, Remove, View details)
+  and a select mode started from a recipe's Add button.
+- Compact recipe cards for the panel with a one-line ingredient summary that expands.
+- Optimistic updates with rollback and an error message when saving fails.
+- Backend: `MealAssignment` model, `week_start_for` and validation helpers, and
+  `/api/weeks` routes (`current`, get, assign, clear, move/swap) with full tests. Deleting
+  a recipe removes its assignments.
+- ADR-0005 (planner interaction design) and ADR-0006 (week plan data model).
+
+### Changed
+- The recipe panel renders the compact card inside the planner; the app layout moved to a
+  planner-first grid.
+- Version bumped to 0.3.0.
+
 ## [0.2.0] - 2026-10-24
 
 ### Added
