@@ -4,10 +4,10 @@ from collections.abc import Sequence
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, delete, select
 
 from cociboard.domain import MealSlot, RecipeProperty, fits_slot
-from cociboard.models import Recipe
+from cociboard.models import MealAssignment, Recipe
 from cociboard.schemas import RecipeCreate, RecipeUpdate
 
 
@@ -106,6 +106,7 @@ def update_recipe(session: Session, recipe_id: int, data: RecipeUpdate) -> Recip
 def delete_recipe(session: Session, recipe_id: int) -> None:
     """Delete a recipe or raise :class:`RecipeNotFoundError`."""
     recipe = get_recipe(session, recipe_id)
+    session.exec(delete(MealAssignment).where(col(MealAssignment.recipe_id) == recipe_id))
     session.delete(recipe)
     session.commit()
 

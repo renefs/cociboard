@@ -66,3 +66,30 @@ export interface RecipeFilters {
   q?: string | undefined;
   properties?: readonly RecipeProperty[] | undefined;
 }
+
+export interface DayPlan {
+  /** 0 = Monday ... 6 = Sunday */
+  day: number;
+  /** ISO date (YYYY-MM-DD) */
+  date: string;
+  lunch: Recipe | null;
+  dinner: Recipe | null;
+}
+
+export interface WeekPlan {
+  /** ISO date of the Monday that starts the week */
+  week_start: string;
+  days: DayPlan[];
+}
+
+export interface SlotRef {
+  day: number;
+  slot: MealSlot;
+}
+
+export interface SlotMoveRequest {
+  from_day: number;
+  from_slot: MealSlot;
+  to_day: number;
+  to_slot: MealSlot;
+}

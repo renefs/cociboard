@@ -1,6 +1,6 @@
 """API schemas. The frontend mirrors these in ``frontend/src/api/types.ts``."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Self
 
 from pydantic import (
@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from cociboard.domain import MealType, Protein, RecipeProperty
+from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty
 
 
 class HealthResponse(BaseModel):
@@ -118,3 +118,34 @@ class RecipeRead(BaseModel):
     ingredients: list[str]
     properties: list[RecipeProperty]
     created_at: datetime
+
+
+class SlotAssign(BaseModel):
+    """Body of ``PUT /api/weeks/{week_start}/days/{day}/{slot}``."""
+
+    recipe_id: int
+
+
+class SlotMove(BaseModel):
+    """Body of ``POST /api/weeks/{week_start}/move``."""
+
+    from_day: int = Field(ge=0, le=6)
+    from_slot: MealSlot
+    to_day: int = Field(ge=0, le=6)
+    to_slot: MealSlot
+
+
+class DayPlanRead(BaseModel):
+    """One day of a week plan."""
+
+    day: int
+    date: date
+    lunch: RecipeRead | None
+    dinner: RecipeRead | None
+
+
+class WeekPlanRead(BaseModel):
+    """A full week: seven days from Monday."""
+
+    week_start: date
+    days: list[DayPlanRead]

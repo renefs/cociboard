@@ -1,4 +1,13 @@
-import type { HealthResponse, Recipe, RecipeCreate, RecipeFilters, RecipeUpdate } from "./types";
+import type {
+  HealthResponse,
+  MealSlot,
+  Recipe,
+  RecipeCreate,
+  RecipeFilters,
+  RecipeUpdate,
+  SlotMoveRequest,
+  WeekPlan,
+} from "./types";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -60,4 +69,33 @@ export function updateRecipe(id: number, changes: RecipeUpdate): Promise<Recipe>
 
 export function deleteRecipe(id: number): Promise<void> {
   return request<void>(`/recipes/${id}`, { method: "DELETE" });
+}
+
+export function getWeek(weekStart: string, signal?: AbortSignal): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}`, { signal: signal ?? null });
+}
+
+export function assignSlot(
+  weekStart: string,
+  day: number,
+  slot: MealSlot,
+  recipeId: number,
+): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}/days/${day}/${slot}`, {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ recipe_id: recipeId }),
+  });
+}
+
+export function clearSlot(weekStart: string, day: number, slot: MealSlot): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}/days/${day}/${slot}`, { method: "DELETE" });
+}
+
+export function moveSlot(weekStart: string, move: SlotMoveRequest): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}/move`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(move),
+  });
 }

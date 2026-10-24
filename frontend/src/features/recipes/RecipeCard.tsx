@@ -1,15 +1,30 @@
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import type { Recipe } from "../../api/types";
 import { MetaIcon } from "./MetaIcon";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
 
 export const COLLAPSED_INGREDIENTS = 4;
+/** Compact cards show a one-line summary; offer expansion beyond this many characters. */
+export const COMPACT_SUMMARY_CHARS = 36;
+
+export type CardDensity = "comfortable" | "compact";
 
 interface RecipeCardProps {
   recipe: Recipe;
+  density?: CardDensity;
+  /** Extra controls (e.g. an "Add" button) shown next to the title. */
+  actions?: ReactNode;
 }
 
-export function RecipeCard({ recipe }: RecipeCardProps) {
+export function RecipeCard({ recipe, density = "comfortable", actions }: RecipeCardProps) {
+  return density === "compact" ? (
+    <CompactCard recipe={recipe} actions={actions} />
+  ) : (
+    <ComfortableCard recipe={recipe} actions={actions} />
+  );
+}
+
+function ComfortableCard({ recipe, actions }: Omit<RecipeCardProps, "density">) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -24,11 +39,12 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <h3 className="recipe-card-title">{recipe.name}</h3>
         <span
           className="badge"
-          style={{ "--badge-color": mealType.color } as React.CSSProperties}
+          style={{ "--badge-color": mealType.color } as CSSProperties}
           data-testid="meal-type-badge"
         >
           <span aria-hidden="true">{mealType.icon}</span> {mealType.label}
         </span>
+        {actions}
       </header>
 
       <p className="recipe-card-facts">
@@ -70,6 +86,76 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           ))}
         </ul>
       )}
+    </article>
+  );
+}
+
+/** Dense variant used while planning: name, icons and a one-line ingredient summary. */
+function CompactCard({ recipe, actions }: Omit<RecipeCardProps, "density">) {
+  const [expanded, setExpanded] = useState(false);
+  const summaryId = useId();
+  const mealType = MEAL_TYPE_META[recipe.meal_type];
+  const protein = PROTEIN_META[recipe.protein];
+  const summary = recipe.ingredients.join(", ");
+  const canExpand = summary.length > COMPACT_SUMMARY_CHARS;
+
+  return (
+    <article className="recipe-card recipe-card--compact" aria-label={recipe.name}>
+      <header className="recipe-card-header">
+        <h3 className="recipe-card-title">{recipe.name}</h3>
+        {actions}
+      </header>
+
+      <div className="recipe-card-meta">
+        <span
+          className="badge badge--small"
+          style={{ "--badge-color": mealType.color } as CSSProperties}
+          data-testid="meal-type-badge"
+        >
+          <span aria-hidden="true">{mealType.icon}</span> {mealType.label}
+        </span>
+        {recipe.prep_minutes !== null && (
+          <span className="fact">
+            <span aria-hidden="true">⏱️</span> {recipe.prep_minutes} min
+          </span>
+        )}
+        <span className="fact" title="Main protein">
+          <span aria-hidden="true">{protein.icon}</span>{" "}
+          <span className="visually-hidden">Main protein: </span>
+          {protein.label}
+        </span>
+        {recipe.properties.length > 0 && (
+          <ul className="property-icons property-icons--small" aria-label="Properties">
+            {recipe.properties.map((property) => (
+              <li key={property}>
+                <MetaIcon meta={PROPERTY_META[property]} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="ingredients-row">
+        <p
+          className={expanded ? "ingredients-summary is-expanded" : "ingredients-summary"}
+          id={summaryId}
+          title={summary}
+        >
+          <span className="visually-hidden">Ingredients: </span>
+          {summary}
+        </p>
+        {canExpand && (
+          <button
+            type="button"
+            className="link-button link-button--inline"
+            aria-expanded={expanded}
+            aria-controls={summaryId}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? "Show fewer" : "Show all"}
+          </button>
+        )}
+      </div>
     </article>
   );
 }
