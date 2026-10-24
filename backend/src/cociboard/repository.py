@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
-from cociboard.domain import MealSlot, MealType, RecipeProperty, fits_slot
+from cociboard.domain import MealSlot, MealType, RecipeProperty, fits_slot, fold_text
 from cociboard.models import MealAssignment, Recipe
 from cociboard.schemas import RecipeCreate, RecipeUpdate
 
@@ -44,9 +44,9 @@ def matches(
     if properties and not {p.value for p in properties} <= set(recipe.properties):
         return False
     if query:
-        needle = query.strip().lower()
+        needle = fold_text(query.strip())
         haystack = [recipe.name, *recipe.ingredients]
-        if needle and not any(needle in text.lower() for text in haystack):
+        if needle and not any(needle in fold_text(text) for text in haystack):
             return False
     return True
 

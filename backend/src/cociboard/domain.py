@@ -1,5 +1,6 @@
 """Pure domain rules for recipes. No I/O, no framework imports."""
 
+import unicodedata
 from datetime import date, timedelta
 from enum import StrEnum
 
@@ -80,6 +81,12 @@ class IssueSeverity(StrEnum):
 def fits_slot(meal_type: MealType, slot: MealSlot) -> bool:
     """Return whether a recipe of ``meal_type`` may be placed in ``slot``."""
     return meal_type is MealType.both or meal_type.value == slot.value
+
+
+def fold_text(text: str) -> str:
+    """Return ``text`` case- and accent-folded for search ("Albóndigas" -> "albondigas")."""
+    decomposed = unicodedata.normalize("NFKD", text.casefold())
+    return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
 DAYS_IN_WEEK = 7
