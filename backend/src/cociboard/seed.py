@@ -248,7 +248,7 @@ SEED_RECIPES: list[RecipeCreate] = [
         [P.vegetarian, P.gluten_free, P.dairy_free],
         "Manchego vegetable stew topped with a fried egg.",
     ),
-    # Both (10)
+    # Both (11)
     _r(
         "Gazpacho andaluz",
         B,
@@ -390,6 +390,27 @@ SEED_RECIPES: list[RecipeCreate] = [
         ["Tortillas de trigo", "Queso rallado", "Pimiento rojo", "Maíz", "Cebolla", "Calabacín"],
         [P.vegetarian, P.quick, P.kid_friendly],
         "Crispy wheat tortillas filled with melted cheese and vegetables.",
+    ),
+    _r(
+        "Albóndigas con puré de patata y guisantes",
+        B,
+        Protein.meat,
+        50,
+        [
+            "Carne picada mixta",
+            "Huevo",
+            "Pan rallado",
+            "Ajo",
+            "Perejil",
+            "Patatas",
+            "Leche",
+            "Mantequilla",
+            "Guisantes",
+            "Caldo de carne",
+            "Aceite de oliva",
+        ],
+        [P.kid_friendly, P.batch_cooking],
+        "Meatballs in a light gravy with creamy mashed potatoes and peas.",
     ),
 ]
 
