@@ -1,13 +1,21 @@
 """FastAPI application factory."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
 from cociboard import __version__
 from cociboard.config import get_settings
+from cociboard.db import get_engine, init_db
+from cociboard.routers import recipes
 from cociboard.schemas import HealthResponse
+from cociboard.seed import seed_if_empty
 
 router = APIRouter(prefix="/api")
+router.include_router(recipes.router)
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -16,10 +24,20 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", version=__version__)
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Create tables and optionally seed an empty database."""
+    init_db()
+    if get_settings().seed_on_startup:
+        with Session(get_engine()) as session:
+            seed_if_empty(session)
+    yield
+
+
 def create_app() -> FastAPI:
     """Build the FastAPI application."""
     settings = get_settings()
-    app = FastAPI(title="Cociboard", version=__version__)
+    app = FastAPI(title="Cociboard", version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

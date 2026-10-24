@@ -61,3 +61,233 @@ body {
     padding-inline: var(--space-8);
   }
 }
+
+/* ---------- Layout: planner + recipe area ---------- */
+
+.app-main {
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+}
+
+h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.planner-placeholder {
+  padding: var(--space-4);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.planner-placeholder h2 {
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 900px) {
+  .app-main {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    grid-template-areas: "recipes planner";
+    align-items: start;
+  }
+
+  .recipe-area {
+    grid-area: recipes;
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100vh - 2 * var(--space-4));
+    overflow-y: auto;
+  }
+
+  .planner-placeholder {
+    grid-area: planner;
+    min-height: 20rem;
+  }
+}
+
+/* ---------- Recipe panel ---------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.recipe-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.recipe-panel h2 {
+  margin: 0;
+}
+
+.recipe-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.search-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  background: var(--color-chip-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.chip[aria-pressed="true"] {
+  color: var(--color-primary-contrast);
+  background: var(--color-chip-active);
+  border-color: var(--color-chip-active);
+}
+
+.property-filter summary,
+.legend summary {
+  min-height: 2.75rem;
+  padding: var(--space-2) 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.property-filter .chip-group {
+  padding-bottom: var(--space-2);
+}
+
+.recipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.status-message {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.recipe-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.recipe-card-header {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.recipe-card-title {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--badge-color);
+  border: 1px solid var(--badge-color);
+  border-radius: 999px;
+}
+
+.recipe-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ingredients {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.link-button {
+  align-self: flex-start;
+  min-height: 2.25rem;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.property-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meta-icon {
+  display: inline-block;
+  min-width: 1.75rem;
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  text-align: center;
+  cursor: help;
+}
+
+.legend {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.legend-group h4 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.legend-group ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  list-style: none;
+}

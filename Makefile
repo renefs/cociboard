@@ -1,4 +1,4 @@
-.PHONY: install dev test lint typecheck check-version check
+.PHONY: install dev seed test lint typecheck check-version check
 
 VERSION := $(shell cat VERSION)
 
@@ -13,6 +13,10 @@ dev:
 	(cd backend && uv run uvicorn cociboard.main:app --reload --port 8000) & \
 	(cd frontend && npm run dev) & \
 	wait
+
+# Top up the recipe catalogue with the seed recipes (idempotent).
+seed:
+	cd backend && uv run python -m cociboard.seed
 
 test:
 	cd backend && uv run pytest
