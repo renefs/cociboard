@@ -55,6 +55,8 @@ To fix formatting: `cd backend && uv run ruff format .`.
     and pure logic modules, with tests alongside (`*.test.ts(x)`)
   - `styles/tokens.css`: design tokens (colours must stay WCAG AA; `contrast.test.ts`
     checks them)
+- `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`: production deployment (one
+  image; the backend serves `frontend/dist` via `COCIBOARD_STATIC_DIR`, ADR-0010)
 - `docs/adr/`: decision records; `docs/reviews/`: code reviews
 
 ## Code conventions

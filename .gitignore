@@ -30,3 +30,7 @@ coverage/
 
 # Local tooling
 .claude/
+
+# Docker Compose data volume and local overrides
+data/
+!.env.example

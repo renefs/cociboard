@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.6.5** (Spanish and English interface).
+Current version: **0.7.0** (Docker Compose deployment).
 
 ## Stack
 
@@ -15,7 +15,7 @@ Current version: **0.6.5** (Spanish and English interface).
 Rationale: [ADR-0001](docs/adr/0001-tech-stack.md), [ADR-0003](docs/adr/0003-recipe-data-model.md), [ADR-0004](docs/adr/0004-data-fetching-and-icons.md),
 [ADR-0005](docs/adr/0005-planner-interaction-design.md), [ADR-0006](docs/adr/0006-week-plan-data-model.md),
 [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md),
-[ADR-0009](docs/adr/0009-internationalisation.md).
+[ADR-0009](docs/adr/0009-internationalisation.md), [ADR-0010](docs/adr/0010-docker-deployment.md).
 
 ## Architecture
 
@@ -75,6 +75,48 @@ Open http://localhost:5173 after `make dev`. Configuration of the backend is via
 | `COCIBOARD_DATABASE_URL` | `sqlite:///./cociboard.db` | SQLAlchemy database URL |
 | `COCIBOARD_SEED_ON_STARTUP` | `true` | Seed the recipe catalogue when the database is empty |
 | `COCIBOARD_CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed CORS origins (JSON list) |
+| `COCIBOARD_STATIC_DIR` | unset | Built frontend (`frontend/dist`) to serve at `/`; the Docker image sets it |
+
+## Deployment (Docker Compose)
+
+The `Dockerfile` builds one image: the backend serves the API at `/api` and the built
+frontend at `/`. The SQLite database lives in `./data` next to `docker-compose.yml`. The
+base images are multi-arch, so the image builds on x86-64 and ARM64 machines.
+
+```sh
+cp .env.example .env    # optional: port, PUID/PGID, time zone
+docker compose up -d --build
+```
+
+Open `http://<host>:8000`. To update, pull the new sources and run the same command;
+the data in `./data` is kept. Back up by copying `./data/cociboard.db` while the
+container is stopped.
+
+| Setting (`.env`) | Default | Description |
+| --- | --- | --- |
+| `COCIBOARD_PORT` | `8000` | Port on the host |
+| `PUID` / `PGID` | `1000` / `1000` | Owner of `./data`; the server runs as this user |
+| `TZ` | `Etc/UTC` | Time zone that decides "today" and the current week (e.g. `Europe/Madrid`) |
+| `COCIBOARD_SEED_ON_STARTUP` | `true` | Add the starter recipes when the database is empty |
+
+The container starts as root only to `chown` `/data`, then drops to `PUID:PGID`. Setting
+`user:` in the compose file also works if `./data` is already writable by that user.
+Keep `./data` on a local disk: SQLite should not live on a network share (NFS/SMB).
+
+### Synology NAS (DSM 7.2+, Container Manager)
+
+1. Copy the repository to a shared folder, e.g. `/volume1/docker/cociboard` (File Station
+   or `git clone` over SSH).
+2. Optional: create `.env` from `.env.example`. Set `PUID`/`PGID` to the owner of the
+   folder (in SSH, `id <user>` shows e.g. `uid=1026 gid=100`) and `TZ`.
+3. Container Manager → **Project** → **Create**: pick the folder as the path; it finds the
+   existing `docker-compose.yml`. Finish the wizard (it builds the image, which takes a few
+   minutes on a NAS).
+4. Open `http://<nas>:8000`, or put it behind DSM's reverse proxy (Control Panel → Login
+   Portal → Advanced → Reverse Proxy) to get HTTPS on port 443.
+
+On DSM 7.0/7.1 with the older Docker package, run `sudo docker-compose up -d --build`
+in that folder over SSH.
 
 ## API
 
@@ -206,6 +248,9 @@ To add a language: create `frontend/src/i18n/locales/<code>.ts` typed `satisfies
 ```
 VERSION                 single source of the release version
 Makefile
+Dockerfile              production image (frontend build + backend)
+docker-compose.yml      deployment; settings in .env (see .env.example)
+docker/entrypoint.sh    fixes /data ownership, drops to PUID:PGID
 backend/
   pyproject.toml
   src/cociboard/        FastAPI app (main.py), settings, domain rules, models, schemas,

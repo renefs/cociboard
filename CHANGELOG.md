@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-10-24
+
+Docker Compose deployment ([ADR-0010](docs/adr/0010-docker-deployment.md)).
+
+### Added
+- `Dockerfile`: one multi-stage, multi-arch (amd64/arm64) image. Node builds the
+  frontend, uv installs the backend, and the runtime image serves both on port 8000.
+  Includes a health check on `/api/health`.
+- `docker-compose.yml` with a `./data` bind mount for the SQLite database and settings
+  from `.env` (`COCIBOARD_PORT`, `PUID`/`PGID`, `TZ`, `COCIBOARD_SEED_ON_STARTUP`);
+  `.env.example` documents them.
+- `docker/entrypoint.sh`: makes `/data` writable for `PUID:PGID` and drops root, so bind
+  mounts owned by a NAS user (e.g. Synology uid 1026) work.
+- Backend setting `COCIBOARD_STATIC_DIR`: when set, the app serves the built frontend at
+  `/` next to the API.
+- README "Deployment" section, including Synology Container Manager steps.
+
 ## [0.6.5] - 2026-10-24
 
 ### Fixed
