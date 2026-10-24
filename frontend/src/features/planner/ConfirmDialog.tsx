@@ -7,10 +7,12 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Disables the confirm button (e.g. while the action is running). */
+  busy?: boolean;
 }
 
 /** A small modal asking for confirmation of a destructive action. */
-export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onCancel, busy = false }: ConfirmDialogProps) {
   return (
     <Modal title={title} onClose={onCancel}>
       <div className="confirm-body">{children}</div>
@@ -18,7 +20,7 @@ export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onCanc
         <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" className="btn btn-danger" onClick={onConfirm}>
+        <button type="button" className="btn btn-danger" disabled={busy} onClick={onConfirm}>
           {confirmLabel}
         </button>
       </div>

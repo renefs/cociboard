@@ -6,6 +6,7 @@ import type {
   RecipeCreate,
   RecipeFilters,
   RecipeUpdate,
+  RecipeUsage,
   SlotFill,
   SlotMoveRequest,
   WeekPlan,
@@ -13,11 +14,25 @@ import type {
 
 export class ApiError extends Error {
   readonly status: number;
+  /** The `detail` of the error body: a string, a validation list or a structured object. */
+  readonly detail: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function readDetail(response: Response): Promise<unknown> {
+  try {
+    const body: unknown = await response.json();
+    return typeof body === "object" && body !== null && "detail" in body
+      ? (body as { detail: unknown }).detail
+      : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -27,7 +42,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { Accept: "application/json", ...init?.headers },
   });
   if (!response.ok) {
-    throw new ApiError(response.status, `Request to ${path} failed with ${response.status}`);
+    throw new ApiError(
+      response.status,
+      `Request to ${path} failed with ${response.status}`,
+      await readDetail(response),
+    );
   }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
@@ -61,12 +80,17 @@ export function createRecipe(recipe: RecipeCreate): Promise<Recipe> {
   });
 }
 
-export function updateRecipe(id: number, changes: RecipeUpdate): Promise<Recipe> {
-  return request<Recipe>(`/recipes/${id}`, {
+/** `force` removes planned meals that no longer fit a changed meal type. */
+export function updateRecipe(id: number, changes: RecipeUpdate, force = false): Promise<Recipe> {
+  return request<Recipe>(`/recipes/${id}${force ? "?force=true" : ""}`, {
     method: "PATCH",
     headers: JSON_HEADERS,
     body: JSON.stringify(changes),
   });
+}
+
+export function getRecipeUsage(id: number, signal?: AbortSignal): Promise<RecipeUsage> {
+  return request<RecipeUsage>(`/recipes/${id}/usage`, { signal: signal ?? null });
 }
 
 export function deleteRecipe(id: number): Promise<void> {

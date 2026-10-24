@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   title: string;
@@ -6,6 +7,10 @@ interface ModalProps {
   children: ReactNode;
   /** Focus the first input on open. Disabled on touch devices to keep the keyboard closed. */
   focusInput?: boolean;
+  /** "full" makes the dialog a full-screen sheet on narrow screens (used by forms). */
+  size?: "default" | "full";
+  /** Clicking the backdrop closes the dialog. Forms turn this off to protect typed input. */
+  closeOnBackdrop?: boolean;
 }
 
 const FOCUSABLE =
@@ -15,7 +20,14 @@ const FOCUSABLE =
  * A modal dialog that is a bottom sheet on narrow screens and a centred dialog on wide
  * ones (see CSS). Handles Escape, backdrop click, focus trapping and focus restore.
  */
-export function Modal({ title, onClose, children, focusInput = false }: ModalProps) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  focusInput = false,
+  size = "default",
+  closeOnBackdrop = true,
+}: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -52,10 +64,10 @@ export function Modal({ title, onClose, children, focusInput = false }: ModalPro
     }
   };
 
-  return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => closeOnBackdrop && event.target === event.currentTarget && onClose()}>
       <div
-        className="modal"
+        className={size === "full" ? "modal modal--full" : "modal"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -73,7 +85,8 @@ export function Modal({ title, onClose, children, focusInput = false }: ModalPro
         </header>
         <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
+import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
 import { VarietySummary } from "../variety/VarietySummary";
 import {
@@ -49,11 +50,13 @@ import { useWeekTools } from "./useWeekTools";
 import { countFilled } from "./planTransforms";
 import { dayName, formatWeekRange, formatWeekRangeShort } from "./weekMath";
 import { WeekGrid } from "./WeekGrid";
+import { WeekGridSkeleton } from "./WeekGridSkeleton";
 
 type Ui =
   | { kind: "none" }
   | { kind: "picker"; day: number; slot: MealSlot }
   | { kind: "actions"; day: number; slot: MealSlot }
+  | { kind: "details"; day: number; slot: MealSlot }
   | { kind: "confirm-clear" };
 
 const SCREEN_READER: ScreenReaderInstructions = {
@@ -283,14 +286,14 @@ export function Planner({ now: nowProp }: PlannerProps) {
               highlighted={highlighted}
             />
           ) : isError ? (
-            <p className="status-message" role="alert">
-              Could not load the week.{" "}
-              <button type="button" className="link-button" onClick={() => void refetch()}>
+            <div className="state-box" role="alert">
+              <p>Can&apos;t load the week. Check that the server is running and your connection.</p>
+              <button type="button" className="btn" onClick={() => void refetch()}>
                 Retry
               </button>
-            </p>
+            </div>
           ) : (
-            isPending && <p className="status-message">Loading the week…</p>
+            isPending && <WeekGridSkeleton />
           )}
         </section>
 
@@ -299,11 +302,13 @@ export function Planner({ now: nowProp }: PlannerProps) {
             density="compact"
             {...(usage ? { usage } : {})}
             proteinCounts={plan?.variety.protein_counts ?? {}}
-            renderCard={(recipe) => (
+            onNotify={(kind, text) => notify(kind, text)}
+            renderCard={(recipe, open) => (
               <DraggableRecipeCard
                 recipe={recipe}
                 selected={selecting?.id === recipe.id}
                 onAdd={toggleSelect}
+                onOpen={open}
                 usageCount={usage?.get(recipe.id) ?? 0}
               />
             )}
@@ -327,6 +332,9 @@ export function Planner({ now: nowProp }: PlannerProps) {
         />
       )}
       {ui.kind === "actions" && plan && <ActionsFor plan={plan} ui={ui} actions={actions} setUi={setUi} />}
+      {ui.kind === "details" && plan && (
+        <SlotDetails plan={plan} ui={ui} setUi={setUi} onNotify={(kind, text) => notify(kind, text)} />
+      )}
 
       {ui.kind === "confirm-clear" && plan && (
         <ConfirmDialog
@@ -366,10 +374,43 @@ function ActionsFor({ plan, ui, actions, setUi }: ActionsForProps) {
       slot={ui}
       onClose={() => setUi({ kind: "none" })}
       onReplace={() => setUi({ kind: "picker", day: ui.day, slot: ui.slot })}
+      onDetails={() => setUi({ kind: "details", day: ui.day, slot: ui.slot })}
       onRemove={() => {
         actions.clear(ui);
         setUi({ kind: "none" });
       }}
+    />
+  );
+}
+
+/** "View details" of a planned recipe; Back returns to the slot's actions. */
+function SlotDetails({
+  plan,
+  ui,
+  setUi,
+  onNotify,
+}: {
+  plan: WeekPlan;
+  ui: { day: number; slot: MealSlot };
+  setUi: (ui: Ui) => void;
+  onNotify: (kind: "error" | "info", text: string) => void;
+}) {
+  const recipe = recipeAt(plan, ui);
+  if (!recipe) return null;
+  return (
+    <RecipeDetailsModal
+      recipe={recipe}
+      onClose={() => setUi({ kind: "none" })}
+      onNotify={onNotify}
+      footerStart={
+        <button
+          type="button"
+          className="btn btn-large"
+          onClick={() => setUi({ kind: "actions", day: ui.day, slot: ui.slot })}
+        >
+          Back
+        </button>
+      }
     />
   );
 }

@@ -1,7 +1,7 @@
 """API schemas. The frontend mirrors these in ``frontend/src/api/types.ts``."""
 
 from datetime import date, datetime
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -118,6 +118,28 @@ class RecipeRead(BaseModel):
     ingredients: list[str]
     properties: list[RecipeProperty]
     created_at: datetime
+
+
+class RecipeUsage(BaseModel):
+    """Response of ``GET /api/recipes/{id}/usage``: planned slots using the recipe."""
+
+    count: int
+
+
+class ConflictSlot(BaseModel):
+    """A planned slot that conflicts with a recipe edit."""
+
+    week_start: date
+    day: int
+    slot: MealSlot
+
+
+class MealTypeConflictDetail(BaseModel):
+    """The ``detail`` of the 409 returned when a meal-type change breaks planned meals."""
+
+    code: Literal["meal_type_conflict"] = "meal_type_conflict"
+    message: str
+    conflicts: list[ConflictSlot]
 
 
 class SlotAssign(BaseModel):

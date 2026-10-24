@@ -10,6 +10,8 @@ interface DraggableRecipeCardProps {
   onAdd: (recipe: Recipe) => void;
   /** Times the recipe is planned in the shown week. */
   usageCount?: number;
+  /** Opens the recipe details. */
+  onOpen?: (recipe: Recipe) => void;
 }
 
 /** A compact recipe card for the panel: draggable, with an "Add" button for tap-to-place. */
@@ -18,6 +20,7 @@ export function DraggableRecipeCard({
   selected,
   onAdd,
   usageCount = 0,
+  onOpen,
 }: DraggableRecipeCardProps) {
   const source: DragSource = { kind: "recipe", recipe };
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -35,6 +38,7 @@ export function DraggableRecipeCard({
         recipe={recipe}
         density="compact"
         usageCount={usageCount}
+        onOpen={onOpen}
         actions={
           <span className="card-actions">
             <button
