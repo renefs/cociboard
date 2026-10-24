@@ -45,6 +45,10 @@ def _translate(exc: Exception) -> HTTPException:
         return _unprocessable("day must be between 0 and 6")
     if isinstance(exc, planner.IncompatibleSlotError):
         return _unprocessable("The recipe's meal type does not fit that slot")
+    if isinstance(exc, planner.PlanConflictError):
+        return HTTPException(
+            status.HTTP_409_CONFLICT, "The plan changed meanwhile; reload and try again"
+        )
     raise exc
 
 
@@ -74,6 +78,7 @@ def replace_week(week_start: date, body: WeekReplace, session: SessionDep) -> We
         repository.RecipeNotFoundError,
         planner.InvalidWeekError,
         planner.IncompatibleSlotError,
+        planner.PlanConflictError,
     ) as exc:
         raise _translate(exc) from None
 
@@ -103,7 +108,7 @@ def suggest_week(
     """Fill the empty slots with varied recipes. Optional ``seed`` makes it repeatable."""
     try:
         return planner.suggest_week(session, week_start, body.seed if body else None)
-    except planner.InvalidWeekError as exc:
+    except (planner.InvalidWeekError, planner.PlanConflictError) as exc:
         raise _translate(exc) from None
 
 
@@ -129,6 +134,7 @@ def assign_slot(
         repository.RecipeNotFoundError,
         planner.InvalidWeekError,
         planner.IncompatibleSlotError,
+        planner.PlanConflictError,
     ) as exc:
         raise _translate(exc) from None
 
@@ -154,5 +160,6 @@ def move_slot(week_start: date, body: SlotMove, session: SessionDep) -> WeekPlan
         planner.InvalidWeekError,
         planner.EmptySlotError,
         planner.IncompatibleSlotError,
+        planner.PlanConflictError,
     ) as exc:
         raise _translate(exc) from None

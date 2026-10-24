@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from cociboard.models import MealAssignment
@@ -225,3 +226,56 @@ def test_replace_week_is_atomic_and_validates(client: TestClient) -> None:
     }
     assert client.put(f"/api/weeks/{MONDAY}", json={"slots": []}).status_code == 200
     assert names(client.get(f"/api/weeks/{MONDAY}").json()) == {}
+
+
+CONFLICT = "The plan changed meanwhile; reload and try again"
+
+
+def test_assign_conflict_from_real_unique_violation(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cociboard import planner
+
+    soup = make(client, "Soup", "both")
+    stew = make(client, "Stew", "both")
+    assert put(client, 0, "lunch", soup).status_code == 200
+    # Simulate a concurrent writer: the slot looked empty when we checked it.
+    monkeypatch.setattr(planner, "_find", lambda *args, **kwargs: None)
+    response = put(client, 0, "lunch", stew)
+    assert response.status_code == 409
+    assert response.json()["detail"] == CONFLICT
+    monkeypatch.undo()
+    # The session is usable again and the old plan is intact.
+    assert names(client.get(f"/api/weeks/{MONDAY}").json()) == {(0, "lunch"): "Soup"}
+
+
+@pytest.mark.parametrize("operation", ["assign", "move", "suggest", "replace"])
+def test_integrity_error_on_commit_is_409_and_rolled_back(
+    client: TestClient, session: Session, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    soup = make(client, "Soup", "both")
+    make(client, "Stew", "both")
+    assert put(client, 0, "lunch", soup).status_code == 200
+
+    def boom() -> None:
+        raise IntegrityError("INSERT", {}, Exception("UNIQUE constraint failed"))
+
+    monkeypatch.setattr(session, "commit", boom)
+    base = f"/api/weeks/{MONDAY}"
+    if operation == "assign":
+        response = put(client, 1, "dinner", soup)
+    elif operation == "move":
+        response = client.post(
+            f"{base}/move",
+            json={"from_day": 0, "from_slot": "lunch", "to_day": 2, "to_slot": "dinner"},
+        )
+    elif operation == "suggest":
+        response = client.post(f"{base}/suggest", json={"seed": 1})
+    else:
+        response = client.put(
+            base, json={"slots": [{"day": 3, "slot": "dinner", "recipe_id": soup}]}
+        )
+    assert response.status_code == 409
+    assert response.json()["detail"] == CONFLICT
+    monkeypatch.undo()
+    assert names(client.get(base).json()) == {(0, "lunch"): "Soup"}
