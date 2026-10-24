@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.6.4** (Spanish and English interface).
+Current version: **0.6.5** (Spanish and English interface).
 
 ## Stack
 
@@ -83,7 +83,7 @@ Interactive docs are served at http://localhost:8000/docs.
 | Method and path | Description |
 | --- | --- |
 | `GET /api/health` | Status and version |
-| `GET /api/recipes` | List recipes, ordered by name. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
+| `GET /api/recipes` | List recipes, ordered by name. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
 | `POST /api/recipes` | Create (`201`; `409` duplicate name; `422` invalid) |
 | `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |

@@ -112,7 +112,7 @@ def test_filters(client: TestClient) -> None:
         name="Lentejas",
         meal_type="lunch",
         protein="legumes",
-        ingredients=["Lentejas", "Chorizo"],
+        ingredients=["Lentejas", "Chorizo", "Pimentón"],
         properties=["batch_cooking"],
     )
     make(
@@ -122,6 +122,13 @@ def test_filters(client: TestClient) -> None:
         protein="eggs",
         ingredients=["Huevos", "Patatas"],
         properties=["vegetarian", "quick"],
+    )
+    make(
+        client,
+        name="Albóndigas",
+        meal_type="lunch",
+        protein="meat",
+        ingredients=["Carne picada", "Guisantes"],
     )
     make(
         client,
@@ -137,11 +144,14 @@ def test_filters(client: TestClient) -> None:
         assert response.status_code == 200
         return [r["name"] for r in response.json()]
 
-    assert names("") == ["Ensalada", "Lentejas", "Tortilla"]
-    assert names("?slot=lunch") == ["Ensalada", "Lentejas"]
+    assert names("") == ["Albóndigas", "Ensalada", "Lentejas", "Tortilla"]
+    assert names("?slot=lunch") == ["Albóndigas", "Ensalada", "Lentejas"]
     assert names("?slot=dinner") == ["Ensalada", "Tortilla"]
     assert names("?q=choriz") == ["Lentejas"]
     assert names("?q=TORT") == ["Tortilla"]
+    assert names("?q=albondigas") == ["Albóndigas"]
+    assert names("?q=ALBÓNDIGAS") == ["Albóndigas"]
+    assert names("?q=pimenton") == ["Lentejas"]
     assert names("?property=quick") == ["Ensalada", "Tortilla"]
     assert names("?property=quick&property=light") == ["Ensalada"]
     assert names("?slot=dinner&q=tomate&property=vegetarian") == ["Ensalada"]

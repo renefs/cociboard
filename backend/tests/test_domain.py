@@ -1,6 +1,6 @@
 import pytest
 
-from cociboard.domain import MealSlot, MealType, fits_slot
+from cociboard.domain import MealSlot, MealType, fits_slot, fold_text
 
 
 @pytest.mark.parametrize(
@@ -29,3 +29,17 @@ def test_week_start_for_returns_monday() -> None:
     assert is_week_start(date(2026, 10, 26))
     assert not is_week_start(date(2026, 10, 27))
     assert date_of(date(2026, 10, 26), 6) == date(2026, 11, 1)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Albóndigas", "albondigas"),
+        ("PIÑA", "pina"),
+        ("Pingüino", "pinguino"),
+        ("Crème Brûlée", "creme brulee"),
+        ("plain", "plain"),
+    ],
+)
+def test_fold_text(text: str, expected: str) -> None:
+    assert fold_text(text) == expected
