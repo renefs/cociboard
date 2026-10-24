@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `AGENTS.md`: tool-neutral instructions for AI coding agents (commands, layout,
+  conventions, UX and release rules). `CLAUDE.md` now imports it.
+
 ## [0.5.1] - 2026-10-24
 
 Fixes from [review 0001](docs/reviews/0001-v0.5.0-review.md).
