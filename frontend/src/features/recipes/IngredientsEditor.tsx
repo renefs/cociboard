@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { splitPastedIngredients } from "./recipeFormLogic";
 
 interface IngredientsEditorProps {
@@ -14,6 +15,7 @@ interface IngredientsEditorProps {
  * into rows, and each row can be removed (the last remaining row is only cleared).
  */
 export function IngredientsEditor({ rows, onChange, describedBy, invalid = false }: IngredientsEditorProps) {
+  const { t } = useTranslation();
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const focusAfterRender = useRef<number | null>(null);
 
@@ -76,12 +78,12 @@ export function IngredientsEditor({ rows, onChange, describedBy, invalid = false
             }}
             type="text"
             value={row}
-            aria-label={`Ingredient ${index + 1}`}
+            aria-label={t("recipeForm.ingredientN", { n: index + 1 })}
             aria-invalid={invalid || undefined}
             aria-describedby={describedBy}
             autoComplete="off"
             enterKeyHint="next"
-            placeholder={index === 0 ? "e.g. 200 g lentils" : ""}
+            placeholder={index === 0 ? t("recipeForm.ingredientExample") : ""}
             onChange={(event) => setRow(index, event.target.value)}
             onKeyDown={(event) => onKeyDown(event, index)}
             onPaste={(event) => onPaste(event, index)}
@@ -89,7 +91,7 @@ export function IngredientsEditor({ rows, onChange, describedBy, invalid = false
           <button
             type="button"
             className="icon-button"
-            aria-label={`Remove ingredient ${index + 1}`}
+            aria-label={t("recipeForm.removeIngredientN", { n: index + 1 })}
             onClick={() => remove(index)}
           >
             <span aria-hidden="true">×</span>
@@ -98,7 +100,7 @@ export function IngredientsEditor({ rows, onChange, describedBy, invalid = false
       ))}
       <li className="ingredient-add">
         <button type="button" className="btn" onClick={() => insertAfter(rows.length - 1, [""])}>
-          <span aria-hidden="true">+ </span>Add ingredient
+          <span aria-hidden="true">+ </span>{t("recipeForm.addIngredient")}
         </button>
       </li>
     </ol>

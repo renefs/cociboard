@@ -1,15 +1,16 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   MEAL_TYPES,
   PROTEINS,
   RECIPE_PROPERTIES,
-  type MealType,
   type MealTypeConflictDetail,
   type Protein,
   type Recipe,
   type RecipeProperty,
 } from "../../api/types";
 import { ApiError } from "../../api/client";
+import { useLocale } from "../../i18n/useLocale";
 import { IngredientsEditor } from "./IngredientsEditor";
 import {
   NAME_MAX,
@@ -42,13 +43,8 @@ interface RecipeFormProps {
   onCancel: () => void;
 }
 
-const MEAL_TYPE_HINT: Record<MealType, string> = {
-  lunch: "Only fits lunch slots",
-  dinner: "Only fits dinner slots",
-  both: "Fits lunch and dinner slots",
-};
-
 export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
+  const { t } = useTranslation();
   const editing = recipe !== undefined;
   const [values, setValues] = useState<RecipeFormValues>(() =>
     recipe ? valuesFromRecipe(recipe) : emptyValues(),
@@ -88,7 +84,7 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
 
   const submit = async (force: boolean) => {
     setFormError(null);
-    const found = validateValues(values);
+    const found = validateValues(values, t);
     if (Object.values(found).some(Boolean)) {
       showErrors(found);
       return;
@@ -114,22 +110,22 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
       return;
     }
     if (isDuplicateNameError(error)) {
-      showErrors({ name: "Another recipe already has this name." });
+      showErrors({ name: t("recipeForm.errors.nameDuplicate") });
       return;
     }
     if (error instanceof ApiError && error.status === 422) {
-      const { fields, other } = mapValidationErrors(error.detail);
+      const { fields, other } = mapValidationErrors(error.detail, t);
       if (Object.keys(fields).length > 0) showErrors(fields);
       if (other.length > 0 || Object.keys(fields).length === 0) {
-        setFormError(other.join(" ") || "Some values are not valid. Please check the form.");
+        setFormError([...new Set(other)].join(" ") || t("recipeForm.errors.invalidForm"));
       }
       return;
     }
     if (error instanceof ApiError && error.status === 404) {
-      setFormError("This recipe no longer exists. Close this dialog and refresh the list.");
+      setFormError(t("recipeForm.errors.notFound"));
       return;
     }
-    setFormError("Couldn't save the recipe. Check your connection and try again.");
+    setFormError(t("recipeForm.errors.saveFailed"));
   };
 
   const onSubmit = (event: FormEvent) => {
@@ -154,7 +150,7 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
       <div className="form-body">
         <div className="field">
           <label htmlFor={ids.name}>
-            Name <span className="required">(required)</span>
+            {t("recipeForm.name")} <span className="required">{t("recipeForm.required")}</span>
           </label>
           <input
             id={ids.name}
@@ -170,8 +166,8 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
         </div>
 
         <fieldset className="field">
-          <legend>Meal type</legend>
-          <div className="segmented" role="radiogroup" aria-label="Meal type">
+          <legend>{t("recipeForm.mealType")}</legend>
+          <div className="segmented" role="radiogroup" aria-label={t("recipeForm.mealType")}>
             {MEAL_TYPES.map((type) => (
               <label key={type} className="segment">
                 <input
@@ -183,12 +179,12 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
                 />
                 <span className="segment-face">
                   <span aria-hidden="true">{MEAL_TYPE_META[type].icon}</span>{" "}
-                  {type === "both" ? "Both" : MEAL_TYPE_META[type].label}
+                  {type === "both" ? t("recipeForm.mealBoth") : t(MEAL_TYPE_META[type].labelKey)}
                 </span>
               </label>
             ))}
           </div>
-          <p className="field-hint">{MEAL_TYPE_HINT[values.mealType]}</p>
+          <p className="field-hint">{t(`recipeForm.mealHint.${values.mealType}`)}</p>
         </fieldset>
 
         {conflict && recipe && (
@@ -202,7 +198,7 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
 
         <div className="field-row">
           <div className="field">
-            <label htmlFor={ids.protein}>Main protein</label>
+            <label htmlFor={ids.protein}>{t("recipeForm.mainProtein")}</label>
             <select
               id={ids.protein}
               value={values.protein}
@@ -210,19 +206,19 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
             >
               {PROTEINS.map((protein) => (
                 <option key={protein} value={protein}>
-                  {PROTEIN_META[protein].icon} {PROTEIN_META[protein].label}
+                  {PROTEIN_META[protein].icon} {t(PROTEIN_META[protein].labelKey)}
                 </option>
               ))}
             </select>
           </div>
           <div className="field">
-            <label htmlFor={ids.minutes}>Prep time (minutes)</label>
+            <label htmlFor={ids.minutes}>{t("recipeForm.prepTime")}</label>
             <input
               id={ids.minutes}
               type="text"
               inputMode="numeric"
               value={values.prepMinutes}
-              placeholder="optional"
+              placeholder={t("recipeForm.optional")}
               autoComplete="off"
               aria-invalid={errors.prepMinutes ? true : undefined}
               aria-describedby={errors.prepMinutes ? minutesErrorId : undefined}
@@ -233,21 +229,21 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
         </div>
 
         <div className="field">
-          <label htmlFor={ids.description}>Description</label>
+          <label htmlFor={ids.description}>{t("recipeForm.description")}</label>
           <textarea
             id={ids.description}
             rows={3}
             value={values.description}
-            placeholder="optional: notes, steps or a source"
+            placeholder={t("recipeForm.descriptionPlaceholder")}
             onChange={(event) => set("description", event.target.value)}
           />
         </div>
 
         <fieldset className="field" aria-describedby={errors.ingredients ? ingredientsErrorId : undefined}>
           <legend>
-            Ingredients <span className="required">(at least one)</span>
+            {t("recipeForm.ingredients")} <span className="required">{t("recipeForm.atLeastOne")}</span>
           </legend>
-          <p className="field-hint">Press Enter for a new row, or paste a list to split it.</p>
+          <p className="field-hint">{t("recipeForm.ingredientsHint")}</p>
           <IngredientsEditor
             rows={values.ingredients}
             onChange={(rows) => set("ingredients", rows)}
@@ -258,7 +254,7 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
         </fieldset>
 
         <fieldset className="field">
-          <legend>Properties</legend>
+          <legend>{t("recipeForm.properties")}</legend>
           <div className="chip-group">
             {RECIPE_PROPERTIES.map((property) => (
               <button
@@ -268,7 +264,7 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
                 aria-pressed={values.properties.includes(property)}
                 onClick={() => toggleProperty(property)}
               >
-                <span aria-hidden="true">{PROPERTY_META[property].icon}</span> {PROPERTY_META[property].label}
+                <span aria-hidden="true">{PROPERTY_META[property].icon}</span> {t(PROPERTY_META[property].labelKey)}
               </button>
             ))}
           </div>
@@ -283,10 +279,10 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
 
       <div className="form-actions">
         <button type="button" className="btn btn-large" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </button>
         <button type="submit" className="btn btn-primary btn-large" disabled={saving}>
-          {saving ? "Saving…" : editing ? "Save changes" : "Create recipe"}
+          {saving ? t("common.saving") : editing ? t("recipeForm.save") : t("recipeForm.create")}
         </button>
       </div>
     </form>
@@ -309,6 +305,8 @@ interface ConflictPanelProps {
 }
 
 function MealTypeConflictPanel({ detail, saving, onForce, onDismiss }: ConflictPanelProps) {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const count = detail.conflicts.length;
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -322,21 +320,20 @@ function MealTypeConflictPanel({ detail, saving, onForce, onDismiss }: ConflictP
     <div className="conflict-panel" role="alert" tabIndex={-1} ref={panel}>
       <p>
         <strong>
-          This recipe is planned in {count} {count === 1 ? "slot" : "slots"} that no longer fit the
-          new meal type:
+          {t("recipeForm.conflictTitle", { count })}
         </strong>
       </p>
       <ul>
         {detail.conflicts.map((c) => (
-          <li key={`${c.week_start}-${c.day}-${c.slot}`}>{describeConflict(c)}</li>
+          <li key={`${c.week_start}-${c.day}-${c.slot}`}>{describeConflict(c, t, locale)}</li>
         ))}
       </ul>
       <div className="conflict-actions">
         <button type="button" className="btn btn-danger" disabled={saving} onClick={onForce}>
-          Remove them and save
+          {t("recipeForm.forceSave")}
         </button>
         <button type="button" className="btn" disabled={saving} onClick={onDismiss}>
-          Keep editing
+          {t("recipeForm.keepEditing")}
         </button>
       </div>
     </div>

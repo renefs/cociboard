@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { describe, expect, it } from "vitest";
 import { makePlan, makeRecipe } from "../../test/fixtures";
 import {
@@ -101,22 +102,38 @@ describe("type guards", () => {
 
 describe("announcements", () => {
   const plan = makePlan("2026-10-26", { "0:lunch": both });
+  const en = { t: i18n.getFixedT("en"), locale: "en" };
+  const es = { t: i18n.getFixedT("es"), locale: "es" };
   it("describes pick-up, hover, drop and cancel in English", () => {
-    expect(announceStart(fromPanel(lunchOnly))).toBe("Picked up Lentejas.");
-    expect(announceOver(plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "lunch" })).toBe(
+    expect(announceStart(en, fromPanel(lunchOnly))).toBe("Picked up Lentejas.");
+    expect(announceOver(en, plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "lunch" })).toBe(
       "Lentejas is over Tuesday lunch.",
     );
-    expect(announceOver(plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "dinner" })).toBe(
+    expect(announceOver(en, plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "dinner" })).toBe(
       "Lentejas cannot be dropped on Tuesday dinner.",
     );
-    expect(announceOver(plan, fromSlot(both), { kind: "panel" })).toContain("remove it from the plan");
-    expect(announceEnd(plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "lunch" })).toBe(
+    expect(announceOver(en, plan, fromSlot(both), { kind: "panel" })).toContain("remove it from the plan");
+    expect(announceEnd(en, plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "lunch" })).toBe(
       "Lentejas was added to Tuesday lunch.",
     );
-    expect(announceEnd(plan, fromSlot(both), { kind: "panel" })).toBe(
+    expect(announceEnd(en, plan, fromSlot(both), { kind: "panel" })).toBe(
       "Ensalada was removed from Monday lunch.",
     );
-    expect(announceEnd(plan, fromPanel(lunchOnly), null)).toBe("Lentejas was not moved.");
-    expect(announceCancel(fromPanel(lunchOnly))).toContain("cancelled");
+    expect(announceEnd(en, plan, fromPanel(lunchOnly), null)).toBe("Lentejas was not moved.");
+    expect(announceCancel(en, fromPanel(lunchOnly))).toContain("cancelled");
+  });
+
+  it("describes the same events in Spanish with proper gender and articles", () => {
+    expect(announceStart(es, fromPanel(lunchOnly))).toBe("Has cogido Lentejas.");
+    expect(announceOver(es, plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "lunch" })).toBe(
+      "Lentejas está sobre la comida del martes.",
+    );
+    expect(announceOver(es, plan, fromPanel(lunchOnly), { kind: "slot", day: 1, slot: "dinner" })).toBe(
+      "Lentejas no se puede soltar en la cena del martes.",
+    );
+    expect(announceEnd(es, plan, fromSlot(both), { kind: "panel" })).toBe(
+      "Ensalada se ha quitado de la comida del lunes.",
+    );
+    expect(announceEnd(es, plan, fromPanel(lunchOnly), null)).toBe("Lentejas no se ha movido.");
   });
 });

@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { Modal } from "../planner/Modal";
 import { RecipeForm, type SavedInfo } from "./RecipeForm";
@@ -10,9 +12,10 @@ interface RecipeFormModalProps {
 
 /** The recipe form in the shared modal: a full-screen sheet on phones. */
 export function RecipeFormModal({ recipe, onSaved, onClose }: RecipeFormModalProps) {
+  const { t } = useTranslation();
   return (
     <Modal
-      title={recipe ? `Edit ${recipe.name}` : "New recipe"}
+      title={recipe ? t("recipeForm.editTitle", { name: recipe.name }) : t("recipeForm.newTitle")}
       size="full"
       closeOnBackdrop={false}
       focusInput
@@ -24,11 +27,10 @@ export function RecipeFormModal({ recipe, onSaved, onClose }: RecipeFormModalPro
 }
 
 /** Toast text after a successful save. */
-export function savedMessage({ recipe, created, removedMeals }: SavedInfo): string {
-  if (created) return `Created ${recipe.name}.`;
-  const removed =
-    removedMeals > 0
-      ? ` Removed ${removedMeals} planned ${removedMeals === 1 ? "meal" : "meals"} that no longer fit.`
-      : "";
-  return `Saved ${recipe.name}.${removed}`;
+export function savedMessage({ recipe, created, removedMeals }: SavedInfo, t: TFunction): string {
+  if (created) return t("recipes.saved.created", { name: recipe.name });
+  if (removedMeals > 0) {
+    return t("recipes.saved.updatedRemoved", { name: recipe.name, count: removedMeals });
+  }
+  return t("recipes.saved.updated", { name: recipe.name });
 }

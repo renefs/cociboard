@@ -35,7 +35,15 @@ const salad = makeRecipe({ id: 3, name: "Ensalada mixta", meal_type: "both", ing
 let serverPlan: WeekPlan;
 
 function candidate(recipe: Recipe, extra: Partial<Candidate> = {}): Candidate {
-  return { recipe, score_delta: 0, reason: "Fits the week", good_pick: false, ...extra };
+  return {
+    recipe,
+    score_delta: 0,
+    reason: "Fits the week",
+    reason_code: "fits_week",
+    reason_params: {},
+    good_pick: false,
+    ...extra,
+  };
 }
 
 /** Candidates the fake server offers for a slot (everything that fits, in the given order). */
@@ -203,6 +211,7 @@ const SAME_RECIPE_VARIETY: VarietyReport = {
       kind: "repeated_recipe",
       severity: "warning",
       message: "Fabada asturiana is planned 2 times this week.",
+      params: { recipe: "Fabada asturiana", count: 2 },
       slots: [
         { day: 0, slot: "lunch" },
         { day: 1, slot: "lunch" },
@@ -418,9 +427,13 @@ describe("Planner picker ordering", () => {
   it("keeps the server's order, shows the reason and marks good picks", async () => {
     const user = userEvent.setup();
     candidateOrder = () => [
-      candidate(salad, { score_delta: 4, reason: "New protein this week", good_pick: true }),
-      candidate(lentils, { score_delta: 0, reason: "Fits the week" }),
-      candidate(tortilla, { score_delta: -15, reason: "Eggs twice in a row" }),
+      candidate(salad, { score_delta: 4, reason_code: "new_protein", good_pick: true }),
+      candidate(lentils, { score_delta: 0 }),
+      candidate(tortilla, {
+        score_delta: -15,
+        reason_code: "twice_in_a_row",
+        reason_params: { protein: "eggs" },
+      }),
     ];
     await renderPlanner();
     await user.click(screen.getByRole("button", { name: "Add lunch on Monday" }));

@@ -1,4 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
+import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { RecipeCard } from "../recipes/RecipeCard";
 import { recipeDragId, type DragSource } from "./dragLogic";
@@ -22,6 +23,7 @@ export function DraggableRecipeCard({
   usageCount = 0,
   onOpen,
 }: DraggableRecipeCardProps) {
+  const { t } = useTranslation();
   const source: DragSource = { kind: "recipe", recipe };
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
     id: recipeDragId(recipe),
@@ -47,7 +49,7 @@ export function DraggableRecipeCard({
               ref={setActivatorNodeRef}
               {...attributes}
               aria-pressed={undefined}
-              aria-label={`Drag ${recipe.name}. Press Space to pick up.`}
+              aria-label={t("planner.dragRecipe", { name: recipe.name })}
             >
               <span aria-hidden="true">⠿</span>
             </button>
@@ -57,9 +59,9 @@ export function DraggableRecipeCard({
               aria-pressed={selected}
               onClick={() => onAdd(recipe)}
             >
-              {selected ? "Cancel" : "Add"}
+              {selected ? t("common.cancel") : t("planner.addToPlan")}
               {" "}
-              <span className="visually-hidden">{recipe.name} to the plan</span>
+              <span className="visually-hidden">{t("planner.addToPlanTo", { name: recipe.name })}</span>
             </button>
           </span>
         }

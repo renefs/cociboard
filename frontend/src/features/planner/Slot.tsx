@@ -1,10 +1,11 @@
 import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
+import { useTranslation } from "react-i18next";
+import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { MetaIcon } from "../recipes/MetaIcon";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "../recipes/recipeMeta";
 import { canDrop, isDragSource, slotDragId, slotDropId, type DragSource, type DropTarget } from "./dragLogic";
-import { fitsSlot, sameSlot, slotHint, slotLabel } from "./slots";
-import { dayName } from "./weekMath";
+import { dayParams, describeSlot, fitsSlot, sameSlot, slotHint, slotLabel } from "./slots";
 
 /** Seed recipe names are Spanish; the language drives automatic hyphenation of long names. */
 const RECIPE_LANG = "es";
@@ -36,6 +37,8 @@ export function Slot({
   warnings = [],
   highlighted = false,
 }: SlotProps) {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const { active } = useDndContext();
   const raw: unknown = active?.data.current;
   const source: DragSource | null = isDragSource(raw) ? raw : null;
@@ -54,7 +57,7 @@ export function Slot({
     disabled: dragBlocked || isOwnSlot,
   });
 
-  const hint = dragBlocked && source ? slotHint(source.recipe, slot) : selectBlocked && selecting ? slotHint(selecting, slot) : null;
+  const hint = dragBlocked && source ? slotHint(source.recipe, slot, t) : selectBlocked && selecting ? slotHint(selecting, slot, t) : null;
   const classes = [
     "slot",
     recipe ? "slot--filled" : "slot--empty",
@@ -74,15 +77,15 @@ export function Slot({
       ref={setNodeRef}
       className={classes}
       role="group"
-      aria-label={`${dayName(day)} ${slot}`}
+      aria-label={describeSlot(ref, t, locale)}
       data-select-target={selecting && selectAllowed ? "true" : undefined}
     >
       <div className="slot-head">
-        <span className="slot-label">{slotLabel(slot)}</span>
+        <span className="slot-label">{slotLabel(slot, t)}</span>
         {warnings.length > 0 && (
           <span className="slot-warning" title={warnings.join("\n")}>
             <span aria-hidden="true">⚠</span>
-            <span className="visually-hidden">Variety warning: {warnings.join(" ")}</span>
+            <span className="visually-hidden">{t("planner.varietyWarning", { messages: warnings.join(" ") })}</span>
           </span>
         )}
       </div>
@@ -104,8 +107,8 @@ export function Slot({
         </div>
       ) : (
         <button type="button" className="slot-add" onClick={() => onActivate(day, slot)}>
-          <span aria-hidden="true">+</span> Add {slot}{" "}
-          <span className="visually-hidden">on {dayName(day)}</span>
+          <span aria-hidden="true">+</span> {t(`planner.addSlot.${slot}`)}{" "}
+          <span className="visually-hidden">{t("planner.onDay", dayParams(day, locale))}</span>
         </button>
       )}
       {hint && recipe && (
@@ -128,6 +131,8 @@ interface FilledSlotProps {
 }
 
 function FilledSlot({ day, slot, recipe, selecting, disabled, onActivate, onRemove }: FilledSlotProps) {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const source: DragSource = { kind: "slot", recipe, from: { day, slot } };
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
     id: slotDragId({ day, slot }),
@@ -136,7 +141,7 @@ function FilledSlot({ day, slot, recipe, selecting, disabled, onActivate, onRemo
   });
   const meal = MEAL_TYPE_META[recipe.meal_type];
   const protein = PROTEIN_META[recipe.protein];
-  const where = `${dayName(day)} ${slot}`;
+  const where = describeSlot({ day, slot }, t, locale);
 
   return (
     <div
@@ -150,7 +155,7 @@ function FilledSlot({ day, slot, recipe, selecting, disabled, onActivate, onRemo
         ref={setActivatorNodeRef}
         {...attributes}
         aria-pressed={undefined}
-        aria-label={`${recipe.name}, ${where}. Enter for actions, Space to pick up and move.`}
+        aria-label={t("planner.slotRecipe", { name: recipe.name, where })}
         disabled={disabled}
         onClick={() => onActivate(day, slot)}
       >
@@ -170,7 +175,7 @@ function FilledSlot({ day, slot, recipe, selecting, disabled, onActivate, onRemo
       <button
         type="button"
         className="slot-remove"
-        aria-label={`Remove ${recipe.name} from ${where}`}
+        aria-label={t(`planner.removeFrom.${slot}`, { name: recipe.name, ...dayParams(day, locale) })}
         disabled={selecting}
         onClick={() => onRemove(day, slot)}
       >

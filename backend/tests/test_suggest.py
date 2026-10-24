@@ -200,7 +200,8 @@ def test_candidates_endpoint(client: TestClient, session: Session) -> None:
     assert all(c["recipe"]["meal_type"] in ("lunch", "both") for c in candidates)
     deltas = [c["score_delta"] for c in candidates]
     assert deltas == sorted(deltas, reverse=True)
-    assert all(c["reason"] for c in candidates)
+    assert all(c["reason"] and c["reason_code"] for c in candidates)
+    assert all(isinstance(c["reason_params"], dict) for c in candidates)
     assert any(c["good_pick"] for c in candidates)
 
     dinner = client.get(f"/api/weeks/{MONDAY}/days/0/dinner/candidates").json()
@@ -215,10 +216,63 @@ def test_candidates_reflect_the_plan(client: TestClient, session: Session) -> No
     candidates = client.get(f"/api/weeks/{MONDAY}/days/1/lunch/candidates").json()
     same = next((c for c in candidates if c["recipe"]["id"] == fish["id"]), None)
     if same is not None:
-        assert same["score_delta"] < 0 and same["reason"] == "Already planned this week"
+        assert same["score_delta"] < 0 and same["reason_code"] == "already_planned"
 
 
 def test_candidates_validation(client: TestClient) -> None:
     assert client.get("/api/weeks/2026-10-27/days/0/lunch/candidates").status_code == 422
     assert client.get(f"/api/weeks/{MONDAY}/days/7/lunch/candidates").status_code == 422
     assert client.get(f"/api/weeks/{MONDAY}/days/0/brunch/candidates").status_code == 422
+
+
+def test_every_reason_code_and_params() -> None:
+    from cociboard.domain import CandidateReason as R
+
+    def reasons(
+        meals: list[MealInfo | None], index: int, cat: list[MealInfo]
+    ) -> dict[str, tuple[R, dict[str, str], str]]:
+        return {
+            c.meal.name: (c.reason_code, c.reason_params, c.reason)
+            for c in candidates_for_slot(meals, index, cat)
+        }
+
+    meat1, meat2 = info(1, Protein.meat, name="Steak"), info(2, Protein.meat, name="Burger")
+    fish = info(3, Protein.fish, name="Hake")
+    veggie = info(4, Protein.none, MealType.both, "vegetarian", name="Salad")
+    plain = info(5, Protein.poultry, MealType.both, name="Chicken")
+    result = reasons([meat1] + [None] * 13, 1, [meat1, meat2, fish, veggie])
+    assert result["Burger"] == (R.twice_in_a_row, {"protein": "meat"}, "Meat twice in a row")
+    assert result["Steak"][0] is R.already_planned
+    assert result["Hake"] == (R.adds_fish, {}, "Adds fish or seafood")
+    assert result["Salad"][0] is R.adds_vegetable_forward
+
+    # new_protein and the fits_week fallback (protein already present, veggie/fish quota met)
+    quota: list[MealInfo | None] = [
+        info(10, Protein.fish, name="F1"),
+        None,
+        info(11, Protein.seafood, name="F2"),
+        None,
+        info(12, Protein.none, name="V1"),
+        None,
+        info(13, Protein.none, name="V2"),
+    ] + [None] * 7
+    out = reasons(
+        quota, 8, [plain, info(14, Protein.fish, name="F3"), info(15, Protein.none, name="V3")]
+    )
+    assert out["Chicken"][0] is R.new_protein
+    assert out["F3"][0] is R.fits_week
+
+    # protein_overload and already_planned_batch
+    meals: list[MealInfo | None] = [info(20 + n, Protein.meat, name=f"M{n}") for n in range(4)]
+    spread: list[MealInfo | None] = [None] * 14
+    for n, m in enumerate(meals):
+        spread[n * 2 + 1] = m
+    cand = info(30, Protein.meat, name="Overload")
+    assert reasons(spread, 10, [cand])["Overload"] == (
+        R.protein_overload,
+        {"protein": "meat"},
+        "Too much meat this week",
+    )
+    stew = info(31, Protein.legumes, MealType.both, "batch_cooking", name="Stew")
+    batch = reasons([stew] + [None] * 13, 4, [stew])
+    assert batch["Stew"][0] is R.already_planned_batch

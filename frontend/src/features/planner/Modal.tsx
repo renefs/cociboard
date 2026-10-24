@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 interface ModalProps {
   title: string;
@@ -28,6 +29,7 @@ export function Modal({
   size = "default",
   closeOnBackdrop = true,
 }: ModalProps) {
+  const { t } = useTranslation();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +81,7 @@ export function Modal({
           <h2 id={titleId} className="modal-title">
             {title}
           </h2>
-          <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
+          <button type="button" className="icon-button" aria-label={t("common.close")} onClick={onClose}>
             <span aria-hidden="true">×</span>
           </button>
         </header>

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { ConfirmDialog } from "../planner/ConfirmDialog";
 import { Modal } from "../planner/Modal";
@@ -20,6 +21,7 @@ type Mode = "view" | "edit" | "delete";
 
 /** Everything about one recipe, with Edit and Delete (with a usage-aware confirmation). */
 export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerStart }: RecipeDetailsModalProps) {
+  const { t } = useTranslation();
   const [recipe, setRecipe] = useState(initial);
   const [mode, setMode] = useState<Mode>("view");
 
@@ -32,7 +34,7 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
         onSaved={(info) => {
           setRecipe(info.recipe);
           setMode("view");
-          onNotify?.("info", savedMessage(info));
+          onNotify?.("info", savedMessage(info, t));
         }}
       />
     );
@@ -44,10 +46,10 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
         recipe={recipe}
         onCancel={() => setMode("view")}
         onDeleted={() => {
-          onNotify?.("info", `Deleted ${recipe.name}.`);
+          onNotify?.("info", t("recipes.details.deleted", { name: recipe.name }));
           onClose();
         }}
-        onError={() => onNotify?.("error", `Couldn't delete ${recipe.name}. Please try again.`)}
+        onError={() => onNotify?.("error", t("recipes.details.deleteFailed", { name: recipe.name }))}
       />
     );
   }
@@ -59,22 +61,22 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
       <div className="details">
         <dl className="details-facts">
           <div>
-            <dt>Meal</dt>
+            <dt>{t("recipes.legendMeal")}</dt>
             <dd>
-              <span aria-hidden="true">{meal.icon}</span> {meal.label}
+              <span aria-hidden="true">{meal.icon}</span> {t(meal.labelKey)}
             </dd>
           </div>
           <div>
-            <dt>Main protein</dt>
+            <dt>{t("recipes.mainProtein")}</dt>
             <dd>
-              <span aria-hidden="true">{protein.icon}</span> {protein.label}
+              <span aria-hidden="true">{protein.icon}</span> {t(protein.labelKey)}
             </dd>
           </div>
           {recipe.prep_minutes !== null && (
             <div>
-              <dt>Prep time</dt>
+              <dt>{t("recipes.prepTime")}</dt>
               <dd>
-                <span aria-hidden="true">⏱️</span> {recipe.prep_minutes} min
+                <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
               </dd>
             </div>
           )}
@@ -82,8 +84,8 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
 
         {recipe.description && <p className="details-description">{recipe.description}</p>}
 
-        <h3 className="details-heading">Ingredients</h3>
-        <ul className="details-ingredients" aria-label="Ingredients">
+        <h3 className="details-heading">{t("recipes.ingredients")}</h3>
+        <ul className="details-ingredients" aria-label={t("recipes.ingredients")}>
           {recipe.ingredients.map((ingredient, index) => (
             <li key={index}>{ingredient}</li>
           ))}
@@ -91,11 +93,11 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
 
         {recipe.properties.length > 0 && (
           <>
-            <h3 className="details-heading">Properties</h3>
-            <ul className="details-properties" aria-label="Properties">
+            <h3 className="details-heading">{t("recipes.properties")}</h3>
+            <ul className="details-properties" aria-label={t("recipes.properties")}>
               {recipe.properties.map((property) => (
                 <li key={property}>
-                  <span aria-hidden="true">{PROPERTY_META[property].icon}</span> {PROPERTY_META[property].label}
+                  <span aria-hidden="true">{PROPERTY_META[property].icon}</span> {t(PROPERTY_META[property].labelKey)}
                 </li>
               ))}
             </ul>
@@ -106,10 +108,10 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
       <div className="form-actions">
         {footerStart}
         <button type="button" className="btn btn-large btn-danger" onClick={() => setMode("delete")}>
-          Delete
+          {t("common.delete")}
         </button>
         <button type="button" className="btn btn-large btn-primary" onClick={() => setMode("edit")}>
-          Edit
+          {t("common.edit")}
         </button>
       </div>
     </Modal>
@@ -124,14 +126,15 @@ interface DeleteConfirmProps {
 }
 
 function DeleteConfirm({ recipe, onCancel, onDeleted, onError }: DeleteConfirmProps) {
+  const { t } = useTranslation();
   const usage = useRecipeUsage(recipe.id);
   const remove = useDeleteRecipe();
   const count = usage.data?.count ?? 0;
 
   return (
     <ConfirmDialog
-      title={`Delete ${recipe.name}?`}
-      confirmLabel={remove.isPending ? "Deleting…" : "Delete recipe"}
+      title={t("recipes.details.deleteTitle", { name: recipe.name })}
+      confirmLabel={remove.isPending ? t("recipes.details.deleting") : t("recipes.details.deleteConfirm")}
       busy={remove.isPending || usage.isPending}
       onCancel={onCancel}
       onConfirm={() => {
@@ -139,19 +142,16 @@ function DeleteConfirm({ recipe, onCancel, onDeleted, onError }: DeleteConfirmPr
         remove.mutate(recipe.id, { onSuccess: onDeleted, onError });
       }}
     >
-      {usage.isPending && <p>Checking where this recipe is planned…</p>}
-      {usage.isError && (
-        <p>
-          Couldn&apos;t check whether this recipe is planned. Deleting it also removes it from any week
-          that uses it.
-        </p>
-      )}
-      {usage.data && count === 0 && <p>This recipe is not planned in any week. This cannot be undone.</p>}
+      {usage.isPending && <p>{t("recipes.details.checking")}</p>}
+      {usage.isError && <p>{t("recipes.details.checkFailed")}</p>}
+      {usage.data && count === 0 && <p>{t("recipes.details.notPlanned")}</p>}
       {usage.data && count > 0 && (
         <p>
-          This recipe is planned in <strong>{count}</strong> {count === 1 ? "meal" : "meals"} across your
-          weeks. Deleting it also removes {count === 1 ? "that meal" : "those meals"} from the plan. This
-          cannot be undone.
+          <Trans
+            i18nKey="recipes.details.planned"
+            count={count}
+            components={{ strong: <strong /> }}
+          />
         </p>
       )}
     </ConfirmDialog>

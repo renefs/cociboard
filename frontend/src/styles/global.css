@@ -25,6 +25,10 @@ body {
 }
 
 .app-header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
   padding: var(--space-3) var(--space-4);
   color: var(--color-primary-contrast);
   background: var(--color-primary);
@@ -35,6 +39,37 @@ body {
   margin: 0;
   font-size: var(--text-xl);
   letter-spacing: 0.02em;
+}
+
+/* Language switcher: a segmented control on the primary-coloured header. */
+.language-switcher {
+  display: inline-flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-primary-contrast);
+  border-radius: 999px;
+}
+
+.language-switcher button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-primary-contrast);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.language-switcher button + button {
+  border-inline-start: 1px solid var(--color-primary-contrast);
+}
+
+.language-switcher button[aria-pressed="true"] {
+  color: var(--color-primary);
+  background: var(--color-primary-contrast);
 }
 
 .app-main {

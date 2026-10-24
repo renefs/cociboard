@@ -1,4 +1,5 @@
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { MetaIcon } from "./MetaIcon";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
@@ -23,6 +24,7 @@ interface RecipeCardProps {
 }
 
 function CardTitle({ recipe, onOpen }: Pick<RecipeCardProps, "recipe" | "onOpen">) {
+  const { t } = useTranslation();
   if (!onOpen) return <h3 className="recipe-card-title">{recipe.name}</h3>;
   return (
     <h3 className="recipe-card-title">
@@ -30,7 +32,7 @@ function CardTitle({ recipe, onOpen }: Pick<RecipeCardProps, "recipe" | "onOpen"
         type="button"
         className="card-title-button"
         aria-haspopup="dialog"
-        title="Show details"
+        title={t("recipes.showDetails")}
         onClick={() => onOpen(recipe)}
       >
         {recipe.name}
@@ -41,12 +43,13 @@ function CardTitle({ recipe, onOpen }: Pick<RecipeCardProps, "recipe" | "onOpen"
 
 /** "×2 this week" badge for recipes already in the plan. */
 export function UsageBadge({ count }: { count: number }) {
+  const { t } = useTranslation();
   if (count <= 0) return null;
-  const words = `Planned ${count} ${count === 1 ? "time" : "times"}`;
+  const label = t("recipes.usageLabel", { count });
   return (
-    <span className="badge badge--small usage-badge" title={`${words} this week`}>
-      <span aria-hidden="true">×{count}</span>
-      <span className="visually-hidden">{words}</span> this week
+    <span className="badge badge--small usage-badge" title={label}>
+      <span aria-hidden="true">{t("recipes.usageBadge", { count })}</span>
+      <span className="visually-hidden">{label}</span>
     </span>
   );
 }
@@ -60,6 +63,7 @@ export function RecipeCard({ recipe, density = "comfortable", ...rest }: RecipeC
 }
 
 function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<RecipeCardProps, "density">) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -77,7 +81,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
           style={{ "--badge-color": mealType.color } as CSSProperties}
           data-testid="meal-type-badge"
         >
-          <span aria-hidden="true">{mealType.icon}</span> {mealType.label}
+          <span aria-hidden="true">{mealType.icon}</span> {t(mealType.labelKey)}
         </span>
         {actions}
       </header>
@@ -85,18 +89,18 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
       <p className="recipe-card-facts">
         {recipe.prep_minutes !== null && (
           <span className="fact">
-            <span aria-hidden="true">⏱️</span> {recipe.prep_minutes} min
+            <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
           </span>
         )}
-        <span className="fact" title="Main protein">
+        <span className="fact" title={t("recipes.mainProtein")}>
           <span aria-hidden="true">{protein.icon}</span>{" "}
-          <span className="visually-hidden">Main protein: </span>
-          {protein.label}
+          <span className="visually-hidden">{t("recipes.mainProtein")}: </span>
+          {t(protein.labelKey)}
         </span>
         <UsageBadge count={usageCount} />
       </p>
 
-      <ul className="ingredients" id={listId} aria-label="Ingredients">
+      <ul className="ingredients" id={listId} aria-label={t("recipes.ingredients")}>
         {visible.map((ingredient) => (
           <li key={ingredient}>{ingredient}</li>
         ))}
@@ -109,12 +113,12 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
           aria-controls={listId}
           onClick={() => setExpanded((value) => !value)}
         >
-          {expanded ? "Show fewer" : `+${hiddenCount} more`}
+          {expanded ? t("recipes.showFewer") : t("recipes.moreIngredients", { count: hiddenCount })}
         </button>
       )}
 
       {recipe.properties.length > 0 && (
-        <ul className="property-icons" aria-label="Properties">
+        <ul className="property-icons" aria-label={t("recipes.properties")}>
           {recipe.properties.map((property) => (
             <li key={property}>
               <MetaIcon meta={PROPERTY_META[property]} />
@@ -129,6 +133,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
 
 /** Dense variant used while planning: name, icons and a one-line ingredient summary. */
 function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<RecipeCardProps, "density">) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const summaryId = useId();
   const mealType = MEAL_TYPE_META[recipe.meal_type];
@@ -149,21 +154,21 @@ function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<Re
           style={{ "--badge-color": mealType.color } as CSSProperties}
           data-testid="meal-type-badge"
         >
-          <span aria-hidden="true">{mealType.icon}</span> {mealType.label}
+          <span aria-hidden="true">{mealType.icon}</span> {t(mealType.labelKey)}
         </span>
         {recipe.prep_minutes !== null && (
           <span className="fact">
-            <span aria-hidden="true">⏱️</span> {recipe.prep_minutes} min
+            <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
           </span>
         )}
-        <span className="fact" title="Main protein">
+        <span className="fact" title={t("recipes.mainProtein")}>
           <span aria-hidden="true">{protein.icon}</span>{" "}
-          <span className="visually-hidden">Main protein: </span>
-          {protein.label}
+          <span className="visually-hidden">{t("recipes.mainProtein")}: </span>
+          {t(protein.labelKey)}
         </span>
         <UsageBadge count={usageCount} />
         {recipe.properties.length > 0 && (
-          <ul className="property-icons property-icons--small" aria-label="Properties">
+          <ul className="property-icons property-icons--small" aria-label={t("recipes.properties")}>
             {recipe.properties.map((property) => (
               <li key={property}>
                 <MetaIcon meta={PROPERTY_META[property]} />
@@ -180,7 +185,7 @@ function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<Re
           id={summaryId}
           title={summary}
         >
-          <span className="visually-hidden">Ingredients: </span>
+          <span className="visually-hidden">{t("recipes.ingredients")}: </span>
           {summary}
         </p>
         {canExpand && (
@@ -191,7 +196,7 @@ function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<Re
             aria-controls={summaryId}
             onClick={() => setExpanded((value) => !value)}
           >
-            {expanded ? "Show fewer" : "Show all"}
+            {expanded ? t("recipes.showFewer") : t("recipes.showAll")}
           </button>
         )}
       </div>

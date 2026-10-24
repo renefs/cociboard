@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   RECIPE_PROPERTIES,
   type MealSlot,
@@ -17,11 +18,7 @@ import { useRecipes } from "./useRecipes";
 
 type MealFilter = MealSlot | "all";
 
-const MEAL_FILTERS: { value: MealFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-];
+const MEAL_FILTERS: MealFilter[] = ["all", "lunch", "dinner"];
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -57,6 +54,7 @@ export function RecipePanel({
   proteinCounts,
   onNotify,
 }: RecipePanelProps = {}) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [meal, setMeal] = useState<MealFilter>("all");
   const [properties, setProperties] = useState<RecipeProperty[]>([]);
@@ -97,25 +95,25 @@ export function RecipePanel({
       className={density === "compact" ? "recipe-panel recipe-panel--compact" : "recipe-panel"}
       aria-labelledby="recipes-heading">
       <div className="panel-head">
-        <h2 id="recipes-heading">Recipes</h2>
+        <h2 id="recipes-heading">{t("recipes.heading")}</h2>
         <button type="button" className="btn btn-primary" onClick={() => setDialog({ kind: "new" })}>
-          <span aria-hidden="true">+ </span>New recipe
+          <span aria-hidden="true">+ </span>{t("recipes.newRecipe")}
         </button>
       </div>
 
       <div className="recipe-controls">
         <label className="search-field">
-          <span className="visually-hidden">Search recipes</span>
+          <span className="visually-hidden">{t("recipes.searchLabel")}</span>
           <input
             type="search"
-            placeholder="Search by name or ingredient"
+            placeholder={t("recipes.searchPlaceholder")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
 
-        <div className="chip-group" role="group" aria-label="Meal type">
-          {MEAL_FILTERS.map(({ value, label }) => (
+        <div className="chip-group" role="group" aria-label={t("recipes.mealType")}>
+          {MEAL_FILTERS.map((value) => (
             <button
               key={value}
               type="button"
@@ -123,38 +121,40 @@ export function RecipePanel({
               aria-pressed={meal === value}
               onClick={() => setMeal(value)}
             >
-              {label}
+              {value === "all" ? t("recipes.filterAll") : t(`meta.mealType.${value}`)}
             </button>
           ))}
         </div>
 
         {usage && (
-          <div className="chip-group" role="group" aria-label="Sort recipes">
+          <div className="chip-group" role="group" aria-label={t("recipes.sort")}>
             <button
               type="button"
               className="chip"
               aria-pressed={sort === "name"}
               onClick={() => setSort("name")}
             >
-              A–Z
+              {t("recipes.sortName")}
             </button>
             <button
               type="button"
               className="chip"
               aria-pressed={sort === "variety"}
               onClick={() => setSort("variety")}
-              title="Recipes you haven't planned yet and proteins you've used least come first"
+              title={t("recipes.sortVarietyTitle")}
             >
-              Best for variety
+              {t("recipes.sortVariety")}
             </button>
           </div>
         )}
 
         <details className="property-filter">
           <summary>
-            Properties{properties.length > 0 ? ` (${properties.length} selected)` : ""}
+            {properties.length > 0
+              ? t("recipes.propertiesSelected", { count: properties.length })
+              : t("recipes.properties")}
           </summary>
-          <div className="chip-group" role="group" aria-label="Filter by property">
+          <div className="chip-group" role="group" aria-label={t("recipes.filterByProperty")}>
             {RECIPE_PROPERTIES.map((property) => {
               const meta = PROPERTY_META[property];
               return (
@@ -165,7 +165,7 @@ export function RecipePanel({
                   aria-pressed={properties.includes(property)}
                   onClick={() => toggleProperty(property)}
                 >
-                  <span aria-hidden="true">{meta.icon}</span> {meta.label}
+                  <span aria-hidden="true">{meta.icon}</span> {t(meta.labelKey)}
                 </button>
               );
             })}
@@ -176,31 +176,31 @@ export function RecipePanel({
       <div className="recipe-list" aria-live="polite" aria-busy={isPending}>
         {isPending && (
           <>
-            <p className="visually-hidden">Loading recipes…</p>
+            <p className="visually-hidden">{t("recipes.loading")}</p>
             <RecipeListSkeleton />
           </>
         )}
         {isError && (
           <div className="state-box" role="alert">
-            <p>Can&apos;t load the recipes. Check that the server is running and your connection.</p>
+            <p>{t("recipes.loadError")}</p>
             <button type="button" className="btn" onClick={() => void refetch()}>
-              Retry
+              {t("common.retry")}
             </button>
           </div>
         )}
         {recipes && recipes.length === 0 && filtersActive && (
           <div className="state-box">
-            <p>No recipes match your search or filters.</p>
+            <p>{t("recipes.noMatches")}</p>
             <button type="button" className="btn" onClick={clearFilters}>
-              Clear filters
+              {t("recipes.clearFilters")}
             </button>
           </div>
         )}
         {recipes && recipes.length === 0 && !filtersActive && (
           <div className="state-box">
-            <p>Your recipe catalogue is empty.</p>
+            <p>{t("recipes.empty")}</p>
             <button type="button" className="btn btn-primary" onClick={() => setDialog({ kind: "new" })}>
-              Add your first recipe
+              {t("recipes.addFirst")}
             </button>
           </div>
         )}
@@ -226,7 +226,7 @@ export function RecipePanel({
           onClose={closeDialog}
           onSaved={(info) => {
             closeDialog();
-            onNotify?.("info", savedMessage(info));
+            onNotify?.("info", savedMessage(info, t));
           }}
         />
       )}

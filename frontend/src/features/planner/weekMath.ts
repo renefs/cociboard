@@ -3,16 +3,6 @@
 
 const MS_PER_DAY = 86_400_000;
 
-export const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
-
 const pad = (value: number) => String(value).padStart(2, "0");
 
 /** Format a local date as YYYY-MM-DD. */
@@ -56,40 +46,66 @@ export function isToday(iso: string, now: Date): boolean {
   return iso === toIsoDate(now);
 }
 
-const SHORT_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+/** The `Intl` locale of each UI language ("en" keeps day-first dates, as in the UK). */
+const INTL_LOCALE: Record<string, string> = { en: "en-GB", es: "es-ES" };
+const intlLocale = (locale: string) => INTL_LOCALE[locale] ?? INTL_LOCALE["en"] ?? "en-GB";
 
-/** "26 Oct" */
-export function formatShortDate(iso: string): string {
-  return SHORT_DATE.format(parseIsoDate(iso));
+type FormatKind = "short" | "long" | "weekday";
+const OPTIONS: Record<FormatKind, Intl.DateTimeFormatOptions> = {
+  short: { day: "numeric", month: "short" },
+  long: { day: "numeric", month: "long", year: "numeric" },
+  weekday: { weekday: "long" },
+};
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatter(locale: string, kind: FormatKind): Intl.DateTimeFormat {
+  const key = `${locale}:${kind}`;
+  let cached = formatters.get(key);
+  if (!cached) {
+    cached = new Intl.DateTimeFormat(intlLocale(locale), OPTIONS[kind]);
+    formatters.set(key, cached);
+  }
+  return cached;
 }
 
-/** "26 October 2026" */
-export function formatLongDate(iso: string): string {
-  return LONG_DATE.format(parseIsoDate(iso));
+/** "26 Oct" / "26 oct" */
+export function formatShortDate(iso: string, locale: string): string {
+  return formatter(locale, "short").format(parseIsoDate(iso));
 }
 
-/** "26 Oct – 1 Nov 2026" for the week starting on ``weekStart``. */
-export function formatWeekRange(weekStart: string): string {
+/** "26 October 2026" / "26 de octubre de 2026" */
+export function formatLongDate(iso: string, locale: string): string {
+  return formatter(locale, "long").format(parseIsoDate(iso));
+}
+
+/** "26 Oct – 1 November 2026" for the week starting on ``weekStart``. */
+export function formatWeekRange(weekStart: string, locale: string): string {
   const start = parseIsoDate(weekStart);
   const end = addDays(start, 6);
-  return `${SHORT_DATE.format(start)} – ${LONG_DATE.format(end)}`;
+  return `${formatter(locale, "short").format(start)} – ${formatter(locale, "long").format(end)}`;
 }
 
-/** "26 Oct – 1 Nov 2026": the compact range shown in the planner header. */
-export function formatWeekRangeShort(weekStart: string): string {
+/** "26 Oct – 1 Nov 2026" / "26 oct – 1 nov 2026": the compact range shown in the planner header. */
+export function formatWeekRangeShort(weekStart: string, locale: string): string {
   const start = parseIsoDate(weekStart);
   const end = addDays(start, 6);
-  return `${SHORT_DATE.format(start)} – ${SHORT_DATE.format(end)} ${end.getFullYear()}`;
+  const short = formatter(locale, "short");
+  return `${short.format(start)} – ${short.format(end)} ${end.getFullYear()}`;
 }
 
-/** Name of day index 0-6, e.g. "Monday". */
-export function dayName(day: number): string {
-  return DAY_NAMES[day] ?? "";
+/** 2024-01-01 was a Monday: a fixed reference for weekday names. */
+const REFERENCE_MONDAY = new Date(2024, 0, 1);
+
+/**
+ * Name of day index 0-6 ("Monday" / "Lunes"). Capitalised for headings and labels; pass
+ * `capitalize: false` for the lower-case form Spanish uses mid-sentence ("el lunes").
+ */
+export function dayName(day: number, locale: string, capitalize = true): string {
+  const name = formatter(locale, "weekday").format(addDays(REFERENCE_MONDAY, day));
+  const lang = intlLocale(locale);
+  return capitalize
+    ? name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)
+    : name.toLocaleLowerCase(lang);
 }
 
 /** The Monday ``weeks`` weeks after (or before, when negative) ``weekStart``. */

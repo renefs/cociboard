@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ToastAction {
   label: string;
@@ -38,6 +39,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
 }
 
 function ToastBody({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () => void }) {
+  const { t } = useTranslation();
   const { action } = toast;
   return (
     <div className={`toast toast--${toast.kind}`} role={toast.kind === "error" ? "alert" : undefined}>
@@ -57,7 +59,7 @@ function ToastBody({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
           </button>
         </>
       )}
-      <button type="button" className="icon-button" aria-label="Dismiss message" onClick={onDismiss}>
+      <button type="button" className="icon-button" aria-label={t("common.dismiss")} onClick={onDismiss}>
         <span aria-hidden="true">×</span>
       </button>
     </div>

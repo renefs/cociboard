@@ -57,6 +57,19 @@ class IssueKind(StrEnum):
     little_fish = "little_fish"
 
 
+class CandidateReason(StrEnum):
+    """Why a recipe is (or is not) a good candidate for a slot (see ``suggest.py``)."""
+
+    fits_week = "fits_week"
+    adds_fish = "adds_fish"
+    adds_vegetable_forward = "adds_vegetable_forward"
+    new_protein = "new_protein"
+    twice_in_a_row = "twice_in_a_row"
+    protein_overload = "protein_overload"
+    already_planned = "already_planned"
+    already_planned_batch = "already_planned_batch"
+
+
 class IssueSeverity(StrEnum):
     """``warning`` marks slots in the grid; ``info`` is a gentle suggestion."""
 

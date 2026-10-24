@@ -14,6 +14,8 @@ import {
   type ScreenReaderInstructions,
 } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
@@ -29,6 +31,7 @@ import { DraggableRecipeCard } from "./DraggableRecipeCard";
 import {
   PANEL_DROP_ID,
   announceCancel,
+  type AnnounceContext,
   announceEnd,
   announceOver,
   announceStart,
@@ -41,14 +44,14 @@ import { keyboardCoordinates } from "./keyboardNavigation";
 import { RecipePicker } from "./RecipePicker";
 import { MouseAndPenSensor, POINTER_ACTIVATION, TOUCH_ACTIVATION, collisionDetection } from "./sensors";
 import { SlotActions } from "./SlotActions";
-import { describeSlot, fitsSlot, recipeAt } from "./slots";
+import { dayParams, fitsSlot, recipeAt } from "./slots";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Toast, type ToastAction, type ToastMessage } from "./Toast";
 import { useWeekNavigation } from "./useWeekNavigation";
 import { usePlanActions, usePrefetchNeighbours, useWeekPlan } from "./useWeekPlan";
 import { useWeekTools } from "./useWeekTools";
 import { countFilled } from "./planTransforms";
-import { dayName, formatWeekRange, formatWeekRangeShort } from "./weekMath";
+import { formatWeekRange, formatWeekRangeShort } from "./weekMath";
 import { WeekGrid } from "./WeekGrid";
 import { WeekGridSkeleton } from "./WeekGridSkeleton";
 
@@ -59,17 +62,16 @@ type Ui =
   | { kind: "details"; day: number; slot: MealSlot }
   | { kind: "confirm-clear" };
 
-const SCREEN_READER: ScreenReaderInstructions = {
-  draggable:
-    "To pick up a recipe, press Space. Use the arrow keys to jump between slots, Space to drop it and Escape to cancel.",
-};
-
 interface PlannerProps {
   /** Current time; injectable for tests. */
   now?: Date;
 }
 
 export function Planner({ now: nowProp }: PlannerProps) {
+  const { t } = useTranslation();
+  const locale = useLocale();
+  const screenReader: ScreenReaderInstructions = { draggable: t("planner.keyboardInstructions") };
+  const announce: AnnounceContext = { t, locale };
   const now = useMemo(() => nowProp ?? new Date(), [nowProp]);
   const { weekStart, isCurrentWeek, previous, next, today } = useWeekNavigation(now);
   usePrefetchNeighbours(weekStart);
@@ -97,7 +99,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
   const actions = usePlanActions(weekStart, (message) => notify("error", message));
   const tools = useWeekTools(weekStart, notify);
 
-  const warnings = useMemo(() => (plan ? warningsBySlot(plan.variety) : undefined), [plan]);
+  const warnings = useMemo(() => (plan ? warningsBySlot(plan.variety, t, locale) : undefined), [plan, t, locale]);
   const highlightedIssue = plan ? findIssue(plan.variety, highlightedId) : null;
   const highlighted = useMemo(() => issueSlotKeys(highlightedIssue), [highlightedIssue]);
   const usage = useMemo(() => (plan ? usageCounts(plan) : undefined), [plan]);
@@ -143,7 +145,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
   const place = (recipe: Recipe, day: number, slot: MealSlot) => {
     actions.assign({ day, slot }, recipe);
-    notify("info", `Added ${recipe.name} to ${describeSlot({ day, slot })}.`);
+    notify("info", t(`planner.added.${slot}`, { name: recipe.name, ...dayParams(day, locale) }));
   };
 
   const onActivate = (day: number, slot: MealSlot) => {
@@ -183,23 +185,23 @@ export function Planner({ now: nowProp }: PlannerProps) {
   const announcements: Announcements = {
     onDragStart: ({ active }) => {
       const source = sourceOf(active.data.current);
-      return source ? announceStart(source) : undefined;
+      return source ? announceStart(announce, source) : undefined;
     },
     onDragOver: ({ active, over }: DragOverEvent) => {
       const source = sourceOf(active.data.current);
       const data: unknown = over?.data.current;
       if (!source || !plan) return undefined;
-      return announceOver(plan, source, isDropTarget(data) ? data : null);
+      return announceOver(announce, plan, source, isDropTarget(data) ? data : null);
     },
     onDragEnd: ({ active, over }) => {
       const source = sourceOf(active.data.current);
       const data: unknown = over?.data.current;
       if (!source || !plan) return undefined;
-      return announceEnd(plan, source, isDropTarget(data) ? data : null);
+      return announceEnd(announce, plan, source, isDropTarget(data) ? data : null);
     },
     onDragCancel: ({ active }) => {
       const source = sourceOf(active.data.current);
-      return source ? announceCancel(source) : undefined;
+      return source ? announceCancel(announce, source) : undefined;
     },
   };
 
@@ -212,39 +214,39 @@ export function Planner({ now: nowProp }: PlannerProps) {
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(null)}
-      accessibility={{ announcements, screenReaderInstructions: SCREEN_READER }}
+      accessibility={{ announcements, screenReaderInstructions: screenReader }}
     >
       <div className="planner-layout">
         <section className="planner" aria-labelledby="planner-heading">
           <header className="planner-head">
-            <h2 id="planner-heading">Weekly planner</h2>
-            <nav className="week-nav" aria-label="Week navigation">
-              <button type="button" className="icon-button week-step" aria-label="Previous week" onClick={previous}>
+            <h2 id="planner-heading">{t("planner.heading")}</h2>
+            <nav className="week-nav" aria-label={t("planner.weekNav")}>
+              <button type="button" className="icon-button week-step" aria-label={t("planner.previousWeek")} onClick={previous}>
                 <span aria-hidden="true">‹</span>
               </button>
               <button type="button" className="btn week-today" disabled={isCurrentWeek} onClick={today}>
-                This week
+                {t("planner.thisWeek")}
               </button>
-              <button type="button" className="icon-button week-step" aria-label="Next week" onClick={next}>
+              <button type="button" className="icon-button week-step" aria-label={t("planner.nextWeek")} onClick={next}>
                 <span aria-hidden="true">›</span>
               </button>
               <p className="week-range" aria-live="polite">
-                <span className="visually-hidden">Week of </span>
-                {formatWeekRangeShort(weekStart)}
+                <span className="visually-hidden">{t("planner.weekOf")}</span>
+                {formatWeekRangeShort(weekStart, locale)}
               </p>
             </nav>
           </header>
 
           <div className="planner-toolbar">
-            <div className="toolbar-buttons" role="group" aria-label="Week actions">
+            <div className="toolbar-buttons" role="group" aria-label={t("planner.weekActions")}>
               <button
                 type="button"
                 className="btn btn-primary"
                 disabled={!plan || tools.busy || countFilled(plan) === 14}
-                title="Fill the empty slots with varied recipes"
+                title={t("planner.suggestTitle")}
                 onClick={() => void tools.suggest()}
               >
-                <span aria-hidden="true">✨ </span>Suggest
+                <span aria-hidden="true">✨ </span>{t("planner.suggest")}
               </button>
               <button
                 type="button"
@@ -252,7 +254,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
                 disabled={!plan || tools.busy || countFilled(plan) === 0}
                 onClick={() => setUi({ kind: "confirm-clear" })}
               >
-                Clear week
+                {t("planner.clearWeek")}
               </button>
             </div>
             {plan && (
@@ -267,10 +269,14 @@ export function Planner({ now: nowProp }: PlannerProps) {
           {selecting && (
             <div className="select-banner" role="status">
               <span>
-                Choose a slot for <strong>{selecting.name}</strong>
+                <Trans
+                  i18nKey="planner.chooseSlot"
+                  values={{ name: selecting.name }}
+                  components={{ strong: <strong /> }}
+                />
               </span>
               <button type="button" className="btn" onClick={() => setSelecting(null)}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}
@@ -287,9 +293,9 @@ export function Planner({ now: nowProp }: PlannerProps) {
             />
           ) : isError ? (
             <div className="state-box" role="alert">
-              <p>Can&apos;t load the week. Check that the server is running and your connection.</p>
+              <p>{t("planner.loadError")}</p>
               <button type="button" className="btn" onClick={() => void refetch()}>
-                Retry
+                {t("common.retry")}
               </button>
             </div>
           ) : (
@@ -320,7 +326,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
       {ui.kind === "picker" && (
         <RecipePicker
-          title={`${plan && recipeAt(plan, ui) ? "Replace" : "Add"} ${ui.slot} on ${dayName(ui.day)}`}
+          title={t(plan && recipeAt(plan, ui) ? `planner.pickerReplace.${ui.slot}` : `planner.pickerAdd.${ui.slot}`, dayParams(ui.day, locale))}
           weekStart={weekStart}
           day={ui.day}
           slot={ui.slot}
@@ -338,8 +344,8 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
       {ui.kind === "confirm-clear" && plan && (
         <ConfirmDialog
-          title="Clear this week?"
-          confirmLabel="Clear week"
+          title={t("planner.clearTitle")}
+          confirmLabel={t("planner.clearWeek")}
           onCancel={closeUi}
           onConfirm={() => {
             closeUi();
@@ -347,8 +353,10 @@ export function Planner({ now: nowProp }: PlannerProps) {
           }}
         >
           <p>
-            This removes {countFilled(plan)} {countFilled(plan) === 1 ? "meal" : "meals"} from{" "}
-            {formatWeekRange(weekStart)}. You can undo it right afterwards.
+            {t("planner.clearBody", {
+              count: countFilled(plan),
+              range: formatWeekRange(weekStart, locale),
+            })}
           </p>
         </ConfirmDialog>
       )}
@@ -395,6 +403,7 @@ function SlotDetails({
   setUi: (ui: Ui) => void;
   onNotify: (kind: "error" | "info", text: string) => void;
 }) {
+  const { t } = useTranslation();
   const recipe = recipeAt(plan, ui);
   if (!recipe) return null;
   return (
@@ -408,7 +417,7 @@ function SlotDetails({
           className="btn btn-large"
           onClick={() => setUi({ kind: "actions", day: ui.day, slot: ui.slot })}
         >
-          Back
+          {t("common.back")}
         </button>
       }
     />
@@ -417,6 +426,7 @@ function SlotDetails({
 
 /** The recipe sidebar doubles as the drop zone that removes a recipe from the plan. */
 function RecipeArea({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const { active } = useDndContext();
   const raw: unknown = active?.data.current;
   const removing = isDragSource(raw) && raw.kind === "slot";
@@ -429,11 +439,11 @@ function RecipeArea({ children }: { children: ReactNode }) {
     <aside
       ref={setNodeRef}
       className={`recipe-area${removing ? " is-drop-zone" : ""}${removing && isOver ? " is-over" : ""}`}
-      aria-label="Recipe catalogue"
+      aria-label={t("planner.recipeCatalogue")}
     >
       {removing && (
         <p className="drop-zone-hint" aria-hidden="true">
-          Drop here to remove from the plan
+          {t("planner.dropToRemove")}
         </p>
       )}
       {children}

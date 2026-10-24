@@ -9,7 +9,8 @@ variety analysis helps keep the week varied. Scope and history: `docs/ROADMAP.md
 `CHANGELOG.md`, `docs/adr/`.
 
 ## Ground rules
-- Everything is in **English**: code, comments, commits, docs.
+- Code, comments, commits and docs are in **English**. The app UI is bilingual (English and
+  Spanish); see the i18n rule under Code conventions.
 - Work in small steps: write each file as soon as it is designed and run the relevant
   tests before moving on. Don't draft a whole feature before touching the disk.
 - Don't push, rewrite history or move existing tags unless the user asks.
@@ -49,6 +50,7 @@ To fix formatting: `cd backend && uv run ruff format .`.
 - `backend/tests/`: pytest, with an in-memory SQLite fixture in `conftest.py`
 - `frontend/src/`
   - `api/`: `client.ts` (typed fetch) and `types.ts` (mirrors `schemas.py`)
+  - `i18n/`: i18next setup, language switcher, `locales/en.ts` and `es.ts`
   - `features/recipes/`, `features/planner/`, `features/variety/`: components, hooks
     and pure logic modules, with tests alongside (`*.test.ts(x)`)
   - `styles/tokens.css`: design tokens (colours must stay WCAG AA; `contrast.test.ts`
@@ -65,8 +67,16 @@ To fix formatting: `cd backend && uv run ruff format .`.
   table in the same change.
 - Data fetching uses TanStack Query. Plan changes are optimistic, and their requests are
   sent one at a time per week (`useWeekPlan.ts`); keep both properties.
-- Recipe icons and labels come from the single map in `recipeMeta.ts`; every icon needs
-  an accessible label.
+- Recipe icons and labels come from the single map in `recipeMeta.ts` (icon plus a `labelKey`
+  into the catalogue); every icon needs an accessible label.
+- **No hard-coded user-visible strings** (text, `aria-label`, `title`, placeholders, toasts,
+  announcements). Add every key to `frontend/src/i18n/locales/en.ts` **and** `es.ts` (a
+  missing key is a compile error), write whole sentences per key (slot-specific sentences get
+  `lunch` / `dinner` variants), use `_one` / `_other` for plurals and `<Trans>` for markup.
+  Pure modules that return text take a `t` (`TFunction`) and, for dates, a `locale`; format
+  dates and weekday names only through the locale-aware `weekMath.ts` helpers. Recipe
+  content is data and is never translated. The backend sends codes and params, not
+  localised text (ADR-0009). Spanish is Spain Spanish ("comida", "cena").
 - Match the surrounding code's style, naming and comment density.
 
 ## UX requirements

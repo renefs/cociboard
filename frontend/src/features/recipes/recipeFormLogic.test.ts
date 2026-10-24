@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../../api/client";
 import { makeRecipe } from "../../test/fixtures";
@@ -14,30 +15,32 @@ import {
   valuesFromRecipe,
 } from "./recipeFormLogic";
 
+const en = i18n.getFixedT("en");
+const es = i18n.getFixedT("es");
 const valid = { ...emptyValues(), name: "Gazpacho", ingredients: ["Tomate"] };
 
 describe("validateValues", () => {
   it("accepts a minimal recipe", () => {
-    expect(validateValues(valid)).toEqual({});
+    expect(validateValues(valid, en)).toEqual({});
   });
 
   it("requires a name of 1-80 characters", () => {
-    expect(validateValues({ ...valid, name: "   " }).name).toBeDefined();
-    expect(validateValues({ ...valid, name: "x".repeat(80) }).name).toBeUndefined();
-    expect(validateValues({ ...valid, name: "x".repeat(81) }).name).toMatch(/80/);
+    expect(validateValues({ ...valid, name: "   " }, en).name).toBeDefined();
+    expect(validateValues({ ...valid, name: "x".repeat(80) }, en).name).toBeUndefined();
+    expect(validateValues({ ...valid, name: "x".repeat(81) }, en).name).toMatch(/80/);
   });
 
   it("requires one non-empty ingredient", () => {
-    expect(validateValues({ ...valid, ingredients: ["", "  "] }).ingredients).toBeDefined();
-    expect(validateValues({ ...valid, ingredients: ["", "sal"] }).ingredients).toBeUndefined();
+    expect(validateValues({ ...valid, ingredients: ["", "  "] }, en).ingredients).toBeDefined();
+    expect(validateValues({ ...valid, ingredients: ["", "sal"] }, en).ingredients).toBeUndefined();
   });
 
   it("checks prep minutes", () => {
-    expect(validateValues({ ...valid, prepMinutes: "" }).prepMinutes).toBeUndefined();
-    expect(validateValues({ ...valid, prepMinutes: "0" }).prepMinutes).toBeDefined();
-    expect(validateValues({ ...valid, prepMinutes: "-5" }).prepMinutes).toBeDefined();
-    expect(validateValues({ ...valid, prepMinutes: "1.5" }).prepMinutes).toBeDefined();
-    expect(validateValues({ ...valid, prepMinutes: "45" }).prepMinutes).toBeUndefined();
+    expect(validateValues({ ...valid, prepMinutes: "" }, en).prepMinutes).toBeUndefined();
+    expect(validateValues({ ...valid, prepMinutes: "0" }, en).prepMinutes).toBeDefined();
+    expect(validateValues({ ...valid, prepMinutes: "-5" }, en).prepMinutes).toBeDefined();
+    expect(validateValues({ ...valid, prepMinutes: "1.5" }, en).prepMinutes).toBeDefined();
+    expect(validateValues({ ...valid, prepMinutes: "45" }, en).prepMinutes).toBeUndefined();
   });
 });
 
@@ -86,15 +89,32 @@ describe("splitPastedIngredients", () => {
 });
 
 describe("server errors", () => {
-  it("maps 422 locations to fields", () => {
+  it("maps 422 locations to translated field messages, never the server text", () => {
     const detail = [
-      { loc: ["body", "name"], msg: "String should have at most 80 characters" },
-      { loc: ["body", "ingredients", 0], msg: "Value error, bad" },
-      { loc: ["body"], msg: "Something else" },
+      { loc: ["body", "name"], type: "string_too_long", msg: "String should have at most 80 characters" },
+      { loc: ["body", "ingredients", 0], type: "value_error", msg: "Value error, bad" },
+      { loc: ["body", "protein"], type: "enum", msg: "Input should be 'meat'" },
+      { loc: ["body"], type: "x", msg: "Something else" },
     ];
-    expect(mapValidationErrors(detail)).toEqual({
-      fields: { name: "String should have at most 80 characters", ingredients: "bad" },
-      other: ["Something else"],
+    expect(mapValidationErrors(detail, en)).toEqual({
+      fields: {
+        name: "Use at most 80 characters.",
+        ingredients: "Add at least one ingredient.",
+        protein: "Invalid value.",
+      },
+      other: ["Invalid value."],
+    });
+    expect(mapValidationErrors(detail, es).fields.name).toBe("Usa como máximo 80 caracteres.");
+  });
+
+  it("maps prep minutes and missing names by type", () => {
+    const detail = [
+      { loc: ["body", "prep_minutes"], type: "greater_than", msg: "x" },
+      { loc: ["body", "name"], type: "missing", msg: "Field required" },
+    ];
+    expect(mapValidationErrors(detail, en).fields).toEqual({
+      prepMinutes: "Prep time must be at least 1 minute.",
+      name: "Enter a name.",
     });
   });
 
@@ -113,8 +133,8 @@ describe("server errors", () => {
   });
 
   it("describes a conflicting slot", () => {
-    expect(describeConflict({ week_start: "2026-10-26", day: 1, slot: "dinner" })).toBe(
-      "Tuesday dinner (week of 26 Oct)",
-    );
+    const conflict = { week_start: "2026-10-26", day: 1, slot: "dinner" } as const;
+    expect(describeConflict(conflict, en, "en")).toBe("Tuesday dinner (week of 26 Oct)");
+    expect(describeConflict(conflict, es, "es")).toBe("cena del martes (semana del 26 oct)");
   });
 });
