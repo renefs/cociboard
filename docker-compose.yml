@@ -1,0 +1,18 @@
+# Cociboard: weekly menu planner. Works with Docker Compose v2 and Synology Container
+# Manager (Project > Create, pointing at this folder). Optional settings go in `.env`;
+# see `.env.example` and the "Deployment" section of README.md.
+services:
+  cociboard:
+    build: .
+    image: cociboard:latest
+    container_name: cociboard
+    restart: unless-stopped
+    ports:
+      - "${COCIBOARD_PORT:-8000}:8000"
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Etc/UTC}
+      COCIBOARD_SEED_ON_STARTUP: ${COCIBOARD_SEED_ON_STARTUP:-true}
+    volumes:
+      - ./data:/data

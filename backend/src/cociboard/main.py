@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from cociboard import __version__
-from cociboard.config import get_settings
+from cociboard.config import Settings, get_settings
 from cociboard.db import get_engine, init_db
 from cociboard.routers import recipes, weeks
 from cociboard.schemas import HealthResponse
@@ -35,9 +36,9 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
-def create_app() -> FastAPI:
+def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the FastAPI application."""
-    settings = get_settings()
+    settings = settings or get_settings()
     app = FastAPI(title="Cociboard", version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
@@ -46,6 +47,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
+    if settings.static_dir is not None:
+        # Mounted after the API so /api routes take precedence; serves index.html at /.
+        app.mount("/", StaticFiles(directory=settings.static_dir, html=True), name="static")
     return app
 
 
