@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-10-24
+
+### Fixed
+- Backend: the `lifespan` startup function in `main.py` is annotated as
+  `AsyncGenerator[None, None]` instead of `AsyncIterator[None]`. Recent type stubs (as
+  bundled with Pylance) deprecate the `AsyncIterator` return annotation on
+  `@asynccontextmanager` functions. No behaviour change.
+
 ## [0.6.0] - 2026-10-24
 
 Spanish interface with browser language detection ([ADR-0009](docs/adr/0009-internationalisation.md)).
