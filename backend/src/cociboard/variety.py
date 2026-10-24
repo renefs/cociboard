@@ -17,6 +17,15 @@ Rules (thresholds are the module constants below):
 * ``little_fish``: fewer than ``MIN_FISH_MEALS`` fish or seafood meals once at least
   ``FISH_CHECK_FROM`` slots are filled. ``info``.
 
+Every issue carries an English ``message`` and the ``params`` it was built from, so clients
+can render their own language:
+
+* ``repeated_recipe``: ``recipe`` (name), ``count``; ``info`` severity means batch cooking.
+* ``consecutive_protein``: ``protein`` (enum value), ``count``, ``from`` and ``to`` (slot
+  positions ``{day, slot}``).
+* ``protein_overload``: ``protein``, ``count``, ``max``.
+* ``few_vegetarian`` and ``little_fish``: ``count``, ``min``.
+
 Score (0-100), ``None`` while no slot is filled::
 
     score = 90 - 15 * warnings - 5 * infos + min(10, 2 * (distinct_proteins - 1))
@@ -122,6 +131,7 @@ def _repeated(meals: Week) -> list[VarietyIssue]:
                 severity=IssueSeverity.info if batch else IssueSeverity.warning,
                 message=f"{meal.name} is planned {len(indices)} times{tail}",
                 slots=[slot_position(i) for i in indices],
+                params={"recipe": meal.name, "count": len(indices)},
             )
         )
     return issues
@@ -163,6 +173,12 @@ def _consecutive(meals: Week) -> list[VarietyIssue]:
                         f"({_describe_range(start, end)})."
                     ),
                     slots=[slot_position(i) for i in range(start, end + 1)],
+                    params={
+                        "protein": first.protein.value,
+                        "count": end - start + 1,
+                        "from": slot_position(start),
+                        "to": slot_position(end),
+                    },
                 )
             )
         start = end + 1
@@ -194,6 +210,11 @@ def _overload(meals: Week, counts: dict[Protein, int]) -> list[VarietyIssue]:
                     f"(more than {MAX_MEALS_PER_PROTEIN})."
                 ),
                 slots=slots,
+                params={
+                    "protein": protein.value,
+                    "count": count,
+                    "max": MAX_MEALS_PER_PROTEIN,
+                },
             )
         )
     return issues
@@ -213,6 +234,7 @@ def _coverage(meals: Week, filled: int, counts: dict[Protein, int]) -> list[Vari
                         f"so far. Aim for at least {MIN_VEGETARIAN_MEALS}."
                     ),
                     slots=[],
+                    params={"count": veggie, "min": MIN_VEGETARIAN_MEALS},
                 )
             )
     if filled >= FISH_CHECK_FROM:
@@ -227,6 +249,7 @@ def _coverage(meals: Week, filled: int, counts: dict[Protein, int]) -> list[Vari
                         f"Aim for at least {MIN_FISH_MEALS}."
                     ),
                     slots=[],
+                    params={"count": fish, "min": MIN_FISH_MEALS},
                 )
             )
     return issues

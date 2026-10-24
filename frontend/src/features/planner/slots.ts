@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { DayPlan, MealSlot, MealType, Recipe, SlotRef, WeekPlan } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
 import { dayName } from "./weekMath";
@@ -7,13 +8,23 @@ export function fitsSlot(mealType: MealType, slot: MealSlot): boolean {
   return mealType === "both" || mealType === slot;
 }
 
-export function slotLabel(slot: MealSlot): string {
-  return slot === "lunch" ? "Lunch" : "Dinner";
+export function slotLabel(slot: MealSlot, t: TFunction): string {
+  return t(`meta.mealType.${slot}`);
 }
 
-/** Human description of a slot, e.g. "Monday lunch". */
-export function describeSlot(ref: SlotRef): string {
-  return `${dayName(ref.day)} ${ref.slot}`;
+/** Interpolation values for sentences that name a day: "Monday" and (for Spanish) "lunes". */
+export function dayParams(day: number, locale: string): { day: string; dayLower: string } {
+  return { day: dayName(day, locale), dayLower: dayName(day, locale, false) };
+}
+
+/** Upper-case the first letter, for sentence-style text that starts with a slot description. */
+export function capitalizeFirst(text: string, locale: string): string {
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+}
+
+/** Human description of a slot: "Monday lunch" / "comida del lunes". */
+export function describeSlot(ref: SlotRef, t: TFunction, locale: string): string {
+  return t(`planner.slotName.${ref.slot}`, dayParams(ref.day, locale));
 }
 
 export function sameSlot(a: SlotRef, b: SlotRef): boolean {
@@ -32,8 +43,8 @@ export function allSlots(): SlotRef[] {
 }
 
 /** Whether `recipe` may be placed in `slot`, plus the user-facing refusal text. */
-export function slotHint(recipe: Recipe, slot: MealSlot): string | null {
-  return fitsSlot(recipe.meal_type, slot) ? null : `Not for ${slot}`;
+export function slotHint(recipe: Recipe, slot: MealSlot, t: TFunction): string | null {
+  return fitsSlot(recipe.meal_type, slot) ? null : t(`planner.slotHint.${slot}`);
 }
 
 /** Case-insensitive search in name and ingredients (same rule as the backend). */

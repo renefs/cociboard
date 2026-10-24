@@ -184,3 +184,41 @@ def test_protein_counts_in_enum_order() -> None:
         (Protein.fish, 1),
         (Protein.none, 1),
     ]
+
+
+def test_every_issue_kind_carries_its_params() -> None:
+    from cociboard.schemas import SlotPosition
+
+    # repeated_recipe (warning) and consecutive_protein via a run of three
+    repeat = analyze_week(week(meal(1, Protein.meat, name="Lentejas"), None, None, meal(1)))
+    assert repeat.issues[0].params == {"recipe": "Lentejas", "count": 2}
+
+    run = analyze_week(week(meal(1, Protein.fish), meal(2, Protein.fish), meal(3, Protein.fish)))
+    assert run.issues[0].params == {
+        "protein": "fish",
+        "count": 3,
+        "from": SlotPosition(day=0, slot="lunch"),
+        "to": SlotPosition(day=1, slot="lunch"),
+    }
+
+    spread: list[MealInfo | None] = [None] * 14
+    for n in range(5):
+        spread[n * 2] = meal(n + 1, Protein.meat, "vegetarian")
+    overload = analyze_week(spread)
+    assert overload.issues[0].params == {"protein": "meat", "count": 5, "max": 4}
+
+    proteins = [Protein.meat, Protein.fish, Protein.poultry, Protein.eggs, Protein.dairy]
+    few = analyze_week([meal(i + 1, proteins[i % 5]) for i in range(7)] + [None] * 7)
+    assert few.issues[0].kind is IssueKind.few_vegetarian
+    assert few.issues[0].params == {"count": 0, "min": 2}
+
+    veg = [Protein.meat, Protein.poultry, Protein.eggs, Protein.dairy, Protein.legumes]
+    little = analyze_week([meal(i + 1, veg[i % 5], "vegetarian") for i in range(10)] + [None] * 4)
+    assert little.issues[0].kind is IssueKind.little_fish
+    assert little.issues[0].params == {"count": 0, "min": 2}
+
+
+def test_params_are_json_serialisable() -> None:
+    report = analyze_week(week(meal(1, Protein.fish), meal(2, Protein.fish)))
+    data = report.model_dump(mode="json")
+    assert data["issues"][0]["params"]["from"] == {"day": 0, "slot": "lunch"}

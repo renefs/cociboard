@@ -12,7 +12,15 @@ from pydantic import (
     model_validator,
 )
 
-from cociboard.domain import IssueKind, IssueSeverity, MealSlot, MealType, Protein, RecipeProperty
+from cociboard.domain import (
+    CandidateReason,
+    IssueKind,
+    IssueSeverity,
+    MealSlot,
+    MealType,
+    Protein,
+    RecipeProperty,
+)
 
 
 class HealthResponse(BaseModel):
@@ -169,8 +177,10 @@ class VarietyIssue(BaseModel):
 
     kind: IssueKind
     severity: IssueSeverity
-    message: str
+    message: str  # English, not localised: clients translate from ``kind`` and ``params``
     slots: list[SlotPosition]
+    # Values for the message template of ``kind``; see ``variety.py`` for the keys.
+    params: dict[str, str | int | SlotPosition] = Field(default_factory=dict)
 
 
 class VarietyReport(BaseModel):
@@ -207,7 +217,9 @@ class CandidateRead(BaseModel):
 
     recipe: RecipeRead
     score_delta: int
-    reason: str
+    reason: str  # English, not localised: clients translate from ``reason_code``
+    reason_code: CandidateReason
+    reason_params: dict[str, str] = Field(default_factory=dict)
     good_pick: bool
 
 

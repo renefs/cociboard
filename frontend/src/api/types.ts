@@ -109,10 +109,15 @@ export interface SlotPosition {
   slot: MealSlot;
 }
 
+/** Values behind an issue's message; the keys depend on `kind` (see `variety.py`). */
+export type IssueParams = Record<string, string | number | SlotPosition>;
+
 export interface VarietyIssue {
   kind: IssueKind;
   severity: IssueSeverity;
+  /** English text for API consumers; the UI translates from `kind` and `params`. */
   message: string;
+  params: IssueParams;
   /** Slots involved; empty for plan-wide hints such as "little fish". */
   slots: SlotPosition[];
 }
@@ -139,10 +144,26 @@ export interface SlotFill {
 }
 
 /** A recipe that fits a slot, with its effect on the variety score. */
+export const CANDIDATE_REASONS = [
+  "fits_week",
+  "adds_fish",
+  "adds_vegetable_forward",
+  "new_protein",
+  "twice_in_a_row",
+  "protein_overload",
+  "already_planned",
+  "already_planned_batch",
+] as const;
+export type CandidateReason = (typeof CANDIDATE_REASONS)[number];
+
 export interface Candidate {
   recipe: Recipe;
   score_delta: number;
+  /** English text for API consumers; the UI translates from `reason_code`. */
   reason: string;
+  reason_code: CandidateReason;
+  /** `protein` (an enum value) for `twice_in_a_row` and `protein_overload`. */
+  reason_params: Record<string, string>;
   good_pick: boolean;
 }
 

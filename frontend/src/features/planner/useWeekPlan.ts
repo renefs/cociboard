@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { assignSlot, clearSlot, getWeek, moveSlot } from "../../api/client";
 import type { Recipe, SlotRef, WeekPlan } from "../../api/types";
 import { describePlanError } from "./planErrors";
@@ -98,6 +99,7 @@ export interface PlanActions {
  * sent one at a time in call order (see `sendInOrder`) while the cache updates immediately.
  */
 export function usePlanActions(weekStart: string, onError: (message: string) => void): PlanActions {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const key = weekKey(weekStart);
   const mutationKey = ["week-change", weekStart];
@@ -113,7 +115,7 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
     },
     onError: (error, _change, context) => {
       if (context?.previous) queryClient.setQueryData(key, context.previous);
-      onError(describePlanError(error));
+      onError(describePlanError(error, t));
     },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) <= 1) {

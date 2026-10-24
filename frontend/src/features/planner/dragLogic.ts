@@ -1,7 +1,8 @@
 // Pure drag-and-drop decision logic. The dnd-kit event handlers only translate events
 // into these inputs, so the rules are unit-testable without simulating pointers.
+import type { TFunction } from "i18next";
 import type { MealSlot, Recipe, SlotRef, WeekPlan } from "../../api/types";
-import { describeSlot, fitsSlot, recipeAt, sameSlot } from "./slots";
+import { dayParams, fitsSlot, recipeAt, sameSlot } from "./slots";
 
 export type DragSource =
   | { kind: "recipe"; recipe: Recipe }
@@ -64,42 +65,74 @@ export function isDropTarget(value: unknown): value is DropTarget {
   return kind === "panel" || kind === "slot";
 }
 
-export function describeTarget(target: DropTarget): string {
-  return target.kind === "panel" ? "the recipe list" : describeSlot(target);
+/** Screen-reader announcements for dnd-kit, translated with `t` for the UI `locale`. */
+export interface AnnounceContext {
+  t: TFunction;
+  locale: string;
 }
 
-/** English screen-reader announcements for dnd-kit. */
-export function announceStart(source: DragSource): string {
-  return `Picked up ${source.recipe.name}.`;
+type SlotSentence =
+  | "a11y.over"
+  | "a11y.overOwn"
+  | "a11y.cannotDrop"
+  | "a11y.added"
+  | "a11y.moved"
+  | "a11y.removed";
+
+function slotSentence(
+  { t, locale }: AnnounceContext,
+  key: SlotSentence,
+  name: string,
+  ref: SlotRef,
+): string {
+  return t(`${key}.${ref.slot}`, { name, ...dayParams(ref.day, locale) });
 }
 
-export function announceOver(plan: WeekPlan, source: DragSource, target: DropTarget | null): string {
-  if (!target) return `${source.recipe.name} is no longer over a drop area.`;
+export function announceStart({ t }: AnnounceContext, source: DragSource): string {
+  return t("a11y.pickedUp", { name: source.recipe.name });
+}
+
+export function announceOver(
+  ctx: AnnounceContext,
+  plan: WeekPlan,
+  source: DragSource,
+  target: DropTarget | null,
+): string {
+  const { t } = ctx;
+  const name = source.recipe.name;
+  if (!target) return t("a11y.noLongerOver", { name });
   if (canDrop(plan, source, target)) {
     return target.kind === "panel"
-      ? `${source.recipe.name} is over the recipe list. Drop to remove it from the plan.`
-      : `${source.recipe.name} is over ${describeTarget(target)}.`;
+      ? t("a11y.overPanel", { name })
+      : slotSentence(ctx, "a11y.over", name, target);
   }
   if (target.kind === "slot" && source.kind === "slot" && sameSlot(source.from, target)) {
-    return `${source.recipe.name} is over its own slot, ${describeTarget(target)}.`;
+    return slotSentence(ctx, "a11y.overOwn", name, target);
   }
-  return `${source.recipe.name} cannot be dropped on ${describeTarget(target)}.`;
+  return target.kind === "panel"
+    ? t("a11y.cannotDropPanel", { name })
+    : slotSentence(ctx, "a11y.cannotDrop", name, target);
 }
 
-export function announceEnd(plan: WeekPlan, source: DragSource, target: DropTarget | null): string {
+export function announceEnd(
+  ctx: AnnounceContext,
+  plan: WeekPlan,
+  source: DragSource,
+  target: DropTarget | null,
+): string {
   const action = handleDragEnd(plan, source, target);
   const name = source.recipe.name;
-  if (!action) return `${name} was not moved.`;
+  if (!action) return ctx.t("a11y.notMoved", { name });
   switch (action.type) {
     case "assign":
-      return `${name} was added to ${describeSlot(action.to)}.`;
+      return slotSentence(ctx, "a11y.added", name, action.to);
     case "move":
-      return `${name} was moved to ${describeSlot(action.to)}.`;
+      return slotSentence(ctx, "a11y.moved", name, action.to);
     case "remove":
-      return `${name} was removed from ${describeSlot(action.from)}.`;
+      return slotSentence(ctx, "a11y.removed", name, action.from);
   }
 }
 
-export function announceCancel(source: DragSource): string {
-  return `Dragging cancelled. ${source.recipe.name} was not moved.`;
+export function announceCancel({ t }: AnnounceContext, source: DragSource): string {
+  return t("a11y.cancelled", { name: source.recipe.name });
 }

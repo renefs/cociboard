@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
 import { slotKey } from "../variety/varietyLogic";
@@ -26,6 +28,8 @@ export function WeekGrid({
   warnings,
   highlighted,
 }: WeekGridProps) {
+  const { t } = useTranslation();
+  const locale = useLocale();
   return (
     <div className="week-grid">
       {plan.days.map((day) => {
@@ -35,12 +39,12 @@ export function WeekGrid({
             key={day.day}
             className={today ? "day day--today" : "day"}
             aria-current={today ? "date" : undefined}
-            aria-label={`${dayName(day.day)} ${formatShortDate(day.date)}`}
+            aria-label={`${dayName(day.day, locale)} ${formatShortDate(day.date, locale)}`}
           >
             <h3 className="day-head">
-              <span className="day-name">{dayName(day.day)}</span>{" "}
-              <span className="day-date">{formatShortDate(day.date)}</span>{" "}
-              {today && <span className="day-today">Today</span>}
+              <span className="day-name">{dayName(day.day, locale)}</span>{" "}
+              <span className="day-date">{formatShortDate(day.date, locale)}</span>{" "}
+              {today && <span className="day-today">{t("planner.today")}</span>}
             </h3>
             {MEAL_SLOTS.map((slot) => (
               <Slot

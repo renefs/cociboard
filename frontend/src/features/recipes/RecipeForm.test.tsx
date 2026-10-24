@@ -169,12 +169,14 @@ describe("server errors", () => {
     const user = userEvent.setup();
     vi.mocked(client.createRecipe).mockRejectedValue(
       new client.ApiError(422, "invalid", [
-        { loc: ["body", "prep_minutes"], msg: "Input should be greater than 0" },
+        { loc: ["body", "prep_minutes"], type: "greater_than", msg: "Input should be greater than 0" },
       ]),
     );
     renderForm();
     await fillAndSubmit(user);
-    expect(await screen.findByText("Input should be greater than 0")).toBeInTheDocument();
+    // The server's English text is never shown; the client's own message is.
+    expect(await screen.findByText("Prep time must be at least 1 minute.")).toBeInTheDocument();
+    expect(screen.queryByText("Input should be greater than 0")).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Prep time/ })).toHaveAttribute("aria-invalid", "true");
   });
 

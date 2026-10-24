@@ -6,6 +6,7 @@ import * as client from "../../api/client";
 import { ApiError } from "../../api/client";
 import type { WeekPlan } from "../../api/types";
 import { makePlan, makeRecipe } from "../../test/fixtures";
+import i18n from "../../i18n";
 import { describePlanError } from "./planErrors";
 import { recipeAt } from "./slots";
 import { usePlanActions, weekKey } from "./useWeekPlan";
@@ -103,7 +104,7 @@ describe("usePlanActions request ordering", () => {
 
 describe("describePlanError", () => {
   it("explains a 409 conflict", () => {
-    expect(describePlanError(new ApiError(409, "Conflict"))).toBe(
+    expect(describePlanError(new ApiError(409, "Conflict"), i18n.getFixedT("en"))).toBe(
       "The plan changed meanwhile; reload and try again.",
     );
   });

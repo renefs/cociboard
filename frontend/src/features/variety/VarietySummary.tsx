@@ -1,7 +1,9 @@
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PROTEINS, type VarietyIssue, type VarietyReport } from "../../api/types";
+import { useLocale } from "../../i18n/useLocale";
 import { PROTEIN_META } from "../recipes/recipeMeta";
-import { describeIssues, isWarning, issueId, scoreLevel } from "./varietyLogic";
+import { describeIssues, isWarning, issueId, issueMessage, scoreLevel } from "./varietyLogic";
 
 interface VarietySummaryProps {
   variety: VarietyReport;
@@ -12,13 +14,14 @@ interface VarietySummaryProps {
 
 /** Colour-coded score badge that expands into the list of issues. */
 export function VarietySummary({ variety, highlightedId, onHighlight }: VarietySummaryProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const level = scoreLevel(variety.score);
-  const summary = variety.score === null ? "Not enough data" : describeIssues(variety);
+  const summary = variety.score === null ? t("variety.notEnoughData") : describeIssues(variety, t);
 
   return (
-    <section className="variety" aria-label="Variety">
+    <section className="variety" aria-label={t("variety.heading")}>
       <button
         type="button"
         className={`variety-badge variety-badge--${level}`}
@@ -26,8 +29,8 @@ export function VarietySummary({ variety, highlightedId, onHighlight }: VarietyS
         aria-controls={panelId}
         aria-label={
           variety.score === null
-            ? "Variety: not enough data yet"
-            : `Variety score ${variety.score} out of 100. ${summary}`
+            ? t("variety.notEnoughDataYet")
+            : t("variety.scoreLabel", { score: variety.score, summary })
         }
         onClick={() => setOpen((value) => !value)}
       >
@@ -35,7 +38,7 @@ export function VarietySummary({ variety, highlightedId, onHighlight }: VarietyS
           {variety.score ?? "–"}
         </span>
         <span className="variety-text" aria-hidden="true">
-          <span className="variety-title">Variety</span>
+          <span className="variety-title">{t("variety.heading")}</span>
           <span className="variety-summary">{summary}</span>
         </span>
         <span className="variety-chevron" aria-hidden="true">
@@ -45,11 +48,11 @@ export function VarietySummary({ variety, highlightedId, onHighlight }: VarietyS
 
       <div id={panelId} className="variety-panel" hidden={!open}>
         {variety.score === null ? (
-          <p className="variety-empty">Plan a few meals to see how varied the week is.</p>
+          <p className="variety-empty">{t("variety.planSome")}</p>
         ) : (
           <>
             {variety.issues.length === 0 ? (
-              <p className="variety-empty">Nice and varied. No repeats or protein streaks.</p>
+              <p className="variety-empty">{t("variety.allGood")}</p>
             ) : (
               <ul className="issue-list">
                 {variety.issues.map((issue) => (
@@ -77,6 +80,8 @@ interface IssueItemProps {
 }
 
 function IssueItem({ issue, pressed, onToggle }: IssueItemProps) {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const warning = isWarning(issue);
   const content = (
     <>
@@ -84,8 +89,8 @@ function IssueItem({ issue, pressed, onToggle }: IssueItemProps) {
         {warning ? "⚠" : "💡"}
       </span>
       <span className="issue-message">
-        <span className="visually-hidden">{warning ? "Warning: " : "Tip: "}</span>
-        {issue.message}
+        <span className="visually-hidden">{warning ? t("variety.warningPrefix") : t("variety.tipPrefix")}</span>
+        {issueMessage(issue, t, locale)}
       </span>
     </>
   );
@@ -97,7 +102,7 @@ function IssueItem({ issue, pressed, onToggle }: IssueItemProps) {
           className="issue-button"
           aria-pressed={pressed}
           onClick={onToggle}
-          title={pressed ? "Stop highlighting" : "Highlight these meals in the plan"}
+          title={pressed ? t("variety.stopHighlight") : t("variety.highlight")}
         >
           {content}
         </button>
@@ -109,13 +114,14 @@ function IssueItem({ issue, pressed, onToggle }: IssueItemProps) {
 }
 
 function ProteinCounts({ counts }: { counts: VarietyReport["protein_counts"] }) {
+  const { t } = useTranslation();
   const used = PROTEINS.filter((protein) => (counts[protein] ?? 0) > 0);
   if (used.length === 0) return null;
   return (
-    <ul className="protein-counts" aria-label="Meals per main protein">
+    <ul className="protein-counts" aria-label={t("variety.proteinCounts")}>
       {used.map((protein) => (
         <li key={protein} className="protein-count">
-          <span aria-hidden="true">{PROTEIN_META[protein].icon}</span> {PROTEIN_META[protein].label}{" "}
+          <span aria-hidden="true">{PROTEIN_META[protein].icon}</span> {t(PROTEIN_META[protein].labelKey)}{" "}
           <strong>×{counts[protein]}</strong>
         </li>
       ))}

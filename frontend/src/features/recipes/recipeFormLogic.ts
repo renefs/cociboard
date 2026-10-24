@@ -1,4 +1,7 @@
+import type { TFunction } from "i18next";
 import { ApiError } from "../../api/client";
+import { dayParams } from "../planner/slots";
+import { formatShortDate } from "../planner/weekMath";
 import type {
   ConflictSlot,
   MealType,
@@ -75,19 +78,19 @@ export function splitPastedIngredients(text: string): string[] | null {
 }
 
 /** Mirrors the backend rules (see `RecipeCreate` in schemas.py). */
-export function validateValues(values: RecipeFormValues): FormErrors {
+export function validateValues(values: RecipeFormValues, t: TFunction): FormErrors {
   const errors: FormErrors = {};
   const name = values.name.trim();
-  if (name === "") errors.name = "Enter a name.";
-  else if (name.length > NAME_MAX) errors.name = `Use at most ${NAME_MAX} characters.`;
+  if (name === "") errors.name = t("recipeForm.errors.nameRequired");
+  else if (name.length > NAME_MAX) errors.name = t("recipeForm.errors.nameTooLong", { max: NAME_MAX });
 
   const minutes = values.prepMinutes.trim();
-  if (minutes !== "" && !/^\d+$/.test(minutes)) errors.prepMinutes = "Enter whole minutes, e.g. 30.";
-  else if (minutes !== "" && Number(minutes) < 1) errors.prepMinutes = "Prep time must be at least 1 minute.";
-  else if (minutes !== "" && Number(minutes) > 100000) errors.prepMinutes = "That is too long.";
+  if (minutes !== "" && !/^\d+$/.test(minutes)) errors.prepMinutes = t("recipeForm.errors.minutesFormat");
+  else if (minutes !== "" && Number(minutes) < 1) errors.prepMinutes = t("recipeForm.errors.minutesMin");
+  else if (minutes !== "" && Number(minutes) > 100000) errors.prepMinutes = t("recipeForm.errors.minutesMax");
 
   if (cleanIngredients(values.ingredients).length === 0) {
-    errors.ingredients = "Add at least one ingredient.";
+    errors.ingredients = t("recipeForm.errors.ingredientsRequired");
   }
   return errors;
 }
@@ -116,21 +119,45 @@ const FIELD_BY_API_KEY: Record<string, FormField> = {
   properties: "properties",
 };
 
-/** Map a FastAPI 422 `detail` list to form fields. Unmapped messages are returned apart. */
-export function mapValidationErrors(detail: unknown): { fields: FormErrors; other: string[] } {
+/**
+ * Map a FastAPI 422 `detail` list to form fields. The server's English `msg` is never shown:
+ * each field gets the client's own translated message (the same one `validateValues` would
+ * give), or a generic "invalid value" for fields without a specific rule. Errors that belong
+ * to no field are returned apart, also translated.
+ */
+export function mapValidationErrors(
+  detail: unknown,
+  t: TFunction,
+): { fields: FormErrors; other: string[] } {
   const fields: FormErrors = {};
   const other: string[] = [];
   if (!Array.isArray(detail)) return { fields, other };
   for (const item of detail as unknown[]) {
     if (typeof item !== "object" || item === null) continue;
-    const { loc, msg } = item as { loc?: unknown; msg?: unknown };
-    const message = typeof msg === "string" ? msg.replace(/^Value error, /, "") : "Invalid value.";
+    const { loc, type } = item as { loc?: unknown; type?: unknown };
     const key = Array.isArray(loc) && typeof loc[1] === "string" ? loc[1] : undefined;
     const field = key ? FIELD_BY_API_KEY[key] : undefined;
-    if (field) fields[field] ??= message;
-    else other.push(message);
+    if (field) fields[field] ??= fieldMessage(field, typeof type === "string" ? type : "", t);
+    else other.push(t("recipeForm.errors.invalidValue"));
   }
   return { fields, other };
+}
+
+function fieldMessage(field: FormField, type: string, t: TFunction): string {
+  switch (field) {
+    case "name":
+      return type === "string_too_long"
+        ? t("recipeForm.errors.nameTooLong", { max: NAME_MAX })
+        : t("recipeForm.errors.nameRequired");
+    case "prepMinutes":
+      return type === "int_parsing"
+        ? t("recipeForm.errors.minutesFormat")
+        : t("recipeForm.errors.minutesMin");
+    case "ingredients":
+      return t("recipeForm.errors.ingredientsRequired");
+    default:
+      return t("recipeForm.errors.invalidValue");
+  }
 }
 
 export function isDuplicateNameError(error: unknown): boolean {
@@ -151,11 +178,10 @@ export function asMealTypeConflict(error: unknown): MealTypeConflictDetail | nul
   return null;
 }
 
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 /** "Tuesday dinner (week of 26 Oct)" for a conflicting slot. */
-export function describeConflict(conflict: ConflictSlot): string {
-  const [, month, day] = conflict.week_start.split("-").map(Number) as [number, number, number];
-  return `${DAY_NAMES[conflict.day] ?? "Day"} ${conflict.slot} (week of ${day} ${MONTHS[month - 1] ?? ""})`;
+export function describeConflict(conflict: ConflictSlot, t: TFunction, locale: string): string {
+  return t(`recipeForm.conflictSlot.${conflict.slot}`, {
+    ...dayParams(conflict.day, locale),
+    week: formatShortDate(conflict.week_start, locale),
+  });
 }

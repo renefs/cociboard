@@ -248,6 +248,8 @@ def slot_candidates(
             recipe=RecipeRead.model_validate(recipes[candidate.meal.recipe_id]),
             score_delta=candidate.score_delta,
             reason=candidate.reason,
+            reason_code=candidate.reason_code,
+            reason_params=candidate.reason_params,
             good_pick=candidate.good_pick,
         )
         for candidate in candidates_for_slot(meals, slot_index(day, slot), catalogue)

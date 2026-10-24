@@ -5,11 +5,34 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-10-24
+
+Spanish interface with browser language detection ([ADR-0009](docs/adr/0009-internationalisation.md)).
 
 ### Added
+- Spanish (Spain) and English interface, built on react-i18next with typed catalogues
+  (`frontend/src/i18n/locales`): a missing or extra Spanish key is a compile error. Recipe
+  names, ingredients and descriptions are not translated.
+- Language detection: saved choice (`localStorage` `cociboard.language`), then the browser
+  languages (any `es-*` gives Spanish), then English. `<html lang>` follows the active language.
+- An **EN | ES | Auto** switcher in the app header; Auto forgets the saved choice.
+- Locale-aware dates and weekday names (Spanish "lunes", "26 oct"), cached per locale.
+- Backend: variety issues carry `params` and slot candidates carry `reason_code`
+  (`CandidateReason`) and `reason_params`, so the frontend can translate them. The English
+  `message` and `reason` are kept.
 - `AGENTS.md`: tool-neutral instructions for AI coding agents (commands, layout,
-  conventions, UX and release rules). `CLAUDE.md` now imports it.
+  conventions, UX and release rules), including the new i18n rule. `CLAUDE.md` now imports it.
+
+### Changed
+- Screen-reader announcements for drag and drop, toasts, validation and error messages are
+  translated; server validation messages are no longer shown, each form field gets its own
+  translated message instead.
+- Plurals use proper plural rules per language instead of appending "s".
+- Slot sentences are written whole per language ("Add lunch" / "Añadir comida") instead of
+  interpolating the raw `lunch` / `dinner` value.
+- A variety issue's identity (for highlighting) is built from its kind and slots instead of
+  its English message.
+- The duplicated "Lunch" / "Dinner" labels now come from one catalogue key.
 
 ## [0.5.1] - 2026-10-24
 

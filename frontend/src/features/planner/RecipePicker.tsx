@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getCandidates } from "../../api/client";
 import type { Candidate, MealSlot, Recipe } from "../../api/types";
+import { reasonText } from "../variety/varietyLogic";
 import { RecipeCard } from "../recipes/RecipeCard";
 import { Modal } from "./Modal";
 import { matchesQuery } from "./slots";
@@ -25,6 +27,7 @@ export function filterCandidates(candidates: readonly Candidate[], query: string
  * explains why), with instant search.
  */
 export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: RecipePickerProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["candidates", weekStart, day, slot],
@@ -36,26 +39,26 @@ export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: R
   return (
     <Modal title={title} onClose={onClose} focusInput>
       <label className="search-field">
-        <span className="visually-hidden">Search recipes</span>
+        <span className="visually-hidden">{t("recipes.searchLabel")}</span>
         <input
           type="search"
-          placeholder={`Search ${slot} recipes`}
+          placeholder={t(`planner.pickerSearch.${slot}`)}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
       <div className="picker-list" aria-live="polite">
-        {isPending && <p className="status-message">Loading recipes…</p>}
+        {isPending && <p className="status-message">{t("planner.pickerLoading")}</p>}
         {isError && (
           <p className="status-message" role="alert">
-            Could not load recipes.{" "}
+            {t("planner.pickerError")}{" "}
             <button type="button" className="link-button" onClick={() => void refetch()}>
-              Retry
+              {t("common.retry")}
             </button>
           </p>
         )}
         {data && candidates.length === 0 && (
-          <p className="status-message">No {slot} recipes match.</p>
+          <p className="status-message">{t(`planner.pickerNoMatch.${slot}`)}</p>
         )}
         {candidates.map((candidate) => (
           <RecipeCard
@@ -69,7 +72,7 @@ export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: R
                 className="btn btn-primary"
                 onClick={() => onPick(candidate.recipe)}
               >
-                Choose <span className="visually-hidden">{candidate.recipe.name}</span>
+                {t("planner.choose")} <span className="visually-hidden">{candidate.recipe.name}</span>
               </button>
             }
           />
@@ -80,17 +83,18 @@ export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: R
 }
 
 function PickHint({ candidate }: { candidate: Candidate }) {
+  const { t } = useTranslation();
   const negative = candidate.score_delta < 0;
   return (
     <p className={negative ? "pick-hint pick-hint--warn" : "pick-hint"}>
       {candidate.good_pick && (
         <span className="badge badge--small good-pick">
-          <span aria-hidden="true">★</span> Good pick
+          <span aria-hidden="true">★</span> {t("planner.goodPick")}
         </span>
       )}
       <span className="pick-reason">
         {negative && <span aria-hidden="true">⚠ </span>}
-        {candidate.reason}
+        {reasonText(candidate, t)}
       </span>
     </p>
   );

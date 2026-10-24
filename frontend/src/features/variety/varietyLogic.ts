@@ -1,6 +1,8 @@
 // Pure helpers for presenting the backend's variety report. The rules themselves live in
 // backend/src/cociboard/variety.py; nothing here recomputes them.
+import type { TFunction } from "i18next";
 import type {
+  Candidate,
   Protein,
   Recipe,
   SlotRef,
@@ -9,6 +11,7 @@ import type {
   WeekPlan,
 } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
+import { describeSlot } from "../planner/slots";
 
 export type ScoreLevel = "none" | "good" | "fair" | "poor";
 
@@ -32,13 +35,63 @@ export function issueCounts(report: VarietyReport): { warnings: number; infos: n
   return { warnings, infos: report.issues.length - warnings };
 }
 
+/** Translated sentence for an issue, built from its `kind` and `params` (never `message`). */
+export function issueMessage(issue: VarietyIssue, t: TFunction, locale: string): string {
+  const { params } = issue;
+  const count = Number(params["count"] ?? 0);
+  const protein = typeof params["protein"] === "string" ? params["protein"] : "none";
+  const proteinLabel = t(`meta.protein.${protein as Protein}`);
+  const slot = (value: unknown) => describeSlot(value as SlotRef, t, locale);
+  switch (issue.kind) {
+    case "repeated_recipe":
+      return t(
+        issue.severity === "info"
+          ? "variety.issue.repeated_recipe_batch"
+          : "variety.issue.repeated_recipe",
+        { recipe: String(params["recipe"] ?? ""), count },
+      );
+    case "consecutive_protein":
+      return t("variety.issue.consecutive_protein", {
+        protein: proteinLabel,
+        count,
+        from: slot(params["from"]),
+        to: slot(params["to"]),
+      });
+    case "protein_overload":
+      return t("variety.issue.protein_overload", {
+        protein: proteinLabel,
+        count,
+        max: Number(params["max"] ?? 0),
+      });
+    case "few_vegetarian":
+      return t("variety.issue.few_vegetarian", { count, min: Number(params["min"] ?? 0) });
+    case "little_fish":
+      return t("variety.issue.little_fish", { count, min: Number(params["min"] ?? 0) });
+  }
+}
+
+/** Translated "why" of a slot candidate, built from `reason_code` and `reason_params`. */
+export function reasonText(candidate: Candidate, t: TFunction): string {
+  const protein = (candidate.reason_params["protein"] ?? "none") as Protein;
+  const label = t(`meta.protein.${protein}`);
+  return t(`variety.reason.${candidate.reason_code}`, {
+    protein: label,
+    proteinLower: label.toLocaleLowerCase(),
+  });
+}
+
 /** Slot key -> messages of the warnings that involve the slot (infos are not marked). */
-export function warningsBySlot(report: VarietyReport): Map<string, string[]> {
+export function warningsBySlot(
+  report: VarietyReport,
+  t: TFunction,
+  locale: string,
+): Map<string, string[]> {
   const bySlot = new Map<string, string[]>();
   for (const issue of report.issues.filter(isWarning)) {
+    const message = issueMessage(issue, t, locale);
     for (const slot of issue.slots) {
       const key = slotKey(slot);
-      bySlot.set(key, [...(bySlot.get(key) ?? []), issue.message]);
+      bySlot.set(key, [...(bySlot.get(key) ?? []), message]);
     }
   }
   return bySlot;
@@ -49,12 +102,12 @@ export function issueSlotKeys(issue: VarietyIssue | null): ReadonlySet<string> {
 }
 
 /** Short summary for the badge, e.g. "2 warnings, 1 tip". */
-export function describeIssues(report: VarietyReport): string {
+export function describeIssues(report: VarietyReport, t: TFunction): string {
   const { warnings, infos } = issueCounts(report);
-  if (warnings + infos === 0) return "No issues";
+  if (warnings + infos === 0) return t("variety.noIssues");
   const parts: string[] = [];
-  if (warnings > 0) parts.push(`${warnings} ${warnings === 1 ? "warning" : "warnings"}`);
-  if (infos > 0) parts.push(`${infos} ${infos === 1 ? "tip" : "tips"}`);
+  if (warnings > 0) parts.push(t("variety.warnings", { count: warnings }));
+  if (infos > 0) parts.push(t("variety.tips", { count: infos }));
   return parts.join(", ");
 }
 
@@ -93,9 +146,12 @@ export function sortByVariety(
     .map(({ recipe }) => recipe);
 }
 
-/** Stable identity of an issue across refetches (slot highlighting survives updates). */
+/**
+ * Stable identity of an issue across refetches (slot highlighting survives updates). Built
+ * from the kind and the slots, so it does not depend on the language or the wording.
+ */
 export function issueId(issue: VarietyIssue): string {
-  return `${issue.kind}:${issue.message}`;
+  return `${issue.kind}:${issue.slots.map(slotKey).join(",")}`;
 }
 
 export function findIssue(report: VarietyReport, id: string | null): VarietyIssue | null {

@@ -4,17 +4,18 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.5.1** (recipe management, accessibility and polish).
+Current version: **0.6.0** (Spanish and English interface).
 
 ## Stack
 
 - Backend: Python 3.12, FastAPI, SQLModel + SQLite, pydantic-settings, managed with [uv](https://docs.astral.sh/uv/)
-- Frontend: React 18, TypeScript (strict), Vite, TanStack Query, plain CSS with design tokens
+- Frontend: React 18, TypeScript (strict), Vite, TanStack Query, react-i18next, plain CSS with design tokens
 - Quality: ruff, mypy (strict), pytest; ESLint, `tsc --noEmit`, Vitest + Testing Library
 
 Rationale: [ADR-0001](docs/adr/0001-tech-stack.md), [ADR-0003](docs/adr/0003-recipe-data-model.md), [ADR-0004](docs/adr/0004-data-fetching-and-icons.md),
 [ADR-0005](docs/adr/0005-planner-interaction-design.md), [ADR-0006](docs/adr/0006-week-plan-data-model.md),
-[ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md).
+[ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md),
+[ADR-0009](docs/adr/0009-internationalisation.md).
 
 ## Architecture
 
@@ -112,7 +113,7 @@ recipes or `null` and `variety` is the variety report (see below).
 | `DELETE /api/weeks/{week_start}` | Clear the whole week |
 | `GET /api/weeks/{week_start}/variety` | Variety report of the week |
 | `POST /api/weeks/{week_start}/suggest` | Fill the empty slots with varied, compatible recipes; optional body `{ "seed": n }` makes the result repeatable. Filled slots are never changed |
-| `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` and `good_pick` |
+| `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` (English), `reason_code`, `reason_params` and `good_pick` |
 | `POST /api/weeks/{week_start}/move` | Move `{ from_day, from_slot, to_day, to_slot }`; swaps if the target is occupied; both recipes must fit (`404` empty source, `422` incompatible) |
 
 Deleting a recipe removes it from all weeks.
@@ -120,7 +121,10 @@ Deleting a recipe removes it from all weeks.
 ### Variety
 
 `variety` is `{ score, filled_slots, issues, protein_counts }`. `score` is 0-100, or `null` for
-an empty plan. An issue is `{ kind, severity: "info" | "warning", message, slots: [{ day, slot }] }`.
+an empty plan. An issue is `{ kind, severity: "info" | "warning", message, params, slots: [{ day, slot }] }`.
+`message` is English and not localised; clients translate from `kind` and `params` (for example
+`{ recipe, count }`, or `{ protein, count, from, to }` with slot positions). Candidate reasons work the
+same way: `reason` is English, `reason_code` and `reason_params` are what the UI translates.
 Rules (thresholds are constants in `variety.py`): a recipe repeated in the week (info if it is
 `batch_cooking`), the same main protein in consecutive meals, one protein in more than 4 meals
 (warnings); fewer than 2 vegetable-forward meals once 7 slots are filled and fewer than 2 fish
@@ -180,6 +184,23 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
   arrow keys to jump between slots, Space to drop, Esc to cancel. Enter on an assigned
   recipe opens its actions; Enter on an empty slot opens the picker.
 
+## Languages
+
+The interface is available in **English** and **Spanish (Spain)**. Only the interface is
+translated: recipe names, ingredients and descriptions stay as written.
+
+- On the first visit the language follows the browser (`navigator.languages`: any `es-*`
+  gives Spanish, anything else English).
+- The **EN | ES | Auto** switcher in the header overrides it. The choice is saved in
+  `localStorage` under `cociboard.language` (per device); **Auto** deletes it, so the
+  browser language applies again.
+- Detection order: saved choice, browser languages, English.
+
+To add a language: create `frontend/src/i18n/locales/<code>.ts` typed `satisfies Translation`
+(the compiler lists every missing key), register it in `src/i18n/index.ts` (`LANGUAGES`,
+`resources`), add its locale to `weekMath.ts`, and add a button to the switcher. Design:
+[ADR-0009](docs/adr/0009-internationalisation.md).
+
 ## Project structure
 
 ```
@@ -196,6 +217,7 @@ frontend/
   src/features/recipes/ recipe panel, cards, form, details and delete dialogs, mutations, legend, icon metadata
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, pure logic
   src/features/variety/ variety summary and presentation helpers
+  src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS
   src/App.tsx           app shell
 docs/

@@ -47,12 +47,25 @@ describe("weekMath", () => {
   });
 
   it("formats dates and ranges in English", () => {
-    expect(formatShortDate("2026-10-26")).toBe("26 Oct");
-    expect(formatWeekRange("2026-10-26")).toBe("26 Oct – 1 November 2026");
-    expect(formatWeekRangeShort("2026-10-26")).toBe("26 Oct – 1 Nov 2026");
-    expect(formatWeekRangeShort("2026-12-28")).toBe("28 Dec – 3 Jan 2027");
-    expect(dayName(0)).toBe("Monday");
-    expect(dayName(6)).toBe("Sunday");
+    expect(formatShortDate("2026-10-26", "en")).toBe("26 Oct");
+    expect(formatWeekRange("2026-10-26", "en")).toBe("26 Oct – 1 November 2026");
+    expect(formatWeekRangeShort("2026-10-26", "en")).toBe("26 Oct – 1 Nov 2026");
+    expect(formatWeekRangeShort("2026-12-28", "en")).toBe("28 Dec – 3 Jan 2027");
+    expect(dayName(0, "en")).toBe("Monday");
+    expect(dayName(6, "en")).toBe("Sunday");
+  });
+
+  it("formats dates and ranges in Spanish", () => {
+    expect(formatShortDate("2026-10-26", "es")).toBe("26 oct");
+    expect(formatWeekRange("2026-10-26", "es")).toBe("26 oct – 1 de noviembre de 2026");
+    expect(formatWeekRangeShort("2026-10-26", "es")).toBe("26 oct – 1 nov 2026");
+    expect(dayName(0, "es")).toBe("Lunes");
+    expect(dayName(5, "es")).toBe("Sábado");
+    expect(dayName(0, "es", false)).toBe("lunes");
+  });
+
+  it("falls back to English for an unknown locale", () => {
+    expect(dayName(2, "fr")).toBe("Wednesday");
   });
 });
 
