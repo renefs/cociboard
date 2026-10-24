@@ -1,6 +1,6 @@
 """FastAPI application factory."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
@@ -26,7 +26,7 @@ def health() -> HealthResponse:
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     """Create tables and optionally seed an empty database."""
     init_db()
     if get_settings().seed_on_startup:
