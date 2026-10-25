@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-10-25
+
+Prebuilt Docker image on the GitHub Container Registry
+([ADR-0011](docs/adr/0011-container-registry-image.md)).
+
+### Added
+- GitHub Actions workflow `.github/workflows/docker-publish.yml`: builds the image for
+  `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/renefs/cociboard` on pushes
+  to `main` (`main`), version tags (`X.Y.Z`, `X.Y`, `latest`) and by hand; every build is
+  also tagged `sha-<commit>`. The package is private, like the repository.
+- `docker-compose.ghcr.yml`: runs the prebuilt image without building, with the same
+  settings and `./data` volume; `COCIBOARD_TAG` picks the tag (`.env.example`).
+- README "Deployment (prebuilt image)" section: logging in to ghcr.io with a
+  `read:packages` token, running and updating, and the Synology steps.
+
+### Changed
+- `Dockerfile`: the frontend stage runs on the build platform, so cross-platform builds
+  don't emulate the npm install and Vite build.
+
 ## [0.7.0] - 2026-10-24
 
 Docker Compose deployment ([ADR-0010](docs/adr/0010-docker-deployment.md)).
