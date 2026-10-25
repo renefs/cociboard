@@ -3,7 +3,9 @@
 # Base images are multi-arch, so this builds on amd64 and arm64 hosts (Synology included).
 
 # --- Frontend build ---------------------------------------------------------------
-FROM node:22-bookworm-slim AS frontend
+# The output is static files, so this stage runs on the build machine's platform even
+# in a cross-platform build (no emulated npm install).
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS frontend
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund

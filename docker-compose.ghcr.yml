@@ -1,0 +1,18 @@
+# Cociboard from the prebuilt image on the GitHub Container Registry: nothing is built
+# on the host. Copy this file as `docker-compose.yml` into an empty folder (optionally
+# with a `.env`, see `.env.example`). The image is private: run `docker login ghcr.io`
+# first. See "Deployment (prebuilt image)" in README.md.
+services:
+  cociboard:
+    image: ghcr.io/renefs/cociboard:${COCIBOARD_TAG:-latest}
+    container_name: cociboard
+    restart: unless-stopped
+    ports:
+      - "${COCIBOARD_PORT:-8000}:8000"
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Etc/UTC}
+      COCIBOARD_SEED_ON_STARTUP: ${COCIBOARD_SEED_ON_STARTUP:-true}
+    volumes:
+      - ./data:/data

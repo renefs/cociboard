@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.7.0** (Docker Compose deployment).
+Current version: **0.8.0** (prebuilt Docker image on the GitHub Container Registry).
 
 ## Stack
 
@@ -15,7 +15,8 @@ Current version: **0.7.0** (Docker Compose deployment).
 Rationale: [ADR-0001](docs/adr/0001-tech-stack.md), [ADR-0003](docs/adr/0003-recipe-data-model.md), [ADR-0004](docs/adr/0004-data-fetching-and-icons.md),
 [ADR-0005](docs/adr/0005-planner-interaction-design.md), [ADR-0006](docs/adr/0006-week-plan-data-model.md),
 [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md),
-[ADR-0009](docs/adr/0009-internationalisation.md), [ADR-0010](docs/adr/0010-docker-deployment.md).
+[ADR-0009](docs/adr/0009-internationalisation.md), [ADR-0010](docs/adr/0010-docker-deployment.md),
+[ADR-0011](docs/adr/0011-container-registry-image.md).
 
 ## Architecture
 
@@ -117,6 +118,69 @@ Keep `./data` on a local disk: SQLite should not live on a network share (NFS/SM
 
 On DSM 7.0/7.1 with the older Docker package, run `sudo docker-compose up -d --build`
 in that folder over SSH.
+
+## Deployment (prebuilt image)
+
+GitHub Actions (`.github/workflows/docker-publish.yml`) builds the same image for
+`linux/amd64` and `linux/arm64` and pushes it to the GitHub Container Registry as
+`ghcr.io/renefs/cociboard`. Nothing is built on the host, so this is the fastest way to
+run Cociboard on a NAS. Tags:
+
+| Tag | Updated when |
+| --- | --- |
+| `latest`, `0.8.0`, `0.8` | A version tag `vX.Y.Z` is pushed (releases only) |
+| `main` | Every push to `main` (may be ahead of the last release) |
+| `sha-<commit>` | Every build, to pin an exact commit |
+
+The workflow can also be started by hand (Actions → Publish Docker image → Run
+workflow). [ADR-0011](docs/adr/0011-container-registry-image.md) explains the setup.
+
+**The image is private** (it inherits the visibility of the private repository), so every
+host that pulls it has to log in first:
+
+1. On GitHub, create a personal access token (classic) with only the `read:packages`
+   scope: Settings → Developer settings → Personal access tokens → Tokens (classic).
+2. On the host, log in once; Docker stores the credentials:
+
+   ```sh
+   echo <token> | docker login ghcr.io -u <github-user> --password-stdin
+   ```
+
+Then, in an empty folder, copy `docker-compose.ghcr.yml` as `docker-compose.yml`
+(optionally with a `.env`, see `.env.example`) and start it:
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+The settings are the ones in the table above, plus `COCIBOARD_TAG` (default `latest`) to
+run another tag. To update, run the same two commands; the data in `./data` is kept.
+Switching an existing installation from the source build only needs this compose file in
+the same folder, since both use `./data`.
+
+### Synology NAS with the prebuilt image
+
+1. Create a folder, e.g. `/volume1/docker/cociboard`, and put `docker-compose.ghcr.yml`
+   in it renamed to `docker-compose.yml` (plus an optional `.env` with `PUID`/`PGID` and
+   `TZ`, as in the steps above).
+2. Enable SSH (Control Panel → Terminal & SNMP), connect, and log in as root so Container
+   Manager can use the credentials:
+
+   ```sh
+   echo <token> | sudo docker login ghcr.io -u <github-user> --password-stdin
+   ```
+
+   Adding ghcr.io under Container Manager → Registry has been reported to fail with
+   GitHub, so the command line is the reliable way to log in.
+3. Container Manager → **Project** → **Create**: pick the folder; it finds
+   `docker-compose.yml` and pulls the image instead of building it.
+4. To update, run `sudo docker compose pull && sudo docker compose up -d` in the folder
+   over SSH. Stopping and starting the project in Container Manager does not pull a
+   newer image.
+
+To make the image public later: GitHub → the package's page → Package settings → Change
+visibility. Then no login is needed.
 
 ## API
 
@@ -250,6 +314,8 @@ VERSION                 single source of the release version
 Makefile
 Dockerfile              production image (frontend build + backend)
 docker-compose.yml      deployment; settings in .env (see .env.example)
+docker-compose.ghcr.yml deployment from the prebuilt image on ghcr.io
+.github/workflows/      docker-publish.yml: builds and pushes the image to ghcr.io
 docker/entrypoint.sh    fixes /data ownership, drops to PUID:PGID
 backend/
   pyproject.toml
