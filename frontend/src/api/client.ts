@@ -8,6 +8,7 @@ import type {
   RecipeUpdate,
   RecipeUsage,
   RestoreResult,
+  SlotAssignBody,
   SlotFill,
   ShoppingExtraUpdate,
   ShoppingList,
@@ -110,12 +111,26 @@ export function assignSlot(
   weekStart: string,
   day: number,
   slot: MealSlot,
-  recipeId: number,
+  body: SlotAssignBody,
 ): Promise<WeekPlan> {
   return request<WeekPlan>(`/weeks/${weekStart}/days/${day}/${slot}`, {
     method: "PUT",
     headers: JSON_HEADERS,
-    body: JSON.stringify({ recipe_id: recipeId }),
+    body: JSON.stringify(body),
+  });
+}
+
+/** Set or clear (`null`) the note of a filled slot. */
+export function setSlotNote(
+  weekStart: string,
+  day: number,
+  slot: MealSlot,
+  note: string | null,
+): Promise<WeekPlan> {
+  return request<WeekPlan>(`/weeks/${weekStart}/days/${day}/${slot}/note`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ note }),
   });
 }
 

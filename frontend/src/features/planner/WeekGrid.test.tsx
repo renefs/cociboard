@@ -87,3 +87,39 @@ describe("WeekGrid", () => {
     expect(dinner).toHaveAttribute("data-select-target", "true");
   });
 });
+
+describe("WeekGrid special meals and notes", () => {
+  it("renders a special meal with its icon, label and a remove button", async () => {
+    const user = userEvent.setup();
+    const { onRemove, onActivate } = renderGrid(
+      makePlan("2026-10-26", {}, undefined, { specials: { "2:dinner": "leftovers" } }),
+    );
+    const slot = screen.getByRole("group", { name: "Wednesday dinner" });
+    expect(slot).toHaveClass("slot--special", "slot--filled");
+    expect(within(slot).getByText("Leftovers")).toBeInTheDocument();
+    expect(within(slot).queryByRole("button", { name: /^Add dinner/ })).not.toBeInTheDocument();
+    await user.click(within(slot).getByRole("button", { name: /^Leftovers, Wednesday dinner/ }));
+    expect(onActivate).toHaveBeenCalledWith(2, "dinner");
+    await user.click(within(slot).getByRole("button", { name: "Remove Leftovers from Wednesday dinner" }));
+    expect(onRemove).toHaveBeenCalledWith(2, "dinner");
+  });
+
+  it("shows a note as a muted truncated line with the full text in the accessible name", () => {
+    const long = "Bring the big pot and the good wine for Ana's birthday dinner with everyone";
+    renderGrid(
+      makePlan("2026-10-26", { "0:lunch": makeRecipe({ id: 1, name: "Paella", meal_type: "both" }) }, undefined, {
+        notes: { "0:lunch": long },
+      }),
+    );
+    const slot = screen.getByRole("group", { name: "Monday lunch" });
+    expect(within(slot).getByText(long)).toHaveClass("slot-note");
+    expect(within(slot).getByRole("button", { name: new RegExp(`^Paella, Monday lunch.*Note: ${long}\\.$`) })).toBeInTheDocument();
+  });
+
+  it("shows no warning marker on a special slot and no note line when there is no note", () => {
+    renderGrid(makePlan("2026-10-26", {}, undefined, { specials: { "0:lunch": "free" } }));
+    const slot = screen.getByRole("group", { name: "Monday lunch" });
+    expect(slot.querySelector(".slot-note")).toBeNull();
+    expect(slot.querySelector(".slot-warning")).toBeNull();
+  });
+});

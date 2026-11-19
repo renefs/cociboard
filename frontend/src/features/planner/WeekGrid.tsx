@@ -4,6 +4,7 @@ import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
 import { slotKey } from "../variety/varietyLogic";
 import { Slot } from "./Slot";
+import { mealOfDay } from "./slots";
 import { dayName, formatShortDate, isToday } from "./weekMath";
 
 interface WeekGridProps {
@@ -51,7 +52,7 @@ export function WeekGrid({
                 key={slot}
                 day={day.day}
                 slot={slot}
-                recipe={day[slot]}
+                meal={mealOfDay(day, slot)}
                 plan={plan}
                 selecting={selecting}
                 onActivate={onActivate}

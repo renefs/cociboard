@@ -23,6 +23,7 @@ vi.mock("../../api/client", async (importOriginal) => {
     assignSlot: vi.fn(),
     clearSlot: vi.fn(),
     moveSlot: vi.fn(),
+    setSlotNote: vi.fn(),
   };
 });
 
@@ -93,7 +94,7 @@ describe("Planner tap-to-assign", () => {
     const dialog = await screen.findByRole("dialog", { name: /Add lunch on Monday/ });
     await user.click(await within(dialog).findByRole("button", { name: /Choose Lentejas estofadas/ }));
 
-    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 0, "lunch", 1);
+    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 0, "lunch", { recipe_id: 1, note: null });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const slot = screen.getByRole("group", { name: "Monday lunch" });
     expect(within(slot).getByText("Lentejas estofadas")).toBeInTheDocument();
@@ -175,7 +176,7 @@ describe("Planner select mode", () => {
     expect(screen.getByRole("group", { name: "Thursday lunch" })).toHaveClass("slot--blocked");
     await user.click(screen.getByRole("button", { name: "Add dinner on Thursday" }));
 
-    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 3, "dinner", 2);
+    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 3, "dinner", { recipe_id: 2, note: null });
     expect(screen.queryByText(/Choose a slot for/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add Ensalada mixta to the plan" }));
@@ -302,7 +303,7 @@ describe("Planner suggest, clear and undo", () => {
     expect(within(screen.getByRole("group", { name: "Tuesday dinner" })).getByText("Tortilla de patatas")).toBeInTheDocument();
 
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
-    expect(client.replaceWeek).toHaveBeenCalledWith(WEEK, [{ day: 0, slot: "lunch", recipe_id: 1 }]);
+    expect(client.replaceWeek).toHaveBeenCalledWith(WEEK, [{ day: 0, slot: "lunch", recipe_id: 1, special: null, note: null }]);
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Add dinner on Tuesday" })).toBeInTheDocument(),
     );
@@ -331,7 +332,7 @@ describe("Planner suggest, clear and undo", () => {
     expect(within(screen.getByRole("group", { name: "Tuesday dinner" })).getByText("Tortilla de patatas")).toBeInTheDocument();
 
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
-    expect(client.replaceWeek).toHaveBeenCalledWith(WEEK, [{ day: 0, slot: "lunch", recipe_id: 1 }]);
+    expect(client.replaceWeek).toHaveBeenCalledWith(WEEK, [{ day: 0, slot: "lunch", recipe_id: 1, special: null, note: null }]);
     expect(await screen.findByText("Restored the previous plan.")).toBeInTheDocument();
   });
 
@@ -417,8 +418,8 @@ describe("Planner suggest, clear and undo", () => {
 
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
     expect(client.replaceWeek).toHaveBeenCalledWith(WEEK, [
-      { day: 0, slot: "lunch", recipe_id: 1 },
-      { day: 2, slot: "dinner", recipe_id: 2 },
+      { day: 0, slot: "lunch", recipe_id: 1, special: null, note: null },
+      { day: 2, slot: "dinner", recipe_id: 2, special: null, note: null },
     ]);
     expect(await screen.findByText("Lentejas estofadas", { selector: ".slot-name" })).toBeInTheDocument();
   });
@@ -539,5 +540,160 @@ describe("Planner loading and error states", () => {
   it("keeps a polite live region mounted for toasts", async () => {
     await renderPlanner();
     expect(document.querySelector(".toast-region")).toHaveAttribute("aria-live", "polite");
+  });
+});
+
+describe("Planner special meals and notes", () => {
+  it("sets a slot to a special meal from the picker chips", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.assignSlot).mockImplementation(() =>
+      Promise.resolve(serverReturns(makePlan(WEEK, {}, undefined, { specials: { "0:dinner": "eating_out" } }))),
+    );
+    await renderPlanner();
+
+    await user.click(screen.getByRole("button", { name: "Add dinner on Monday" }));
+    const dialog = await screen.findByRole("dialog", { name: /Add dinner on Monday/ });
+    const chips = within(within(dialog).getByRole("group", { name: "Or plan something else" })).getAllByRole("button");
+    expect(chips.map((chip) => chip.textContent?.trim())).toEqual([
+      expect.stringContaining("Eating out"),
+      expect.stringContaining("Leftovers"),
+      expect.stringContaining("Free"),
+    ]);
+    await user.click(within(dialog).getByRole("button", { name: /Eating out/ }));
+
+    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 0, "dinner", { special: "eating_out", note: null });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const slot = screen.getByRole("group", { name: "Monday dinner" });
+    expect(within(slot).getByText("Eating out")).toBeInTheDocument();
+    expect(await findToast()).toHaveTextContent("Monday dinner set to Eating out.");
+  });
+
+  it("offers the specials when replacing and keeps the slot's note", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, { "0:lunch": lentils }, undefined, { notes: { "0:lunch": "Double batch" } }));
+    vi.mocked(client.assignSlot).mockImplementation(() =>
+      Promise.resolve(
+        serverReturns(makePlan(WEEK, {}, undefined, { specials: { "0:lunch": "leftovers" }, notes: { "0:lunch": "Double batch" } })),
+      ),
+    );
+    await renderPlanner();
+
+    await user.click(screen.getByRole("button", { name: /^Lentejas estofadas, Monday lunch/ }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Replace" }));
+    await user.click(await screen.findByRole("button", { name: /Leftovers/ }));
+
+    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 0, "lunch", { special: "leftovers", note: "Double batch" });
+  });
+
+  it("shows specials and notes with an accessible name, and lists no recipe details action for a special", async () => {
+    const user = userEvent.setup();
+    serverReturns(
+      makePlan(WEEK, {}, undefined, { specials: { "1:dinner": "free" }, notes: { "1:dinner": "Ana's birthday" } }),
+    );
+    await renderPlanner();
+
+    const slot = screen.getByRole("group", { name: "Tuesday dinner" });
+    expect(within(slot).getByText("Ana's birthday")).toHaveClass("slot-note");
+    await user.click(within(slot).getByRole("button", { name: /^Free, Tuesday dinner.*Note: Ana's birthday\./ }));
+    const dialog = await screen.findByRole("dialog", { name: "Free" });
+    expect(within(dialog).queryByRole("button", { name: "View details" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Edit note" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Replace" })).toBeInTheDocument();
+  });
+
+  it("adds a note to a recipe through the note form", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, { "0:lunch": lentils }));
+    vi.mocked(client.setSlotNote).mockImplementation(() =>
+      Promise.resolve(serverReturns(makePlan(WEEK, { "0:lunch": lentils }, undefined, { notes: { "0:lunch": "Double batch" } }))),
+    );
+    await renderPlanner();
+
+    await user.click(screen.getByRole("button", { name: /^Lentejas estofadas, Monday lunch/ }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Add note" }));
+    const form = await screen.findByRole("dialog", { name: "Add note" });
+    expect(within(form).queryByRole("button", { name: "Remove note" })).not.toBeInTheDocument();
+    const input = within(form).getByRole("textbox", { name: /Note/ });
+    expect(input).toHaveAttribute("maxlength", "120");
+    await user.type(input, "  Double batch ");
+    await user.click(within(form).getByRole("button", { name: "Save note" }));
+
+    expect(client.setSlotNote).toHaveBeenCalledWith(WEEK, 0, "lunch", "Double batch");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const slot = screen.getByRole("group", { name: "Monday lunch" });
+    expect(within(slot).getByText("Double batch")).toBeInTheDocument();
+  });
+
+  it("edits and removes a note", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, {}, undefined, { specials: { "2:lunch": "eating_out" }, notes: { "2:lunch": "Pizza" } }));
+    vi.mocked(client.setSlotNote).mockImplementation((_week, _day, _slot, note) =>
+      Promise.resolve(
+        serverReturns(makePlan(WEEK, {}, undefined, { specials: { "2:lunch": "eating_out" }, ...(note ? { notes: { "2:lunch": note } } : {}) })),
+      ),
+    );
+    await renderPlanner();
+
+    await user.click(screen.getByRole("button", { name: /^Eating out, Wednesday lunch/ }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Edit note" }));
+    let form = await screen.findByRole("dialog", { name: "Edit note" });
+    const input = within(form).getByRole("textbox", { name: /Note/ });
+    expect(input).toHaveValue("Pizza");
+    await user.clear(input);
+    await user.type(input, "Sushi");
+    await user.click(within(form).getByRole("button", { name: "Save note" }));
+    expect(client.setSlotNote).toHaveBeenLastCalledWith(WEEK, 2, "lunch", "Sushi");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /^Eating out, Wednesday lunch/ }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Edit note" }));
+    form = await screen.findByRole("dialog", { name: "Edit note" });
+    await user.click(within(form).getByRole("button", { name: "Remove note" }));
+    expect(client.setSlotNote).toHaveBeenLastCalledWith(WEEK, 2, "lunch", null);
+    await waitFor(() => expect(screen.queryByText("Sushi")).not.toBeInTheDocument());
+  });
+
+  it("saves a blank note as no note", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, { "0:lunch": lentils }));
+    vi.mocked(client.setSlotNote).mockImplementation(() => Promise.resolve(serverPlan));
+    await renderPlanner();
+    await user.click(screen.getByRole("button", { name: /^Lentejas estofadas, Monday lunch/ }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Add note" }));
+    const form = await screen.findByRole("dialog", { name: "Add note" });
+    await user.type(within(form).getByRole("textbox", { name: /Note/ }), "   ");
+    await user.click(within(form).getByRole("button", { name: "Save note" }));
+    expect(client.setSlotNote).toHaveBeenCalledWith(WEEK, 0, "lunch", null);
+  });
+
+  it("removes a special meal like a recipe", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, {}, undefined, { specials: { "0:lunch": "free" } }));
+    vi.mocked(client.clearSlot).mockImplementation(() => Promise.resolve(serverReturns(makePlan(WEEK))));
+    await renderPlanner();
+    await user.click(screen.getByRole("button", { name: "Remove Free from Monday lunch" }));
+    expect(client.clearSlot).toHaveBeenCalledWith(WEEK, 0, "lunch");
+  });
+
+  it("does not let Suggest or Copy run on a full week made of specials, and Undo restores them", async () => {
+    const user = userEvent.setup();
+    const all: Partial<Record<`${number}:${MealSlot}`, "free">> = {};
+    for (let day = 0; day < 7; day++) {
+      all[`${day}:lunch`] = "free";
+      all[`${day}:dinner`] = "free";
+    }
+    serverReturns(makePlan(WEEK, {}, undefined, { specials: all, notes: { "0:lunch": "hi" } }));
+    vi.mocked(client.clearWeek).mockImplementation(() => Promise.resolve(serverReturns(makePlan(WEEK))));
+    const before = makePlan(WEEK, {}, undefined, { specials: all, notes: { "0:lunch": "hi" } });
+    vi.mocked(client.replaceWeek).mockResolvedValue(before);
+    await renderPlanner();
+    expect(screen.getByRole("button", { name: /Suggest/ })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Clear week" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Clear week" }));
+    await user.click(within(await findToast()).getByRole("button", { name: "Undo" }));
+    const fills = vi.mocked(client.replaceWeek).mock.calls[0]?.[1] ?? [];
+    expect(fills).toHaveLength(14);
+    expect(fills[0]).toEqual({ day: 0, slot: "lunch", recipe_id: null, special: "free", note: "hi" });
   });
 });

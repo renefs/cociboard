@@ -11,6 +11,7 @@ from cociboard.db import get_session
 from cociboard.domain import MealSlot, week_start_for
 from cociboard.schemas import (
     CandidateRead,
+    NoteSet,
     RecipeArchivedDetail,
     SlotAssign,
     SlotMove,
@@ -41,7 +42,7 @@ def _translate(exc: Exception) -> HTTPException:
     if isinstance(exc, repository.RecipeNotFoundError):
         return HTTPException(status.HTTP_404_NOT_FOUND, f"Recipe {exc.args[0]} not found")
     if isinstance(exc, planner.EmptySlotError):
-        return HTTPException(status.HTTP_404_NOT_FOUND, "The source slot is empty")
+        return HTTPException(status.HTTP_404_NOT_FOUND, "The slot is empty")
     if isinstance(exc, planner.InvalidWeekError):
         return _unprocessable("week_start must be a Monday")
     if isinstance(exc, planner.InvalidCopySourceError):
@@ -56,6 +57,8 @@ def _translate(exc: Exception) -> HTTPException:
         return HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail.model_dump(mode="json")
         )
+    if isinstance(exc, planner.InvalidMealError):
+        return _unprocessable("A slot holds exactly one of a recipe and a special meal")
     if isinstance(exc, planner.IncompatibleSlotError):
         return _unprocessable("The recipe's meal type does not fit that slot")
     if isinstance(exc, planner.PlanConflictError):
@@ -90,6 +93,7 @@ def replace_week(week_start: date, body: WeekReplace, session: SessionDep) -> We
     except (
         repository.RecipeNotFoundError,
         planner.InvalidWeekError,
+        planner.InvalidMealError,
         planner.IncompatibleSlotError,
         planner.PlanConflictError,
     ) as exc:
@@ -153,9 +157,14 @@ def get_candidates(
 def assign_slot(
     week_start: date, day: DayPath, slot: MealSlot, body: SlotAssign, session: SessionDep
 ) -> WeekPlanRead:
-    """Assign a recipe to a slot, replacing the current one."""
+    """Assign a recipe or a special meal to a slot, replacing the current entry.
+
+    Send exactly one of ``recipe_id`` and ``special``. The note sent is the note stored.
+    """
     try:
-        return planner.assign_slot(session, week_start, day, slot, body.recipe_id)
+        return planner.assign_slot(
+            session, week_start, day, slot, body.recipe_id, body.special, body.note
+        )
     except (
         repository.RecipeNotFoundError,
         planner.RecipeArchivedError,
@@ -163,6 +172,17 @@ def assign_slot(
         planner.IncompatibleSlotError,
         planner.PlanConflictError,
     ) as exc:
+        raise _translate(exc) from None
+
+
+@router.patch("/{week_start}/days/{day}/{slot}/note", response_model=WeekPlanRead)
+def set_note(
+    week_start: date, day: DayPath, slot: MealSlot, body: NoteSet, session: SessionDep
+) -> WeekPlanRead:
+    """Set or clear (``null``) the note of a filled slot; 404 when the slot is empty."""
+    try:
+        return planner.set_note(session, week_start, day, slot, body.note)
+    except (planner.InvalidWeekError, planner.EmptySlotError) as exc:
         raise _translate(exc) from None
 
 
@@ -177,7 +197,7 @@ def clear_slot(week_start: date, day: DayPath, slot: MealSlot, session: SessionD
 
 @router.post("/{week_start}/move", response_model=WeekPlanRead)
 def move_slot(week_start: date, body: SlotMove, session: SessionDep) -> WeekPlanRead:
-    """Move a recipe to another slot, swapping when the target is occupied."""
+    """Move a meal (recipe or special, with its note) to another slot, swapping if occupied."""
     try:
         return planner.move_slot(
             session, week_start, body.from_day, body.from_slot, body.to_day, body.to_slot

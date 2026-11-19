@@ -106,6 +106,12 @@ CHANGELOG entry.
   score-neutral "planned recently" tips, suggestions that avoid recent recipes (ADR-0015).
 - **Copy last week** fills the empty slots from the previous week, skipping archived recipes.
 
+### v0.13.0 — Special meals and notes (done)
+- A slot can be **Eating out**, **Leftovers** or **Free** instead of a recipe: Suggest skips it,
+  variety treats it as a break, the shopping list ignores it (ADR-0016).
+- Notes (up to 120 characters) on any filled slot; migration `0004_slot_special_and_note`;
+  backup format version 2 (version 1 still restores).
+
 ## Model usage
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).

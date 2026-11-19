@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import { ApiError } from "../../api/client";
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, type BackupErrorDetail } from "../../api/types";
+import { BACKUP_FORMAT, READABLE_BACKUP_VERSIONS, type BackupErrorDetail } from "../../api/types";
 import { formatLongDate } from "../planner/weekMath";
 
 /** Files above this size are not sent: the server would answer 413. */
@@ -36,7 +36,7 @@ export function checkBackup(document: unknown): BackupCheck {
   }
   const doc = document as Record<string, unknown>;
   if (doc.format !== BACKUP_FORMAT) return { ok: false, reason: "wrongFormat" };
-  if (doc.format_version !== BACKUP_FORMAT_VERSION) return { ok: false, reason: "unsupportedVersion" };
+  if (typeof doc.format_version !== "number" || !READABLE_BACKUP_VERSIONS.includes(doc.format_version)) return { ok: false, reason: "unsupportedVersion" };
   if (!LISTS.every((key) => Array.isArray(doc[key]))) return { ok: false, reason: "incomplete" };
   const length = (key: (typeof LISTS)[number]) => (doc[key] as unknown[]).length;
   return {
@@ -95,6 +95,8 @@ const SERVER_CODES = [
   "invalid_day",
   "unknown_recipe_ref",
   "meal_does_not_fit",
+  "meal_needs_recipe_or_special",
+  "note_too_long",
   "duplicate_slot",
   "duplicate_shopping_check",
 ] as const;
@@ -112,7 +114,7 @@ export function describeRestoreError(error: unknown, t: TFunction): string {
   if (error.status === 422) {
     const detail = backupDetail(error);
     const code = SERVER_CODES.find((known) => known === detail?.code) ?? "invalid_document";
-    const params = { version: "", name: "", week_start: "", recipe: "", ...detail?.params };
+    const params = { version: "", name: "", week_start: "", recipe: "", max: "", ...detail?.params };
     return t(`backup.restoreErrors.${code}`, params);
   }
   return t("backup.restoreErrors.server");

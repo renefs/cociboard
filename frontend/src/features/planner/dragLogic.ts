@@ -2,11 +2,19 @@
 // into these inputs, so the rules are unit-testable without simulating pointers.
 import type { TFunction } from "i18next";
 import type { MealSlot, Recipe, SlotRef, WeekPlan } from "../../api/types";
-import { dayParams, fitsSlot, recipeAt, sameSlot } from "./slots";
+import {
+  dayParams,
+  fitsSlot,
+  mealName,
+  recipeAt,
+  recipeOf,
+  sameSlot,
+  type SlotMeal,
+} from "./slots";
 
 export type DragSource =
   | { kind: "recipe"; recipe: Recipe }
-  | { kind: "slot"; recipe: Recipe; from: SlotRef };
+  | { kind: "slot"; meal: SlotMeal; from: SlotRef };
 
 export type DropTarget = { kind: "slot"; day: number; slot: MealSlot } | { kind: "panel" };
 
@@ -21,6 +29,16 @@ export const recipeDragId = (recipe: Recipe) => `recipe:${recipe.id}`;
 export const slotDragId = (ref: SlotRef) => `slot-item:${ref.day}:${ref.slot}`;
 export const slotDropId = (ref: SlotRef) => `slot:${ref.day}:${ref.slot}`;
 
+/** The recipe being dragged, or `null` for a special meal (which fits any slot). */
+export function sourceRecipe(source: DragSource): Recipe | null {
+  return source.kind === "recipe" ? source.recipe : recipeOf(source.meal);
+}
+
+/** Name for announcements: the recipe name or the translated special label. */
+export function sourceName(source: DragSource, t: TFunction): string {
+  return source.kind === "recipe" ? source.recipe.name : mealName(source.meal, t);
+}
+
 /** Decide what dropping `source` on `target` does, or `null` if the drop is refused. */
 export function resolveDrop(
   plan: WeekPlan,
@@ -31,7 +49,8 @@ export function resolveDrop(
     return source.kind === "slot" ? { type: "remove", from: source.from } : null;
   }
   const to: SlotRef = { day: target.day, slot: target.slot };
-  if (!fitsSlot(source.recipe.meal_type, to.slot)) return null;
+  const recipe = sourceRecipe(source);
+  if (recipe && !fitsSlot(recipe.meal_type, to.slot)) return null;
   if (source.kind === "recipe") return { type: "assign", to, recipe: source.recipe };
   if (sameSlot(source.from, to)) return null;
   const occupant = recipeAt(plan, to);
@@ -89,7 +108,7 @@ function slotSentence(
 }
 
 export function announceStart({ t }: AnnounceContext, source: DragSource): string {
-  return t("a11y.pickedUp", { name: source.recipe.name });
+  return t("a11y.pickedUp", { name: sourceName(source, t) });
 }
 
 export function announceOver(
@@ -99,7 +118,7 @@ export function announceOver(
   target: DropTarget | null,
 ): string {
   const { t } = ctx;
-  const name = source.recipe.name;
+  const name = sourceName(source, t);
   if (!target) return t("a11y.noLongerOver", { name });
   if (canDrop(plan, source, target)) {
     return target.kind === "panel"
@@ -121,7 +140,7 @@ export function announceEnd(
   target: DropTarget | null,
 ): string {
   const action = handleDragEnd(plan, source, target);
-  const name = source.recipe.name;
+  const name = sourceName(source, ctx.t);
   if (!action) return ctx.t("a11y.notMoved", { name });
   switch (action.type) {
     case "assign":
@@ -134,5 +153,5 @@ export function announceEnd(
 }
 
 export function announceCancel({ t }: AnnounceContext, source: DragSource): string {
-  return t("a11y.cancelled", { name: source.recipe.name });
+  return t("a11y.cancelled", { name: sourceName(source, t) });
 }

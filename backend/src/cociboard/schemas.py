@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal, Self
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
@@ -14,6 +15,7 @@ from pydantic import (
 )
 
 from cociboard.domain import (
+    NOTE_MAX_LENGTH,
     CandidateReason,
     IssueKind,
     IssueSeverity,
@@ -21,6 +23,7 @@ from cociboard.domain import (
     MealType,
     Protein,
     RecipeProperty,
+    SpecialMeal,
 )
 
 
@@ -177,10 +180,45 @@ class RecipeArchivedDetail(BaseModel):
     recipe_id: int
 
 
-class SlotAssign(BaseModel):
-    """Body of ``PUT /api/weeks/{week_start}/days/{day}/{slot}``."""
+def clean_note(value: str | None) -> str | None:
+    """Trim a note; an empty one becomes ``None``. Raises when it is longer than 120 characters."""
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if len(cleaned) > NOTE_MAX_LENGTH:
+        raise ValueError(f"note must be at most {NOTE_MAX_LENGTH} characters")
+    return cleaned or None
 
-    recipe_id: int
+
+Note = Annotated[str | None, AfterValidator(clean_note)]
+
+
+class MealContent(BaseModel):
+    """What a slot holds: exactly one of ``recipe_id`` and ``special``, plus an optional note."""
+
+    recipe_id: int | None = None
+    special: SpecialMeal | None = None
+    note: Note = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> Self:
+        if (self.recipe_id is None) == (self.special is None):
+            raise ValueError("exactly one of recipe_id and special is required")
+        return self
+
+
+class SlotAssign(MealContent):
+    """Body of ``PUT /api/weeks/{week_start}/days/{day}/{slot}``.
+
+    The note sent is the note stored (omitted means none); clients send the existing note
+    when it should be kept.
+    """
+
+
+class NoteSet(BaseModel):
+    """Body of ``PATCH /api/weeks/{week_start}/days/{day}/{slot}/note``."""
+
+    note: Note
 
 
 class SlotMove(BaseModel):
@@ -219,12 +257,11 @@ class VarietyReport(BaseModel):
     protein_counts: dict[Protein, int]
 
 
-class SlotFill(BaseModel):
+class SlotFill(MealContent):
     """One slot of a whole-week replacement."""
 
     day: int = Field(ge=0, le=6)
     slot: MealSlot
-    recipe_id: int
 
 
 class WeekReplace(BaseModel):
@@ -263,6 +300,11 @@ class DayPlanRead(BaseModel):
     date: date
     lunch: RecipeRead | None
     dinner: RecipeRead | None
+    # A slot holds a recipe or a special meal, never both (additive to ``lunch``/``dinner``).
+    lunch_special: SpecialMeal | None = None
+    dinner_special: SpecialMeal | None = None
+    lunch_note: str | None = None
+    dinner_note: str | None = None
 
 
 class WeekPlanRead(BaseModel):

@@ -2,10 +2,10 @@
 
 from datetime import UTC, date, datetime
 
-from sqlalchemy import JSON, Column, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
-from cociboard.domain import MealSlot, MealType, Protein
+from cociboard.domain import NOTE_MAX_LENGTH, MealSlot, MealType, Protein
 
 
 def _utcnow() -> datetime:
@@ -29,15 +29,25 @@ class Recipe(SQLModel, table=True):
 
 
 class MealAssignment(SQLModel, table=True):
-    """A recipe placed in one slot of one week. ``week_start`` is always a Monday."""
+    """A meal placed in one slot of one week: a recipe or a special meal, plus an optional note.
 
-    __table_args__ = (UniqueConstraint("week_start", "day", "slot", name="uq_week_day_slot"),)
+    ``week_start`` is always a Monday. Exactly one of ``recipe_id`` and ``special`` is set.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("week_start", "day", "slot", name="uq_week_day_slot"),
+        CheckConstraint(
+            "(recipe_id IS NULL) <> (special IS NULL)", name="ck_meal_recipe_or_special"
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     week_start: date = Field(index=True)
     day: int  # 0 = Monday ... 6 = Sunday
     slot: MealSlot
-    recipe_id: int = Field(foreign_key="recipe.id", index=True)
+    recipe_id: int | None = Field(default=None, foreign_key="recipe.id", index=True)
+    special: str | None = Field(default=None)  # a ``SpecialMeal`` value
+    note: str | None = Field(default=None, max_length=NOTE_MAX_LENGTH)
 
 
 class ShoppingCheck(SQLModel, table=True):

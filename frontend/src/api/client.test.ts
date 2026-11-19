@@ -40,13 +40,13 @@ describe("week endpoints", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     await getWeek("2026-10-26");
-    await assignSlot("2026-10-26", 2, "dinner", 7);
+    await assignSlot("2026-10-26", 2, "dinner", { recipe_id: 7, note: null });
     await clearSlot("2026-10-26", 2, "dinner");
     await moveSlot("2026-10-26", { from_day: 0, from_slot: "lunch", to_day: 1, to_slot: "dinner" });
     const calls = fetchMock.mock.calls.map(([url, init]) => [url, init?.method ?? "GET", init?.body]);
     expect(calls).toEqual([
       ["/api/weeks/2026-10-26", "GET", undefined],
-      ["/api/weeks/2026-10-26/days/2/dinner", "PUT", JSON.stringify({ recipe_id: 7 })],
+      ["/api/weeks/2026-10-26/days/2/dinner", "PUT", JSON.stringify({ recipe_id: 7, note: null })],
       ["/api/weeks/2026-10-26/days/2/dinner", "DELETE", undefined],
       [
         "/api/weeks/2026-10-26/move",
@@ -71,9 +71,13 @@ describe("v0.4 week endpoints", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/weeks/${week}`);
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("DELETE");
 
-    await replaceWeek(week, [{ day: 1, slot: "dinner", recipe_id: 5 }]);
+    await replaceWeek(week, [
+      { day: 1, slot: "dinner", recipe_id: 5, special: null, note: null },
+    ]);
     expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("PUT");
-    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe('{"slots":[{"day":1,"slot":"dinner","recipe_id":5}]}');
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+      '{"slots":[{"day":1,"slot":"dinner","recipe_id":5,"special":null,"note":null}]}',
+    );
 
     await suggestWeek(week);
     expect(fetchMock.mock.calls[2]?.[0]).toBe(`/api/weeks/${week}/suggest`);

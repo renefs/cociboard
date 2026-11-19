@@ -21,7 +21,7 @@ const both = makeRecipe({ id: 3, name: "Ensalada", meal_type: "both" });
 const fromPanel = (recipe = both): DragSource => ({ kind: "recipe", recipe });
 const fromSlot = (recipe = both, day = 0, slot: "lunch" | "dinner" = "lunch"): DragSource => ({
   kind: "slot",
-  recipe,
+  meal: { kind: "recipe", recipe, note: null },
   from: { day, slot },
 });
 
@@ -135,5 +135,57 @@ describe("announcements", () => {
       "Ensalada se ha quitado de la comida del lunes.",
     );
     expect(announceEnd(es, plan, fromPanel(lunchOnly), null)).toBe("Lentejas no se ha movido.");
+  });
+});
+
+describe("special meals as drag sources", () => {
+  const fromSpecial = (special: "eating_out" | "leftovers" | "free" = "free", day = 0, slot: "lunch" | "dinner" = "lunch"): DragSource => ({
+    kind: "slot",
+    meal: { kind: "special", special, note: null },
+    from: { day, slot },
+  });
+  const plan = makePlan("2026-10-26", { "1:dinner": dinnerOnly, "2:lunch": lunchOnly }, undefined, {
+    specials: { "0:lunch": "free" },
+  });
+
+  it("moves to an empty slot of either kind: specials fit anywhere", () => {
+    expect(resolveDrop(plan, fromSpecial(), { kind: "slot", day: 5, slot: "dinner" })).toEqual({
+      type: "move",
+      from: { day: 0, slot: "lunch" },
+      to: { day: 5, slot: "dinner" },
+    });
+    expect(resolveDrop(plan, fromSpecial(), { kind: "slot", day: 5, slot: "lunch" })?.type).toBe("move");
+  });
+
+  it("swaps with a recipe only when the recipe fits the special's slot", () => {
+    // The dinner-only recipe would end up in the lunch slot.
+    expect(resolveDrop(plan, fromSpecial(), { kind: "slot", day: 1, slot: "dinner" })).toBeNull();
+    // The lunch-only recipe may take the lunch slot... from a dinner slot it may not.
+    expect(resolveDrop(plan, fromSpecial("free", 0, "dinner"), { kind: "slot", day: 2, slot: "lunch" })).toBeNull();
+    expect(resolveDrop(plan, fromSpecial(), { kind: "slot", day: 2, slot: "lunch" })?.type).toBe("move");
+  });
+
+  it("is refused on its own slot and removed on the recipe panel", () => {
+    expect(resolveDrop(plan, fromSpecial(), { kind: "slot", day: 0, slot: "lunch" })).toBeNull();
+    expect(resolveDrop(plan, fromSpecial(), { kind: "panel" })).toEqual({
+      type: "remove",
+      from: { day: 0, slot: "lunch" },
+    });
+  });
+
+  it("is announced by its label, in both languages", () => {
+    const en = { t: i18n.getFixedT("en"), locale: "en" };
+    const es = { t: i18n.getFixedT("es"), locale: "es" };
+    const target = { kind: "slot", day: 5, slot: "dinner" } as const;
+    expect(announceStart(en, fromSpecial("eating_out"))).toBe("Picked up Eating out.");
+    expect(announceStart(es, fromSpecial("eating_out"))).toContain("Comemos fuera");
+    expect(announceOver(en, plan, fromSpecial("leftovers"), target)).toContain("Leftovers is over Saturday dinner");
+    expect(announceEnd(en, plan, fromSpecial("free"), target)).toBe("Free was moved to Saturday dinner.");
+    expect(announceEnd(es, plan, fromSpecial("free"), { kind: "slot", day: 1, slot: "dinner" })).toContain("Libre");
+    expect(announceCancel(en, fromSpecial("free"))).toContain("Free");
+  });
+
+  it("isDragSource accepts a special slot source", () => {
+    expect(isDragSource(fromSpecial())).toBe(true);
   });
 });

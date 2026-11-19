@@ -1,13 +1,21 @@
 """Persistence and rules for weekly plans (``MealAssignment`` rows)."""
 
 import random
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
 from cociboard import repository
-from cociboard.domain import MealSlot, date_of, fits_slot, is_valid_day_index, is_week_start
+from cociboard.domain import (
+    MealSlot,
+    SpecialMeal,
+    date_of,
+    fits_slot,
+    is_valid_day_index,
+    is_week_start,
+)
 from cociboard.models import MealAssignment, Recipe
 from cociboard.schemas import (
     CandidateRead,
@@ -44,8 +52,12 @@ class RecipeArchivedError(Exception):
     """An archived recipe cannot be newly assigned to a slot."""
 
 
+class InvalidMealError(Exception):
+    """A slot entry must hold exactly one of a recipe and a special meal."""
+
+
 class EmptySlotError(Exception):
-    """The source slot of a move holds no recipe."""
+    """The slot of a move or a note change holds nothing."""
 
 
 class InvalidCopySourceError(Exception):
@@ -93,18 +105,41 @@ def meal_info(recipe: Recipe | RecipeRead) -> MealInfo:
     )
 
 
-def _load_recipes(session: Session, week_start: date) -> dict[tuple[int, MealSlot], Recipe]:
+@dataclass(frozen=True)
+class PlannedSlot:
+    """What one filled slot holds: a recipe or a special meal, and an optional note."""
+
+    recipe: Recipe | None
+    special: SpecialMeal | None
+    note: str | None
+
+
+def _load_slots(session: Session, week_start: date) -> dict[tuple[int, MealSlot], PlannedSlot]:
     rows = session.exec(
         select(MealAssignment).where(col(MealAssignment.week_start) == week_start)
     ).all()
-    return {(row.day, row.slot): repository.get_recipe(session, row.recipe_id) for row in rows}
+    return {
+        (row.day, row.slot): PlannedSlot(
+            recipe=None if row.recipe_id is None else repository.get_recipe(session, row.recipe_id),
+            special=None if row.special is None else SpecialMeal(row.special),
+            note=row.note,
+        )
+        for row in rows
+    }
 
 
-def _meals(by_slot: dict[tuple[int, MealSlot], Recipe]) -> list[MealInfo | None]:
+def _meals(by_slot: dict[tuple[int, MealSlot], PlannedSlot]) -> list[MealInfo | None]:
+    """The 14-meal list for variety: special slots are ``None`` (no meal) like empty ones."""
     meals: list[MealInfo | None] = [None] * 14
-    for (day, slot), recipe in by_slot.items():
-        meals[slot_index(day, slot)] = meal_info(recipe)
+    for (day, slot), planned in by_slot.items():
+        if planned.recipe is not None:
+            meals[slot_index(day, slot)] = meal_info(planned.recipe)
     return meals
+
+
+def _occupied(by_slot: dict[tuple[int, MealSlot], PlannedSlot]) -> frozenset[int]:
+    """Indices of every filled slot, special ones included (never filled by Suggest)."""
+    return frozenset(slot_index(day, slot) for day, slot in by_slot)
 
 
 def week_context(session: Session, week_start: date) -> WeekContext:
@@ -114,8 +149,8 @@ def week_context(session: Session, week_start: date) -> WeekContext:
     """
     previous = week_start - timedelta(days=7)
     before = week_start - timedelta(days=14)
-    last = _meals(_load_recipes(session, previous))
-    older = _meals(_load_recipes(session, before))
+    last = _meals(_load_slots(session, previous))
+    older = _meals(_load_slots(session, before))
     recent = {meal.recipe_id: 2 for meal in older if meal is not None}
     recent.update({meal.recipe_id: 1 for meal in last if meal is not None})  # nearest wins
     return WeekContext(previous_dinner=last[slot_index(6, MealSlot.dinner)], recent=recent)
@@ -124,49 +159,96 @@ def week_context(session: Session, week_start: date) -> WeekContext:
 def get_variety(session: Session, week_start: date) -> VarietyReport:
     """Variety analysis of the stored plan of a week."""
     _check_position(week_start, 0)
-    meals = _meals(_load_recipes(session, week_start))
+    meals = _meals(_load_slots(session, week_start))
     return analyze_week(meals, week_context(session, week_start))
 
 
 def get_week_plan(session: Session, week_start: date) -> WeekPlanRead:
     """Return the plan for the week starting on Monday ``week_start``, with its variety."""
     _check_position(week_start, 0)
-    recipes = _load_recipes(session, week_start)
-    by_slot = {key: RecipeRead.model_validate(recipe) for key, recipe in recipes.items()}
+    slots = _load_slots(session, week_start)
+
+    def recipe_of(day: int, slot: MealSlot) -> RecipeRead | None:
+        planned = slots.get((day, slot))
+        if planned is None or planned.recipe is None:
+            return None
+        return RecipeRead.model_validate(planned.recipe)
+
+    def special_of(day: int, slot: MealSlot) -> SpecialMeal | None:
+        planned = slots.get((day, slot))
+        return None if planned is None else planned.special
+
+    def note_of(day: int, slot: MealSlot) -> str | None:
+        planned = slots.get((day, slot))
+        return None if planned is None else planned.note
+
     days = [
         DayPlanRead(
             day=day,
             date=date_of(week_start, day),
-            lunch=by_slot.get((day, MealSlot.lunch)),
-            dinner=by_slot.get((day, MealSlot.dinner)),
+            lunch=recipe_of(day, MealSlot.lunch),
+            dinner=recipe_of(day, MealSlot.dinner),
+            lunch_special=special_of(day, MealSlot.lunch),
+            dinner_special=special_of(day, MealSlot.dinner),
+            lunch_note=note_of(day, MealSlot.lunch),
+            dinner_note=note_of(day, MealSlot.dinner),
         )
         for day in range(7)
     ]
-    variety = analyze_week(_meals(recipes), week_context(session, week_start))
+    variety = analyze_week(_meals(slots), week_context(session, week_start))
     return WeekPlanRead(week_start=week_start, days=days, variety=variety)
 
 
-def assign_slot(
-    session: Session, week_start: date, day: int, slot: MealSlot, recipe_id: int
-) -> WeekPlanRead:
-    """Place a recipe in a slot, replacing any current one.
+def _check_content(recipe_id: int | None, special: SpecialMeal | None) -> None:
+    if (recipe_id is None) == (special is None):
+        raise InvalidMealError
 
-    Raises :class:`repository.RecipeNotFoundError`, :class:`RecipeArchivedError` or
-    :class:`IncompatibleSlotError`.
+
+def assign_slot(
+    session: Session,
+    week_start: date,
+    day: int,
+    slot: MealSlot,
+    recipe_id: int | None = None,
+    special: SpecialMeal | None = None,
+    note: str | None = None,
+) -> WeekPlanRead:
+    """Place a recipe or a special meal in a slot, replacing the current entry.
+
+    The note given is the note stored: replacing an entry without a note clears its note.
+    Raises :class:`InvalidMealError`, :class:`repository.RecipeNotFoundError`,
+    :class:`RecipeArchivedError` or :class:`IncompatibleSlotError`.
     """
     _check_position(week_start, day)
-    recipe = repository.get_recipe(session, recipe_id)
-    if recipe.archived_at is not None:
-        raise RecipeArchivedError(recipe_id)
-    if not fits_slot(recipe.meal_type, slot):
-        raise IncompatibleSlotError(recipe_id)
+    _check_content(recipe_id, special)
+    if recipe_id is not None:
+        recipe = repository.get_recipe(session, recipe_id)
+        if recipe.archived_at is not None:
+            raise RecipeArchivedError(recipe_id)
+        if not fits_slot(recipe.meal_type, slot):
+            raise IncompatibleSlotError(recipe_id)
     existing = _find(session, week_start, day, slot)
     if existing is None:
-        session.add(MealAssignment(week_start=week_start, day=day, slot=slot, recipe_id=recipe_id))
-    else:
-        existing.recipe_id = recipe_id
-        session.add(existing)
+        existing = MealAssignment(week_start=week_start, day=day, slot=slot)
+    existing.recipe_id = recipe_id
+    existing.special = None if special is None else special.value
+    existing.note = note
+    session.add(existing)
     _commit(session)
+    return get_week_plan(session, week_start)
+
+
+def set_note(
+    session: Session, week_start: date, day: int, slot: MealSlot, note: str | None
+) -> WeekPlanRead:
+    """Set or clear the note of a filled slot. Raises :class:`EmptySlotError` if it is empty."""
+    _check_position(week_start, day)
+    existing = _find(session, week_start, day, slot)
+    if existing is None:
+        raise EmptySlotError((day, slot))
+    existing.note = note
+    session.add(existing)
+    session.commit()
     return get_week_plan(session, week_start)
 
 
@@ -188,10 +270,11 @@ def move_slot(
     to_day: int,
     to_slot: MealSlot,
 ) -> WeekPlanRead:
-    """Move a recipe to another slot, swapping with the occupant if there is one.
+    """Move a meal to another slot, swapping with the occupant if there is one.
 
-    Both recipes must fit their new slots. Raises :class:`EmptySlotError` when the source
-    slot is empty and :class:`IncompatibleSlotError` when either recipe would not fit.
+    The whole entry moves (recipe or special meal, with its note). Recipes must fit their
+    new slots; special meals fit anywhere. Raises :class:`EmptySlotError` when the source
+    slot is empty and :class:`IncompatibleSlotError` when a recipe would not fit.
     """
     _check_position(week_start, from_day)
     _check_position(week_start, to_day)
@@ -201,21 +284,28 @@ def move_slot(
     if (from_day, from_slot) == (to_day, to_slot):
         return get_week_plan(session, week_start)
     target = _find(session, week_start, to_day, to_slot)
-    moved = repository.get_recipe(session, source.recipe_id)
-    if not fits_slot(moved.meal_type, to_slot):
-        raise IncompatibleSlotError(moved.id)
+    _check_fits(session, source, to_slot)
     if target is None:
         source.day, source.slot = to_day, to_slot
         session.add(source)
     else:
-        displaced = repository.get_recipe(session, target.recipe_id)
-        if not fits_slot(displaced.meal_type, from_slot):
-            raise IncompatibleSlotError(displaced.id)
+        _check_fits(session, target, from_slot)
+        # Swap the contents, not the rows, so the unique constraint is never violated.
         source.recipe_id, target.recipe_id = target.recipe_id, source.recipe_id
+        source.special, target.special = target.special, source.special
+        source.note, target.note = target.note, source.note
         session.add(source)
         session.add(target)
     _commit(session)
     return get_week_plan(session, week_start)
+
+
+def _check_fits(session: Session, entry: MealAssignment, slot: MealSlot) -> None:
+    if entry.recipe_id is None:
+        return
+    recipe = repository.get_recipe(session, entry.recipe_id)
+    if not fits_slot(recipe.meal_type, slot):
+        raise IncompatibleSlotError(recipe.id)
 
 
 def clear_week(session: Session, week_start: date) -> WeekPlanRead:
@@ -229,20 +319,32 @@ def clear_week(session: Session, week_start: date) -> WeekPlanRead:
 def replace_week(session: Session, week_start: date, slots: list[SlotFill]) -> WeekPlanRead:
     """Replace the whole plan of a week atomically (used by undo).
 
-    Every recipe must exist and fit its slot, otherwise nothing is changed. If a slot is
-    listed twice the last entry wins. Archived recipes are accepted on purpose: undoing
-    "Clear week" must restore meals whose recipe was archived meanwhile (ADR-0014).
+    Entries are recipes or special meals, each with its note. Every recipe must exist and
+    fit its slot, otherwise nothing is changed. If a slot is listed twice the last entry
+    wins. Archived recipes are accepted on purpose: undoing "Clear week" must restore
+    meals whose recipe was archived meanwhile (ADR-0014).
     """
     _check_position(week_start, 0)
-    chosen: dict[tuple[int, MealSlot], int] = {}
+    chosen: dict[tuple[int, MealSlot], SlotFill] = {}
     for fill in slots:
-        recipe = repository.get_recipe(session, fill.recipe_id)
-        if not fits_slot(recipe.meal_type, fill.slot):
-            raise IncompatibleSlotError(fill.recipe_id)
-        chosen[(fill.day, fill.slot)] = fill.recipe_id
+        _check_content(fill.recipe_id, fill.special)
+        if fill.recipe_id is not None:
+            recipe = repository.get_recipe(session, fill.recipe_id)
+            if not fits_slot(recipe.meal_type, fill.slot):
+                raise IncompatibleSlotError(fill.recipe_id)
+        chosen[(fill.day, fill.slot)] = fill
     session.exec(delete(MealAssignment).where(col(MealAssignment.week_start) == week_start))
-    for (day, slot), recipe_id in chosen.items():
-        session.add(MealAssignment(week_start=week_start, day=day, slot=slot, recipe_id=recipe_id))
+    for (day, slot), fill in chosen.items():
+        session.add(
+            MealAssignment(
+                week_start=week_start,
+                day=day,
+                slot=slot,
+                recipe_id=fill.recipe_id,
+                special=None if fill.special is None else fill.special.value,
+                note=fill.note,
+            )
+        )
     _commit(session)
     return get_week_plan(session, week_start)
 
@@ -250,14 +352,17 @@ def replace_week(session: Session, week_start: date, slots: list[SlotFill]) -> W
 def suggest_week(session: Session, week_start: date, seed: int | None = None) -> WeekPlanRead:
     """Fill the empty slots of a week with varied recipes; filled slots are untouched.
 
+    Special meals (eating out, leftovers, free) are filled slots and stay as they are.
+
     The same ``seed`` on the same plan and catalogue gives the same result.
     """
     _check_position(week_start, 0)
-    meals = _meals(_load_recipes(session, week_start))
+    slots = _load_slots(session, week_start)
+    meals = _meals(slots)
     catalogue = [meal_info(recipe) for recipe in repository.list_recipes(session)]
     rng = random.Random(seed)
     context = week_context(session, week_start)
-    for index, meal in suggest_fills(meals, catalogue, rng, context).items():
+    for index, meal in suggest_fills(meals, catalogue, rng, context, _occupied(slots)).items():
         position = slot_position(index)
         session.add(
             MealAssignment(
@@ -276,7 +381,7 @@ def slot_candidates(
 ) -> list[CandidateRead]:
     """Recipes compatible with a slot, ordered by the variety score they would give."""
     _check_position(week_start, day)
-    meals = _meals(_load_recipes(session, week_start))
+    meals = _meals(_load_slots(session, week_start))
     recipes = {r.id: r for r in repository.list_recipes(session)}
     catalogue = [meal_info(recipe) for recipe in recipes.values()]
     return [
@@ -297,25 +402,34 @@ def slot_candidates(
 def copy_week(session: Session, week_start: date, from_week_start: date) -> WeekCopyRead:
     """Copy the meals of another week into the empty slots of ``week_start``.
 
-    Never overwrites a filled slot and skips meals whose recipe is archived (they are
-    counted in ``skipped_archived``). Raises :class:`InvalidWeekError` when the target is
-    not a Monday and :class:`InvalidCopySourceError` when the source is not a Monday or is
+    Special meals and notes are copied too. Never overwrites a filled slot and skips meals
+    whose recipe is archived (they are counted in ``skipped_archived``). Raises
+    :class:`InvalidWeekError` when the target is not a Monday and
+    :class:`InvalidCopySourceError` when the source is not a Monday or is
     the target itself.
     """
     _check_position(week_start, 0)
     if not is_week_start(from_week_start) or from_week_start == week_start:
         raise InvalidCopySourceError(from_week_start)
-    source = _load_recipes(session, from_week_start)
-    filled = set(_load_recipes(session, week_start))
+    source = _load_slots(session, from_week_start)
+    filled = set(_load_slots(session, week_start))
     copied = skipped = 0
-    for (day, slot), recipe in sorted(source.items()):
+    for (day, slot), planned in sorted(source.items()):
         if (day, slot) in filled:
             continue
-        if recipe.archived_at is not None:
+        if planned.recipe is not None and planned.recipe.archived_at is not None:
             skipped += 1
             continue
-        assert recipe.id is not None
-        session.add(MealAssignment(week_start=week_start, day=day, slot=slot, recipe_id=recipe.id))
+        session.add(
+            MealAssignment(
+                week_start=week_start,
+                day=day,
+                slot=slot,
+                recipe_id=None if planned.recipe is None else planned.recipe.id,
+                special=None if planned.special is None else planned.special.value,
+                note=planned.note,
+            )
+        )
         copied += 1
     _commit(session)
     return WeekCopyRead(

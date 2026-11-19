@@ -189,8 +189,12 @@ def suggest_fills(
     catalogue: Sequence[MealInfo],
     rng: random.Random,
     context: WeekContext = EMPTY_CONTEXT,
+    occupied: frozenset[int] = frozenset(),
 ) -> dict[int, MealInfo]:
     """Choose a recipe for every empty slot, greedily, in reading order.
+
+    ``occupied`` lists slot indices that hold something other than a recipe (special
+    meals): they appear as ``None`` in ``meals`` but are never filled.
 
     For each empty slot the pool is, in order of preference: compatible recipes that are
     neither in the plan nor planned in the last two weeks; compatible recipes not in the
@@ -203,7 +207,7 @@ def suggest_fills(
     plan = list(meals)
     chosen: dict[int, MealInfo] = {}
     for index, current in enumerate(meals):
-        if current is not None:
+        if current is not None or index in occupied:
             continue
         slot = _slot_of(index)
         compatible = [m for m in ordered if fits_slot(m.meal_type, slot)]

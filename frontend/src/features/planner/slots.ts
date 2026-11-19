@@ -1,6 +1,15 @@
 import type { TFunction } from "i18next";
-import type { DayPlan, MealSlot, MealType, Recipe, SlotRef, WeekPlan } from "../../api/types";
+import type {
+  DayPlan,
+  MealSlot,
+  MealType,
+  Recipe,
+  SlotRef,
+  SpecialMeal,
+  WeekPlan,
+} from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
+import { SPECIAL_META } from "./specialMeta";
 import { dayName } from "./weekMath";
 
 /** Mirror of the backend rule `fits_slot` in `domain.py`. */
@@ -33,6 +42,35 @@ export function sameSlot(a: SlotRef, b: SlotRef): boolean {
 
 export function recipeAt(plan: WeekPlan, ref: SlotRef): Recipe | null {
   return plan.days.find((d) => d.day === ref.day)?.[ref.slot] ?? null;
+}
+
+/** What a filled slot holds: a recipe or a special meal, with the slot's note. */
+export type SlotMeal =
+  | { kind: "recipe"; recipe: Recipe; note: string | null }
+  | { kind: "special"; special: SpecialMeal; note: string | null };
+
+/** The meal of `slot` on `day`, or `null` when the slot is empty. */
+export function mealOfDay(day: DayPlan, slot: MealSlot): SlotMeal | null {
+  const note = day[`${slot}_note`];
+  const recipe = day[slot];
+  if (recipe) return { kind: "recipe", recipe, note };
+  const special = day[`${slot}_special`];
+  return special ? { kind: "special", special, note } : null;
+}
+
+export function mealAt(plan: WeekPlan, ref: SlotRef): SlotMeal | null {
+  const day = plan.days.find((d) => d.day === ref.day);
+  return day ? mealOfDay(day, ref.slot) : null;
+}
+
+/** The recipe of a meal, or `null` for a special meal. */
+export function recipeOf(meal: SlotMeal | null): Recipe | null {
+  return meal?.kind === "recipe" ? meal.recipe : null;
+}
+
+/** Display name of a meal: the recipe name (data) or the translated special label. */
+export function mealName(meal: SlotMeal, t: TFunction): string {
+  return meal.kind === "recipe" ? meal.recipe.name : t(SPECIAL_META[meal.special].labelKey);
 }
 
 /** All 14 slot references of a week in reading order. */

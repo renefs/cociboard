@@ -1,4 +1,6 @@
-"""Backup document format (v1): schema and pure validation. Persistence is in ``backup_repo``.
+"""Backup document format (v2; v1 is still accepted): schema and pure validation.
+
+Persistence is in ``backup_repo``.
 
 The document is plain JSON that links meals to recipes through ``ref`` (the source recipe id,
 meaningless after a restore). Validation never touches the database: a restore parses and
@@ -11,11 +13,19 @@ from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from cociboard.domain import MealSlot, fits_slot, is_valid_day_index, is_week_start
+from cociboard.domain import (
+    NOTE_MAX_LENGTH,
+    MealSlot,
+    SpecialMeal,
+    fits_slot,
+    is_valid_day_index,
+    is_week_start,
+)
 from cociboard.schemas import ExtraName, RecipeCreate
 
 BACKUP_FORMAT: Final = "cociboard-backup"
-SUPPORTED_FORMAT_VERSION = 1
+SUPPORTED_FORMAT_VERSION = 2  # the version written by export
+READABLE_FORMAT_VERSIONS = frozenset({1, 2})  # v1 meals always have a recipe_ref
 MAX_BACKUP_BYTES = 10 * 1024 * 1024
 
 
@@ -47,12 +57,22 @@ class BackupRecipe(RecipeCreate):
 
 
 class BackupMeal(BaseModel):
-    """One planned slot, pointing at a recipe by ``recipe_ref``."""
+    """One planned slot: a recipe (by ``recipe_ref``) or a ``special`` meal, plus a note.
+
+    v1 documents only have ``recipe_ref``. Exactly one of the two is required.
+    """
 
     week_start: date
     day: int
     slot: MealSlot
-    recipe_ref: int
+    recipe_ref: int | None = None
+    special: SpecialMeal | None = None
+    note: str | None = None
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
 
 
 class BackupShoppingCheck(BaseModel):
@@ -121,11 +141,21 @@ def _check_semantics(doc: BackupDocument) -> None:
             raise BackupValidationError("invalid_week", week_start=meal.week_start.isoformat())
         if not is_valid_day_index(meal.day):
             raise BackupValidationError("invalid_day", day=meal.day)
-        recipe = by_ref.get(meal.recipe_ref)
-        if recipe is None:
-            raise BackupValidationError("unknown_recipe_ref", ref=meal.recipe_ref)
-        if not fits_slot(recipe.meal_type, meal.slot):
-            raise BackupValidationError("meal_does_not_fit", recipe=recipe.name, slot=meal.slot)
+        if (meal.recipe_ref is None) == (meal.special is None):
+            raise BackupValidationError(
+                "meal_needs_recipe_or_special",
+                week_start=meal.week_start.isoformat(),
+                day=meal.day,
+                slot=meal.slot,
+            )
+        if meal.note is not None and len(meal.note) > NOTE_MAX_LENGTH:
+            raise BackupValidationError("note_too_long", max=NOTE_MAX_LENGTH)
+        if meal.recipe_ref is not None:
+            recipe = by_ref.get(meal.recipe_ref)
+            if recipe is None:
+                raise BackupValidationError("unknown_recipe_ref", ref=meal.recipe_ref)
+            if not fits_slot(recipe.meal_type, meal.slot):
+                raise BackupValidationError("meal_does_not_fit", recipe=recipe.name, slot=meal.slot)
         key = (meal.week_start, meal.day, meal.slot)
         if key in seen:
             raise BackupValidationError(
@@ -154,8 +184,8 @@ def parse_backup(data: object) -> BackupDocument:
 
     Codes: ``invalid_document``, ``wrong_format``, ``unsupported_version``,
     ``duplicate_recipe_ref``, ``duplicate_recipe_name``, ``invalid_week``, ``invalid_day``,
-    ``unknown_recipe_ref``, ``meal_does_not_fit``, ``duplicate_slot``,
-    ``duplicate_shopping_check``.
+    ``unknown_recipe_ref``, ``meal_does_not_fit``, ``meal_needs_recipe_or_special``,
+    ``note_too_long``, ``duplicate_slot``, ``duplicate_shopping_check``.
     """
     if not isinstance(data, dict):
         raise BackupValidationError("invalid_document")
@@ -164,7 +194,7 @@ def parse_backup(data: object) -> BackupDocument:
     version = data.get("format_version")
     if not isinstance(version, int) or isinstance(version, bool):
         raise BackupValidationError("invalid_document", path="format_version")
-    if version != SUPPORTED_FORMAT_VERSION:
+    if version not in READABLE_FORMAT_VERSIONS:
         raise BackupValidationError("unsupported_version", version=version)
     try:
         doc = BackupDocument.model_validate(data)

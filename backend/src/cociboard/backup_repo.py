@@ -17,7 +17,7 @@ from cociboard.backup import (
     RestoreResult,
 )
 from cociboard.dbfiles import RESTORE_LABEL, backup_sqlite
-from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty
+from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty, SpecialMeal
 from cociboard.models import MealAssignment, Recipe, ShoppingCheck, ShoppingExtra
 
 
@@ -55,7 +55,12 @@ def export_backup(session: Session) -> BackupDocument:
         ],
         meals=[
             BackupMeal(
-                week_start=m.week_start, day=m.day, slot=MealSlot(m.slot), recipe_ref=m.recipe_id
+                week_start=m.week_start,
+                day=m.day,
+                slot=MealSlot(m.slot),
+                recipe_ref=m.recipe_id,
+                special=None if m.special is None else SpecialMeal(m.special),
+                note=m.note,
             )
             for m in meals
         ],
@@ -111,7 +116,9 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
                     week_start=meal.week_start,
                     day=meal.day,
                     slot=meal.slot,
-                    recipe_id=new_ids[meal.recipe_ref],
+                    recipe_id=None if meal.recipe_ref is None else new_ids[meal.recipe_ref],
+                    special=None if meal.special is None else meal.special.value,
+                    note=meal.note,
                 )
             )
         for check in doc.shopping_checks:

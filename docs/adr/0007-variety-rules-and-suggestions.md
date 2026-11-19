@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+**Update (v0.13.0):** special meals are filled slots without a meal; see
+[ADR-0016](0016-special-slots-and-notes.md).
+
 **Update (v0.12.0):** analysis and suggestions also receive a `WeekContext` with the two
 previous weeks; see [ADR-0015](0015-planning-across-weeks.md).
 

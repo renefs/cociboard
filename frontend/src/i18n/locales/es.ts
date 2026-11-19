@@ -79,7 +79,24 @@ const es = {
     varietyWarning: "Aviso de variedad: {{messages}}",
     slotRecipeArchived:
       "{{name}} (receta archivada), {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+    slotSpecial:
+      "{{name}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+    slotNote: "Nota: {{note}}.",
     archivedMark: "Archivada",
+    specialsLabel: "O planifica otra cosa",
+    specialSet: {
+      lunch: "La comida del {{dayLower}} queda como «{{name}}».",
+      dinner: "La cena del {{dayLower}} queda como «{{name}}».",
+    },
+    addNote: "Añadir nota",
+    editNote: "Editar nota",
+    noteLabel: "Nota",
+    notePlaceholder: "p. ej. doble ración, cumpleaños de Ana",
+    noteHint: "Hasta {{max}} caracteres.",
+    saveNote: "Guardar nota",
+    removeNote: "Quitar nota",
+    noteSaved: "Nota guardada.",
+    noteRemoved: "Nota quitada.",
     slotRecipe:
       "{{name}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
     removeFrom: {
@@ -112,7 +129,7 @@ const es = {
     addToPlan: "Añadir",
     addToPlanTo: "{{name}} al plan",
     keyboardInstructions:
-      "Para coger una receta, pulsa Espacio. Usa las flechas para saltar entre huecos, Espacio para soltarla y Escape para cancelar.",
+      "Para coger una receta o una comida, pulsa Espacio. Usa las flechas para saltar entre huecos, Espacio para soltarla y Escape para cancelar.",
     errors: {
       unprocessable: "Esa receta no encaja en ese hueco. No se ha cambiado nada.",
       recipeArchived:
@@ -291,6 +308,9 @@ const es = {
       invalid_day: "La copia tiene una comida planificada en un día no válido.",
       unknown_recipe_ref: "La copia planifica una receta que no incluye.",
       meal_does_not_fit: "La copia planifica «{{recipe}}» en un hueco al que no encaja.",
+      meal_needs_recipe_or_special:
+        "La copia tiene una comida planificada que no es ni una receta ni una comida especial, o es ambas cosas.",
+      note_too_long: "La copia tiene una nota de más de {{max}} caracteres.",
       duplicate_slot: "La copia tiene dos comidas en el mismo hueco.",
       duplicate_shopping_check: "La copia marca dos veces el mismo artículo de la compra.",
     },
@@ -440,6 +460,7 @@ const es = {
   },
   meta: {
     mealType: { lunch: "Comida", dinner: "Cena", both: "Comida o cena" },
+    special: { eating_out: "Comemos fuera", leftovers: "Sobras", free: "Libre" },
     protein: {
       meat: "Carne",
       poultry: "Aves",

@@ -80,7 +80,23 @@ const en = {
     slotRecipe: "{{name}}, {{where}}. Enter for actions, Space to pick up and move.",
     slotRecipeArchived:
       "{{name}} (archived recipe), {{where}}. Enter for actions, Space to pick up and move.",
+    slotSpecial: "{{name}}, {{where}}. Enter for actions, Space to pick up and move.",
+    slotNote: "Note: {{note}}.",
     archivedMark: "Archived",
+    specialsLabel: "Or plan something else",
+    specialSet: {
+      lunch: "{{day}} lunch set to {{name}}.",
+      dinner: "{{day}} dinner set to {{name}}.",
+    },
+    addNote: "Add note",
+    editNote: "Edit note",
+    noteLabel: "Note",
+    notePlaceholder: "e.g. double batch, Ana's birthday",
+    noteHint: "Up to {{max}} characters.",
+    saveNote: "Save note",
+    removeNote: "Remove note",
+    noteSaved: "Note saved.",
+    noteRemoved: "Note removed.",
     removeFrom: {
       lunch: "Remove {{name}} from {{day}} lunch",
       dinner: "Remove {{name}} from {{day}} dinner",
@@ -102,7 +118,7 @@ const en = {
     addToPlan: "Add",
     addToPlanTo: "{{name}} to the plan",
     keyboardInstructions:
-      "To pick up a recipe, press Space. Use the arrow keys to jump between slots, Space to drop it and Escape to cancel.",
+      "To pick up a recipe or a meal, press Space. Use the arrow keys to jump between slots, Space to drop it and Escape to cancel.",
     errors: {
       unprocessable: "That recipe doesn't fit that slot. Nothing was changed.",
       recipeArchived: "That recipe is archived. Restore it from the recipe list to plan it again.",
@@ -274,6 +290,9 @@ const en = {
       invalid_day: "The backup has a planned meal on an invalid day.",
       unknown_recipe_ref: "The backup plans a recipe that it does not contain.",
       meal_does_not_fit: "The backup plans “{{recipe}}” in a slot it does not fit.",
+      meal_needs_recipe_or_special:
+        "The backup has a planned meal that is neither a recipe nor a special meal, or both.",
+      note_too_long: "The backup has a note longer than {{max}} characters.",
       duplicate_slot: "The backup has two meals in the same slot.",
       duplicate_shopping_check: "The backup ticks the same shopping item twice.",
     },
@@ -420,6 +439,7 @@ const en = {
   },
   meta: {
     mealType: { lunch: "Lunch", dinner: "Dinner", both: "Lunch or dinner" },
+    special: { eating_out: "Eating out", leftovers: "Leftovers", free: "Free" },
     protein: {
       meat: "Meat",
       poultry: "Poultry",

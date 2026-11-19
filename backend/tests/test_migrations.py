@@ -243,3 +243,122 @@ def test_v010_database_gains_archived_at(tmp_path: Path) -> None:
         archived = conn.execute(text("SELECT archived_at FROM recipe")).scalar_one()
     assert archived is None
     assert len(_backups(db)) == 1
+
+
+def _alembic(engine: Engine, action: str, revision: str) -> None:
+    config = Config()
+    config.set_main_option("script_location", "cociboard:migrations")
+    with engine.connect() as conn:
+        config.attributes["connection"] = conn
+        getattr(command, action)(config, revision)
+        conn.commit()
+
+
+def _at_0003_with_data(path: Path) -> Engine:
+    engine = _engine(path)
+    _alembic(engine, "upgrade", "0003_recipe_archived_at")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO recipe (id, name, meal_type, protein, ingredients, properties, "
+                "created_at) VALUES (1, 'Lentils', 'lunch', 'legumes', '[\"x\"]', '[]', "
+                "'2026-01-01 00:00:00'), (2, 'Fish', 'both', 'fish', '[\"y\"]', '[]', "
+                "'2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO mealassignment (id, week_start, day, slot, recipe_id) VALUES "
+                "(1, '2026-11-16', 0, 'lunch', 1), (2, '2026-11-16', 0, 'dinner', 2)"
+            )
+        )
+    return engine
+
+
+def test_v012_database_gains_special_and_note(tmp_path: Path) -> None:
+    db = tmp_path / "v012.db"
+    engine = _at_0003_with_data(db)
+    columns = {c["name"]: c for c in inspect(engine).get_columns("mealassignment")}
+    assert "special" not in columns
+    assert columns["recipe_id"]["nullable"] is False
+
+    run_migrations(engine)
+
+    assert _version(engine) == _head()
+    assert _diff(engine) == []
+    inspector = inspect(engine)
+    columns = {c["name"]: c for c in inspector.get_columns("mealassignment")}
+    assert columns["recipe_id"]["nullable"] is True
+    assert {"special", "note"} <= set(columns)
+    # Existing rows are kept, with the new columns empty.
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, recipe_id, special, note FROM mealassignment ORDER BY id")
+        ).all()
+    assert [tuple(r) for r in rows] == [(1, 1, None, None), (2, 2, None, None)]
+    # The foreign key, the index and the unique constraint survive the table rebuild.
+    fks = inspector.get_foreign_keys("mealassignment")
+    assert [(fk["referred_table"], fk["constrained_columns"]) for fk in fks] == [
+        ("recipe", ["recipe_id"])
+    ]
+    index_columns = [tuple(ix["column_names"]) for ix in inspector.get_indexes("mealassignment")]
+    assert ("recipe_id",) in index_columns
+    assert ("week_start",) in index_columns
+    uniques = inspector.get_unique_constraints("mealassignment")
+    assert [(u["name"], u["column_names"]) for u in uniques] == [
+        ("uq_week_day_slot", ["week_start", "day", "slot"])
+    ]
+    with engine.begin() as conn, pytest.raises(Exception, match="UNIQUE"):
+        conn.execute(
+            text(
+                "INSERT INTO mealassignment (week_start, day, slot, special) "
+                "VALUES ('2026-11-16', 0, 'lunch', 'free')"
+            )
+        )
+    # Exactly one of recipe_id / special is enforced by the CHECK constraint.
+    for columns_sql, values_sql in (("recipe_id, special", "1, 'free'"), ("note", "'neither'")):
+        with engine.begin() as conn, pytest.raises(Exception, match="CHECK"):
+            conn.execute(
+                text(
+                    f"INSERT INTO mealassignment (week_start, day, slot, {columns_sql}) "
+                    f"VALUES ('2026-11-17', 1, 'lunch', {values_sql})"
+                )
+            )
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO mealassignment (week_start, day, slot, special, note) "
+                "VALUES ('2026-11-17', 1, 'lunch', 'free', 'hi')"
+            )
+        )
+
+
+def test_downgrade_from_0004_drops_specials_and_restores_not_null(tmp_path: Path) -> None:
+    engine = _at_0003_with_data(tmp_path / "down4.db")
+    run_migrations(engine)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO mealassignment (week_start, day, slot, special, note) "
+                "VALUES ('2026-11-16', 1, 'lunch', 'eating_out', 'Ana')"
+            )
+        )
+        conn.execute(text("UPDATE mealassignment SET note = 'kept?' WHERE id = 1"))
+
+    _alembic(engine, "downgrade", "0003_recipe_archived_at")
+
+    inspector = inspect(engine)
+    columns = {c["name"]: c for c in inspector.get_columns("mealassignment")}
+    assert set(columns) == {"id", "week_start", "day", "slot", "recipe_id"}
+    assert columns["recipe_id"]["nullable"] is False
+    assert _count(engine, "mealassignment") == 2  # the special row was deleted
+    assert [fk["referred_table"] for fk in inspector.get_foreign_keys("mealassignment")] == [
+        "recipe"
+    ]
+    assert [u["name"] for u in inspector.get_unique_constraints("mealassignment")] == [
+        "uq_week_day_slot"
+    ]
+
+    run_migrations(engine)
+    assert _version(engine) == _head()
+    assert _diff(engine) == []

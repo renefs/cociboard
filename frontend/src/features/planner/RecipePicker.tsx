@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCandidates } from "../../api/client";
-import type { Candidate, MealSlot, Recipe } from "../../api/types";
+import { SPECIAL_MEALS, type Candidate, type MealSlot, type Recipe, type SpecialMeal } from "../../api/types";
 import { reasonText } from "../variety/varietyLogic";
 import { RecipeCard } from "../recipes/RecipeCard";
 import { Modal } from "./Modal";
 import { matchesQuery } from "./slots";
+import { SPECIAL_META } from "./specialMeta";
 
 interface RecipePickerProps {
   title: string;
@@ -14,6 +15,8 @@ interface RecipePickerProps {
   day: number;
   slot: MealSlot;
   onPick: (recipe: Recipe) => void;
+  /** Set the slot to a special meal instead of a recipe. */
+  onPickSpecial: (special: SpecialMeal) => void;
   onClose: () => void;
 }
 
@@ -26,7 +29,15 @@ export function filterCandidates(candidates: readonly Candidate[], query: string
  * Lists the recipes that fit the slot, best for variety first (the server ranks them and
  * explains why), with instant search.
  */
-export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: RecipePickerProps) {
+export function RecipePicker({
+  title,
+  weekStart,
+  day,
+  slot,
+  onPick,
+  onPickSpecial,
+  onClose,
+}: RecipePickerProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data, isPending, isError, refetch } = useQuery({
@@ -38,6 +49,24 @@ export function RecipePicker({ title, weekStart, day, slot, onPick, onClose }: R
 
   return (
     <Modal title={title} onClose={onClose} focusInput>
+      <div className="specials-row" role="group" aria-labelledby="specials-label">
+        <p id="specials-label" className="specials-label">
+          {t("planner.specialsLabel")}
+        </p>
+        <div className="chip-group">
+          {SPECIAL_MEALS.map((special) => (
+            <button
+              key={special}
+              type="button"
+              className="chip"
+              onClick={() => onPickSpecial(special)}
+            >
+              <span aria-hidden="true">{SPECIAL_META[special].icon}</span>{" "}
+              {t(SPECIAL_META[special].labelKey)}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="search-field">
         <span className="visually-hidden">{t("recipes.searchLabel")}</span>
         <input

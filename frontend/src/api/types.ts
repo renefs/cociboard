@@ -11,6 +11,13 @@ export type MealType = (typeof MEAL_TYPES)[number];
 export const MEAL_SLOTS = ["lunch", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
 
+/** A slot that holds no recipe. */
+export const SPECIAL_MEALS = ["eating_out", "leftovers", "free"] as const;
+export type SpecialMeal = (typeof SPECIAL_MEALS)[number];
+
+/** Longest note a slot can carry. */
+export const NOTE_MAX_LENGTH = 120;
+
 export const PROTEINS = [
   "meat",
   "poultry",
@@ -111,8 +118,13 @@ export interface DayPlan {
   day: number;
   /** ISO date (YYYY-MM-DD) */
   date: string;
+  /** A slot holds a recipe or a special meal, never both. */
   lunch: Recipe | null;
   dinner: Recipe | null;
+  lunch_special: SpecialMeal | null;
+  dinner_special: SpecialMeal | null;
+  lunch_note: string | null;
+  dinner_note: string | null;
 }
 
 export type IssueKind =
@@ -169,11 +181,19 @@ export interface WeekCopyResult {
   source_meals: number;
 }
 
+/** One slot of a whole-week restore: exactly one of `recipe_id` and `special` is set. */
 export interface SlotFill {
   day: number;
   slot: MealSlot;
-  recipe_id: number;
+  recipe_id: number | null;
+  special: SpecialMeal | null;
+  note: string | null;
 }
+
+/** Body of `PUT /api/weeks/{week}/days/{day}/{slot}`: exactly one of `recipe_id` and `special`. */
+export type SlotAssignBody =
+  | { recipe_id: number; note: string | null }
+  | { special: SpecialMeal; note: string | null };
 
 /** A recipe that fits a slot, with its effect on the variety score. */
 export const CANDIDATE_REASONS = [
@@ -252,7 +272,9 @@ export interface ShoppingExtraUpdate {
 
 /** Backup file written by `GET /api/backup` and read by `POST /api/backup/restore`. */
 export const BACKUP_FORMAT = "cociboard-backup";
-export const BACKUP_FORMAT_VERSION = 1;
+/** Version written by the server; version 1 files (no special meals or notes) still restore. */
+export const BACKUP_FORMAT_VERSION = 2;
+export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2];
 
 /** Response of `POST /api/backup/restore`. */
 export interface RestoreResult {
