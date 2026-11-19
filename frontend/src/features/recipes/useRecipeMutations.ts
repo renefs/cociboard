@@ -3,7 +3,7 @@ import { createRecipe, deleteRecipe, getRecipeUsage, updateRecipe } from "../../
 import type { Recipe, RecipeCreate, RecipeUpdate } from "../../api/types";
 
 /**
- * Recipes appear in the catalogue, in week plans and in slot candidates. The refetches run
+ * Recipes appear in the catalogue, in week plans, in slot candidates and in shopping lists. The refetches run
  * in the background so the dialog can close at once; they are not awaited on purpose.
  */
 function useInvalidateRecipeData(): () => void {
@@ -12,6 +12,7 @@ function useInvalidateRecipeData(): () => void {
     void queryClient.invalidateQueries({ queryKey: ["recipes"] });
     void queryClient.invalidateQueries({ queryKey: ["week"] });
     void queryClient.invalidateQueries({ queryKey: ["candidates"] });
+    void queryClient.invalidateQueries({ queryKey: ["shopping"] });
   };
 }
 

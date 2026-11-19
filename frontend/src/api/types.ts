@@ -178,3 +178,38 @@ export interface SlotMoveRequest {
   to_day: number;
   to_slot: MealSlot;
 }
+
+/** A planned meal that uses a shopping item. */
+export interface ShoppingMeal {
+  day: number;
+  slot: MealSlot;
+  recipe_id: number;
+  recipe_name: string;
+}
+
+/** An ingredient of the week, grouped by its case/accent-folded name (`key`). */
+export interface ShoppingItem {
+  key: string;
+  name: string;
+  checked: boolean;
+  meals: ShoppingMeal[];
+}
+
+/** An item added by hand. */
+export interface ShoppingExtra {
+  id: number;
+  name: string;
+  checked: boolean;
+}
+
+export interface ShoppingList {
+  week_start: string;
+  items: ShoppingItem[];
+  /** In creation order. */
+  extras: ShoppingExtra[];
+}
+
+export interface ShoppingExtraUpdate {
+  name?: string;
+  checked?: boolean;
+}

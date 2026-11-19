@@ -238,3 +238,69 @@ class WeekPlanRead(BaseModel):
     week_start: date
     days: list[DayPlanRead]
     variety: VarietyReport
+
+
+class ShoppingMealRead(BaseModel):
+    """A planned meal that uses a shopping item."""
+
+    day: int
+    slot: MealSlot
+    recipe_id: int
+    recipe_name: str
+
+
+class ShoppingItemRead(BaseModel):
+    """An ingredient of the week, grouped by its folded name."""
+
+    key: str
+    name: str
+    checked: bool
+    meals: list[ShoppingMealRead]
+
+
+ExtraName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+
+
+class ShoppingExtraRead(BaseModel):
+    """An item added by hand."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    checked: bool
+
+
+class ShoppingListRead(BaseModel):
+    """The shopping list of a week: generated items plus manual extras (creation order)."""
+
+    week_start: date
+    items: list[ShoppingItemRead]
+    extras: list[ShoppingExtraRead]
+
+
+class ShoppingCheckSet(BaseModel):
+    """Body of ``PUT /api/weeks/{week_start}/shopping-list/checks``."""
+
+    key: str = Field(min_length=1, max_length=200)
+    checked: bool
+
+
+class ShoppingExtraCreate(BaseModel):
+    """Body of ``POST /api/weeks/{week_start}/shopping-list/extras``."""
+
+    name: ExtraName
+
+
+class ShoppingExtraUpdate(BaseModel):
+    """Body of ``PATCH .../shopping-list/extras/{id}``. Only sent fields change."""
+
+    name: ExtraName | None = None
+    checked: bool | None = None
+
+    @model_validator(mode="after")
+    def _no_null(self) -> Self:
+        for key in {"name", "checked"} & self.model_fields_set:
+            if getattr(self, key) is None:
+                raise ValueError(f"{key} cannot be null")
+        return self

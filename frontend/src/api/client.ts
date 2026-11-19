@@ -8,6 +8,8 @@ import type {
   RecipeUpdate,
   RecipeUsage,
   SlotFill,
+  ShoppingExtraUpdate,
+  ShoppingList,
   SlotMoveRequest,
   WeekPlan,
 } from "./types";
@@ -156,4 +158,52 @@ export function getCandidates(
   return request<Candidate[]>(`/weeks/${weekStart}/days/${day}/${slot}/candidates`, {
     signal: signal ?? null,
   });
+}
+
+const shoppingPath = (weekStart: string) => `/weeks/${weekStart}/shopping-list`;
+
+export function getShoppingList(weekStart: string, signal?: AbortSignal): Promise<ShoppingList> {
+  return request<ShoppingList>(shoppingPath(weekStart), { signal: signal ?? null });
+}
+
+/** Tick or untick a generated item by its `key` (idempotent). */
+export function setShoppingCheck(
+  weekStart: string,
+  key: string,
+  checked: boolean,
+): Promise<ShoppingList> {
+  return request<ShoppingList>(`${shoppingPath(weekStart)}/checks`, {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ key, checked }),
+  });
+}
+
+/** Untick every item and extra of the week. */
+export function uncheckShoppingList(weekStart: string): Promise<ShoppingList> {
+  return request<ShoppingList>(`${shoppingPath(weekStart)}/checks`, { method: "DELETE" });
+}
+
+export function addShoppingExtra(weekStart: string, name: string): Promise<ShoppingList> {
+  return request<ShoppingList>(`${shoppingPath(weekStart)}/extras`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function updateShoppingExtra(
+  weekStart: string,
+  id: number,
+  changes: ShoppingExtraUpdate,
+): Promise<ShoppingList> {
+  return request<ShoppingList>(`${shoppingPath(weekStart)}/extras/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(changes),
+  });
+}
+
+export function deleteShoppingExtra(weekStart: string, id: number): Promise<ShoppingList> {
+  return request<ShoppingList>(`${shoppingPath(weekStart)}/extras/${id}`, { method: "DELETE" });
 }

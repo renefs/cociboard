@@ -29,6 +29,7 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
       try {
         const restored = await replaceWeek(previous.week_start, planToFills(previous));
         queryClient.setQueryData(weekKey(previous.week_start), restored);
+        void queryClient.invalidateQueries({ queryKey: ["shopping", previous.week_start] });
         notify("info", t("planner.restored"));
       } catch {
         void queryClient.invalidateQueries({ queryKey: weekKey(previous.week_start) });
@@ -48,6 +49,7 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
         await queryClient.cancelQueries({ queryKey: key });
         const next = await action(weekStart);
         queryClient.setQueryData(key, next);
+        void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
         const text = message(previous, next);
         if (text === null) notify("info", t("planner.noEmptySlots"));
         else notify("info", text, { label: t("planner.undo"), onClick: () => void restore(previous) });

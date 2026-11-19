@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-11-19
+
+Shopping list ([ADR-0012](docs/adr/0012-shopping-list.md)).
+
+### Added
+- **Shopping list** button in the planner toolbar: a dialog (full-screen sheet on phones)
+  with the ingredients of the week's planned meals, merged by case, accents and spacing,
+  each with the recipes that use it and a "×N" count for several meals.
+- Tick items off (they move to "In the basket"), add items by hand, **Uncheck all**,
+  **Copy** as a plain-text "- item" list and **Share** where the browser supports it.
+  Ticks and manual items are stored per week on the server, so they are shared across
+  devices.
+- Backend: `shopping.py` (pure grouping), `shopping_repo.py`, the `ShoppingCheck` and
+  `ShoppingExtra` tables (created automatically on existing databases) and the
+  `/api/weeks/{week_start}/shopping-list` endpoints.
+- English and Spanish strings for the whole feature.
+- Review 0002 ([docs/reviews/0002-v0.9.0-review.md](docs/reviews/0002-v0.9.0-review.md)):
+  shopping list changes of one week are sent to the server one at a time, in order, and
+  items added in quick succession each get their own temporary id.
+
 ## [0.8.0] - 2026-10-25
 
 Prebuilt Docker image on the GitHub Container Registry

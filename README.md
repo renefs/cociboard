@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.8.0** (prebuilt Docker image on the GitHub Container Registry).
+Current version: **0.9.0** (shopping list).
 
 ## Stack
 
@@ -224,6 +224,24 @@ recipes or `null` and `variety` is the variety report (see below).
 
 Deleting a recipe removes it from all weeks.
 
+### Shopping list
+
+Derived from the week's planned meals; ticks and manual items are stored per week. Every
+endpoint answers the full list:
+`{ week_start, items: [{ key, name, checked, meals: [{ day, slot, recipe_id, recipe_name }] }], extras: [{ id, name, checked }] }`.
+`key` is the ingredient folded for case, accents and spacing, so "Pimentón" and "pimenton"
+are one item; `name` is the first spelling met. Ingredients are free text, so there are no
+quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/weeks/{week_start}/shopping-list` | The list of a week (`422` if the date is not a Monday) |
+| `PUT /api/weeks/{week_start}/shopping-list/checks` | `{ "key": "...", "checked": true }`: tick or untick a generated item (idempotent; unknown keys are harmless) |
+| `DELETE /api/weeks/{week_start}/shopping-list/checks` | Untick every item and extra |
+| `POST /api/weeks/{week_start}/shopping-list/extras` | Add `{ "name": "..." }` (1-80 chars after trimming; `201`) |
+| `PATCH /api/weeks/{week_start}/shopping-list/extras/{id}` | Change `name` and/or `checked` of an extra (`404` if missing or from another week) |
+| `DELETE /api/weeks/{week_start}/shopping-list/extras/{id}` | Remove an extra (`404`) |
+
 ### Variety
 
 `variety` is `{ score, filled_slots, issues, protein_counts }`. `score` is 0-100, or `null` for
@@ -254,7 +272,9 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
    one to highlight the slots involved. A warning mark on a slot means it takes part in an
    issue; swap that meal or use **Best for variety** in the recipe panel and the picker's
    "Good pick" hints.
-5. **Move on.** Use ‹ and › to plan other weeks. To change what a meal is, open its recipe and
+5. **Make the shopping list.** Open **Shopping list** to see every ingredient of the week's
+   meals, tick items off as you shop, add things by hand and copy or share the rest as text.
+6. **Move on.** Use ‹ and › to plan other weeks. To change what a meal is, open its recipe and
    **Edit**; to drop a meal, use its × or **Remove**.
 
 ## Managing recipes
@@ -290,6 +310,21 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
   arrow keys to jump between slots, Space to drop, Esc to cancel. Enter on an assigned
   recipe opens its actions; Enter on an empty slot opens the picker.
 
+## Shopping list
+
+**Shopping list** in the planner toolbar opens the ingredients of the week's planned meals
+(a full-screen sheet on phones).
+
+- Equal ingredients are merged ("Aceite de oliva" and "aceite de oliva" are one line). Each
+  line shows the recipes that use it and "×2" when it is needed in more than one meal.
+- Tick a line to move it from **To buy** to **In the basket**; untick it to bring it back.
+  Ticks are saved on the server, so everyone using the same Cociboard sees them.
+- **Add an item** adds your own line ("milk", "bread") to the week; remove it with ×.
+- **Copy** puts what is still to buy on the clipboard as a plain "- item" list; **Share**
+  (where the browser supports it) opens the share sheet; **Uncheck all** starts over.
+- The list follows the plan and recipe edits; ticks of ingredients that are no longer needed
+  are kept and come back if the ingredient does.
+
 ## Languages
 
 The interface is available in **English** and **Spanish (Spain)**. Only the interface is
@@ -321,6 +356,7 @@ backend/
   pyproject.toml
   src/cociboard/        FastAPI app (main.py), settings, domain rules, models, schemas,
                         repository, planner (week plans), variety (analysis), suggest (auto-fill, candidates),
+                        shopping (ingredient grouping), shopping_repo (ticks and extras),
                         routers/, seed.py
   tests/
 frontend/
@@ -328,6 +364,7 @@ frontend/
   src/features/recipes/ recipe panel, cards, form, details and delete dialogs, mutations, legend, icon metadata
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, pure logic
   src/features/variety/ variety summary and presentation helpers
+  src/features/shopping/ shopping list dialog, hooks with optimistic updates, pure logic
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS
   src/App.tsx           app shell

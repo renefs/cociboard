@@ -120,6 +120,8 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) <= 1) {
         void queryClient.invalidateQueries({ queryKey: key });
+        // The shopping list is derived from the plan.
+        void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
       }
     },
   });
