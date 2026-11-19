@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+**Update (v0.12.0):** analysis and suggestions also receive a `WeekContext` with the two
+previous weeks; see [ADR-0015](0015-planning-across-weeks.md).
+
 ## Context
 The product goal is varied weekly menus. v0.4.0 needs to tell the user what is repetitive
 (warnings on slots, a score), to fill empty slots automatically ("Suggest"), and to rank the

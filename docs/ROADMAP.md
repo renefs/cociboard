@@ -101,6 +101,11 @@ CHANGELOG entry.
 - Backup dialog in the header: download everything as JSON, restore from a file (replace-all in
   one transaction, validated first, server-side `pre-restore` copy).
 
+### v0.12.0 — Planning across weeks (done)
+- Variety and suggestions see the two previous weeks: Monday-lunch protein boundary warning,
+  score-neutral "planned recently" tips, suggestions that avoid recent recipes (ADR-0015).
+- **Copy last week** fills the empty slots from the previous week, skipping archived recipes.
+
 ## Model usage
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).

@@ -16,6 +16,11 @@ Rules (thresholds are the module constants below):
   when it is tagged vegetarian or vegan, or has main protein ``none``.
 * ``little_fish``: fewer than ``MIN_FISH_MEALS`` fish or seafood meals once at least
   ``FISH_CHECK_FROM`` slots are filled. ``info``.
+* ``previous_week_protein``: Monday lunch has the same main protein (not ``none``) as the
+  previous week's Sunday dinner, and is not the same recipe. ``warning``; only available
+  when a :class:`WeekContext` is given.
+* ``recent_repeat``: a recipe of this week was also planned 1 or 2 weeks ago (one issue per
+  recipe, batch cooking skipped). ``info`` and **score-neutral**: a hint, not a fault.
 
 Every issue carries an English ``message`` and the ``params`` it was built from, so clients
 can render their own language:
@@ -25,6 +30,8 @@ can render their own language:
   positions ``{day, slot}``).
 * ``protein_overload``: ``protein``, ``count``, ``max``.
 * ``few_vegetarian`` and ``little_fish``: ``count``, ``min``.
+* ``previous_week_protein``: ``protein``, ``recipe`` (name of last Sunday's dinner).
+* ``recent_repeat``: ``recipe`` (name), ``weeks_ago`` (1 or 2).
 
 Score (0-100), ``None`` while no slot is filled::
 
@@ -32,11 +39,11 @@ Score (0-100), ``None`` while no slot is filled::
 
 The base of 90 leaves room for the bonus: 100 needs six or more distinct proteins and no issues.
 ``distinct_proteins`` ignores protein ``none``; the bonus is zero below two. The result is
-clamped to 0-100.
+clamped to 0-100. ``recent_repeat`` issues are not counted.
 """
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 from cociboard.domain import (
@@ -92,6 +99,31 @@ class MealInfo:
 
 
 Week = Sequence[MealInfo | None]
+
+
+@dataclass(frozen=True)
+class WeekContext:
+    """What the neighbouring weeks contribute to the analysis of a week.
+
+    ``previous_dinner`` is the previous week's Sunday dinner. ``recent`` maps a recipe id to
+    how many weeks ago it was planned (1 or 2, the nearest wins).
+    """
+
+    previous_dinner: MealInfo | None = None
+    recent: Mapping[int, int] = field(default_factory=dict)
+
+
+EMPTY_CONTEXT = WeekContext()
+
+
+def recent_weeks_ago(meal: MealInfo, context: WeekContext) -> int | None:
+    """Weeks ago a recipe was planned, or ``None`` when it is not a recent repeat.
+
+    Batch-cooking recipes never count as recent repeats (leftovers and re-cooks are fine).
+    """
+    if meal.is_batch_cooking:
+        return None
+    return context.recent.get(meal.recipe_id)
 
 
 def slot_position(index: int) -> SlotPosition:
@@ -185,6 +217,51 @@ def _consecutive(meals: Week) -> list[VarietyIssue]:
     return issues
 
 
+def _previous_week_protein(meals: Week, context: WeekContext) -> list[VarietyIssue]:
+    previous, monday_lunch = context.previous_dinner, meals[0]
+    if previous is None or monday_lunch is None:
+        return []
+    if not _same_protein_new_recipe(previous, monday_lunch):
+        return []
+    return [
+        VarietyIssue(
+            kind=IssueKind.previous_week_protein,
+            severity=IssueSeverity.warning,
+            message=(
+                f"{_label(monday_lunch.protein)} again: last week's Sunday dinner "
+                f"({previous.name}) had the same main protein."
+            ),
+            slots=[slot_position(0)],
+            params={"protein": monday_lunch.protein.value, "recipe": previous.name},
+        )
+    ]
+
+
+def _recent_repeats(meals: Week, context: WeekContext) -> list[VarietyIssue]:
+    positions: dict[int, list[int]] = {}
+    for index, meal in enumerate(meals):
+        if meal is not None:
+            positions.setdefault(meal.recipe_id, []).append(index)
+    issues = []
+    for indices in positions.values():
+        meal = meals[indices[0]]
+        assert meal is not None
+        weeks_ago = recent_weeks_ago(meal, context)
+        if weeks_ago is None:
+            continue
+        when = "last week" if weeks_ago == 1 else f"{weeks_ago} weeks ago"
+        issues.append(
+            VarietyIssue(
+                kind=IssueKind.recent_repeat,
+                severity=IssueSeverity.info,
+                message=f"{meal.name} was also planned {when}.",
+                slots=[slot_position(i) for i in indices],
+                params={"recipe": meal.name, "weeks_ago": weeks_ago},
+            )
+        )
+    return issues
+
+
 def protein_counts(meals: Week) -> dict[Protein, int]:
     """Meals per main protein, in enum order, leaving out proteins that are not used."""
     counted = Counter(meal.protein for meal in meals if meal is not None)
@@ -257,8 +334,9 @@ def _coverage(meals: Week, filled: int, counts: dict[Protein, int]) -> list[Vari
 
 def raw_score(issues: Sequence[VarietyIssue], counts: dict[Protein, int]) -> int:
     """The score formula, also defined for an empty plan (used to compare plans)."""
-    warnings = sum(1 for i in issues if i.severity is IssueSeverity.warning)
-    infos = len(issues) - warnings
+    counted = [i for i in issues if i.kind is not IssueKind.recent_repeat]  # hint only
+    warnings = sum(1 for i in counted if i.severity is IssueSeverity.warning)
+    infos = len(counted) - warnings
     distinct = sum(1 for protein in counts if protein is not Protein.none)
     bonus = min(MAX_PROTEIN_BONUS, PROTEIN_BONUS * max(0, distinct - 1))
     score = BASE_SCORE - WARNING_PENALTY * warnings - INFO_PENALTY * infos + bonus
@@ -269,8 +347,11 @@ def _first_slot(issue: VarietyIssue) -> int:
     return min((slot_index(s.day, s.slot) for s in issue.slots), default=SLOTS_PER_WEEK)
 
 
-def analyze_week(meals: Week) -> VarietyReport:
-    """Analyse a week of exactly 14 meals (``None`` for empty slots)."""
+def analyze_week(meals: Week, context: WeekContext = EMPTY_CONTEXT) -> VarietyReport:
+    """Analyse a week of exactly 14 meals (``None`` for empty slots).
+
+    ``context`` carries the previous weeks; without it only this week is looked at.
+    """
     if len(meals) != SLOTS_PER_WEEK:
         raise ValueError(f"expected {SLOTS_PER_WEEK} meals, got {len(meals)}")
     filled = sum(1 for meal in meals if meal is not None)
@@ -280,6 +361,8 @@ def analyze_week(meals: Week) -> VarietyReport:
         *_consecutive(meals),
         *_overload(meals, counts),
         *_coverage(meals, filled, counts),
+        *_previous_week_protein(meals, context),
+        *_recent_repeats(meals, context),
     ]
     issues.sort(key=lambda i: (i.severity is not IssueSeverity.warning, _first_slot(i)))
     return VarietyReport(

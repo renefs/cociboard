@@ -1,23 +1,33 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { clearWeek, replaceWeek, suggestWeek } from "../../api/client";
-import type { WeekPlan } from "../../api/types";
+import { clearWeek, copyWeek, replaceWeek, suggestWeek } from "../../api/client";
+import type { WeekCopyResult, WeekPlan } from "../../api/types";
 import { countFilled, planToFills } from "./planTransforms";
 import type { ToastAction } from "./Toast";
-import { weekKey } from "./useWeekPlan";
+import { invalidateFollowingWeeks, weekKey } from "./useWeekPlan";
+import { shiftWeek } from "./weekMath";
 
 export interface WeekTools {
   busy: boolean;
   suggest: () => Promise<void>;
   clear: () => Promise<void>;
+  /** Fill the empty slots with last week's meals. */
+  copyPrevious: () => Promise<void>;
 }
 
 type Notify = (kind: "info" | "error", text: string, action?: ToastAction) => void;
 
+/** What to tell the user: `undo` is false when the plan did not change. */
+interface Outcome {
+  text: string;
+  undo: boolean;
+}
+
 /**
- * Week-level actions: "Suggest" fills empty slots, "Clear week" empties the week. Both keep
- * the previous plan and offer an Undo that restores it atomically on the server.
+ * Week-level actions: "Suggest" and "Copy last week" fill empty slots, "Clear week" empties
+ * the week. All of them keep the previous plan and offer an Undo that restores it
+ * atomically on the server.
  */
 export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
   const { t } = useTranslation();
@@ -30,9 +40,11 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
         const restored = await replaceWeek(previous.week_start, planToFills(previous));
         queryClient.setQueryData(weekKey(previous.week_start), restored);
         void queryClient.invalidateQueries({ queryKey: ["shopping", previous.week_start] });
+        invalidateFollowingWeeks(queryClient, previous.week_start);
         notify("info", t("planner.restored"));
       } catch {
         void queryClient.invalidateQueries({ queryKey: weekKey(previous.week_start) });
+        invalidateFollowingWeeks(queryClient, previous.week_start);
         notify("error", t("planner.undoFailed"));
       }
     },
@@ -40,7 +52,7 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
   );
 
   const run = useCallback(
-    async (action: (key: string) => Promise<WeekPlan>, message: (before: WeekPlan, after: WeekPlan) => string | null) => {
+    async (action: (week: string) => Promise<WeekPlan>, outcome: (before: WeekPlan, after: WeekPlan) => Outcome) => {
       const key = weekKey(weekStart);
       const previous = queryClient.getQueryData<WeekPlan>(key);
       if (!previous || busy) return;
@@ -50,11 +62,13 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
         const next = await action(weekStart);
         queryClient.setQueryData(key, next);
         void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
-        const text = message(previous, next);
-        if (text === null) notify("info", t("planner.noEmptySlots"));
-        else notify("info", text, { label: t("planner.undo"), onClick: () => void restore(previous) });
+        invalidateFollowingWeeks(queryClient, weekStart);
+        const { text, undo } = outcome(previous, next);
+        if (undo) notify("info", text, { label: t("planner.undo"), onClick: () => void restore(previous) });
+        else notify("info", text);
       } catch {
         void queryClient.invalidateQueries({ queryKey: key });
+        invalidateFollowingWeeks(queryClient, weekStart);
         notify("error", t("planner.updateFailed"));
       } finally {
         setBusy(false);
@@ -63,6 +77,18 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
     [weekStart, queryClient, busy, notify, restore, t],
   );
 
+  /** Toast for a copy: how many meals came over, plus a note about archived ones. */
+  const copyOutcome = (result: WeekCopyResult): Outcome => {
+    const { copied, skipped_archived: skipped, source_meals: sourceMeals } = result;
+    if (copied > 0) {
+      const note = skipped > 0 ? ` ${t("planner.copySkippedArchived", { count: skipped })}` : "";
+      return { text: `${t("planner.copiedMeals", { count: copied })}${note}`, undo: true };
+    }
+    if (sourceMeals === 0) return { text: t("planner.copyNoSource"), undo: false };
+    if (skipped > 0) return { text: t("planner.copyOnlyArchived", { count: skipped }), undo: false };
+    return { text: t("planner.copyNoEmptySlots"), undo: false };
+  };
+
   return {
     busy,
     suggest: () =>
@@ -70,13 +96,25 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
         (week) => suggestWeek(week),
         (before, after) => {
           const added = countFilled(after) - countFilled(before);
-          return added > 0 ? t("planner.filledSlots", { count: added }) : null;
+          return added > 0
+            ? { text: t("planner.filledSlots", { count: added }), undo: true }
+            : { text: t("planner.noEmptySlots"), undo: false };
         },
       ),
     clear: () =>
       run(
         (week) => clearWeek(week),
-        (before) => t("planner.clearedMeals", { count: countFilled(before) }),
+        (before) => ({ text: t("planner.clearedMeals", { count: countFilled(before) }), undo: true }),
       ),
+    copyPrevious: () => {
+      let result: WeekCopyResult | undefined;
+      return run(
+        async (week) => {
+          result = await copyWeek(week, shiftWeek(week, -1));
+          return result.plan;
+        },
+        () => (result ? copyOutcome(result) : { text: t("planner.updateFailed"), undo: false }),
+      );
+    },
   };
 }

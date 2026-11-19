@@ -1,6 +1,6 @@
 import i18n from "../../i18n";
 import { describe, expect, it } from "vitest";
-import type { VarietyIssue, VarietyReport } from "../../api/types";
+import type { Candidate, VarietyIssue, VarietyReport } from "../../api/types";
 import { makePlan, makeRecipe } from "../../test/fixtures";
 import {
   describeIssues,
@@ -9,6 +9,7 @@ import {
   issueCounts,
   issueId,
   issueSlotKeys,
+  reasonText,
   scoreLevel,
   slotKey,
   sortByVariety,
@@ -124,10 +125,86 @@ describe("issueMessage", () => {
       "Only 0 fish or seafood meals so far. Aim for at least 2.",
       "Solo 0 comidas de pescado o marisco por ahora. Intenta llegar al menos a 2.",
     ],
+    [
+      {
+        ...params({ protein: "poultry", recipe: "Pollo asado" }, "previous_week_protein"),
+        slots: [{ day: 0, slot: "lunch" }],
+      },
+      "Poultry again: last week's Sunday dinner (Pollo asado) had the same main protein.",
+      "Aves otra vez: la cena del domingo de la semana pasada (Pollo asado) tenía la misma proteína principal.",
+    ],
+    [
+      params({ recipe: "Paella", weeks_ago: 1 }, "recent_repeat", "info"),
+      "Paella was also planned last week.",
+      "Paella también estaba planificada la semana pasada.",
+    ],
+    [
+      params({ recipe: "Paella", weeks_ago: 2 }, "recent_repeat", "info"),
+      "Paella was also planned 2 weeks ago.",
+      "Paella también estaba planificada hace 2 semanas.",
+    ],
   ];
   it.each(cases)("translates %#", (issue, english, spanish) => {
     expect(issueMessage(issue, en, "en")).toBe(english);
     expect(issueMessage(issue, es, "es")).toBe(spanish);
+  });
+});
+
+describe("cross-week issues", () => {
+  const boundary: VarietyIssue = {
+    kind: "previous_week_protein",
+    severity: "warning",
+    message: "",
+    params: { protein: "poultry", recipe: "Pollo asado" },
+    slots: [{ day: 0, slot: "lunch" }],
+  };
+  const recent: VarietyIssue = {
+    kind: "recent_repeat",
+    severity: "info",
+    message: "",
+    params: { recipe: "Paella", weeks_ago: 1 },
+    slots: [
+      { day: 2, slot: "lunch" },
+      { day: 4, slot: "dinner" },
+    ],
+  };
+
+  it("marks only Monday lunch for the boundary warning and no slot for the recent-repeat tip", () => {
+    const bySlot = warningsBySlot(report([boundary, recent]), en, "en");
+    expect([...bySlot.keys()]).toEqual(["0:lunch"]);
+    expect(bySlot.get("0:lunch")?.[0]).toMatch(/last week's Sunday dinner/);
+  });
+
+  it("counts the boundary as a warning and the repeat as a tip", () => {
+    expect(issueCounts(report([boundary, recent]))).toEqual({ warnings: 1, infos: 1 });
+    expect(describeIssues(report([boundary, recent]), en)).toBe("1 warning, 1 tip");
+  });
+
+  it("still lets a tip with slots be highlighted", () => {
+    expect(issueSlotKeys(recent)).toEqual(new Set(["2:lunch", "4:dinner"]));
+    expect(issueId(recent)).toBe("recent_repeat:2:lunch,4:dinner");
+  });
+});
+
+describe("reasonText", () => {
+  const candidate = (code: Candidate["reason_code"], params: Candidate["reason_params"]): Candidate => ({
+    recipe: makeRecipe(),
+    score_delta: 0,
+    reason: "",
+    reason_code: code,
+    reason_params: params,
+    good_pick: false,
+  });
+
+  it("words planned_recently for last week and for two weeks ago", () => {
+    expect(reasonText(candidate("planned_recently", { weeks_ago: 1 }), en)).toBe("Planned last week");
+    expect(reasonText(candidate("planned_recently", { weeks_ago: 2 }), en)).toBe("Planned 2 weeks ago");
+    expect(reasonText(candidate("planned_recently", { weeks_ago: 1 }), es)).toBe("Planificada la semana pasada");
+    expect(reasonText(candidate("planned_recently", { weeks_ago: 2 }), es)).toBe("Planificada hace 2 semanas");
+  });
+
+  it("still words protein reasons", () => {
+    expect(reasonText(candidate("twice_in_a_row", { protein: "fish" }), en)).toBe("Fish twice in a row");
   });
 });
 

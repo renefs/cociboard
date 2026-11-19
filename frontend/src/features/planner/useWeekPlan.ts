@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { assignSlot, clearSlot, getWeek, moveSlot } from "../../api/client";
@@ -14,6 +14,22 @@ export function useWeekPlan(weekStart: string) {
     queryKey: weekKey(weekStart),
     queryFn: ({ signal }) => getWeek(weekStart, signal),
   });
+}
+
+/** How many following weeks' variety reads this week (the backend looks two weeks back). */
+export const VARIETY_LOOKAHEAD_WEEKS = 2;
+
+/**
+ * A week's variety depends on the two weeks before it, so once a change to `weekStart` has
+ * settled the next two weeks are stale. A week with its own changes in flight is skipped:
+ * its settle step refetches it.
+ */
+export function invalidateFollowingWeeks(queryClient: QueryClient, weekStart: string): void {
+  for (let offset = 1; offset <= VARIETY_LOOKAHEAD_WEEKS; offset++) {
+    const following = shiftWeek(weekStart, offset);
+    if (queryClient.isMutating({ mutationKey: ["week-change", following] }) > 0) continue;
+    void queryClient.invalidateQueries({ queryKey: weekKey(following) });
+  }
 }
 
 const PREFETCH_STALE_MS = 30_000;
@@ -120,6 +136,7 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) <= 1) {
         void queryClient.invalidateQueries({ queryKey: key });
+        invalidateFollowingWeeks(queryClient, weekStart);
         // The shopping list is derived from the plan.
         void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
       }

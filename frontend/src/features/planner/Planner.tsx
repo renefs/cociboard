@@ -253,6 +253,19 @@ export function Planner({ now: nowProp }: PlannerProps) {
               <button
                 type="button"
                 className="btn"
+                disabled={!plan || tools.busy || countFilled(plan) === 14}
+                title={t("planner.copyLastWeekTitle")}
+                onClick={() => void tools.copyPrevious()}
+              >
+                <span aria-hidden="true">📋 </span>
+                <span className="label-long">{t("planner.copyLastWeek")}</span>
+                <span className="label-short" aria-hidden="true">
+                  {t("planner.copyLastWeekShort")}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="btn"
                 disabled={!plan || tools.busy || countFilled(plan) === 0}
                 onClick={() => setUi({ kind: "confirm-clear" })}
               >

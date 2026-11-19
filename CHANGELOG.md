@@ -5,6 +5,27 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-11-19
+
+Planning across weeks ([ADR-0015](docs/adr/0015-planning-across-weeks.md)).
+
+### Added
+- **Copy last week** in the planner toolbar: fills the empty slots with last week's meals
+  (never overwrites, skips archived recipes), with a toast and **Undo**.
+- Variety now looks at the two previous weeks: a **warning** when Monday lunch has the same
+  main protein as last week's Sunday dinner, and a **tip** (score-neutral) when a recipe was
+  also planned one or two weeks ago. Batch-cooking recipes are exempt from the tip.
+- Suggest prefers recipes that are neither in the week nor planned recently; slot candidates
+  show "Planned last week" / "Planned N weeks ago" and are never a "Good pick" then.
+- API: `POST /api/weeks/{week_start}/copy` with `{ "from_week_start" }`, answering
+  `{ plan, copied, skipped_archived, source_meals }`; issue kinds `previous_week_protein` and
+  `recent_repeat`; candidate reason `planned_recently` (`reason_params` may now hold numbers).
+
+### Changed
+- After a plan change settles, the following two weeks are refetched so their variety stays
+  correct. No schema change.
+- Reviewed in [review 0005](docs/reviews/0005-v0.12.0-review.md).
+
 ## [0.11.0] - 2026-11-19
 
 Archived recipes and exportable backups ([ADR-0014](docs/adr/0014-archive-and-backups.md)).

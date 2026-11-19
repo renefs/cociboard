@@ -139,6 +139,26 @@
   gap: var(--space-2);
 }
 
+/* A shorter label on phones; the full one stays as the accessible name. */
+.label-short {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .label-short {
+    display: inline;
+  }
+
+  .label-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* ---------- Variety summary ---------- */
 
 .variety {

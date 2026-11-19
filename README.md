@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.11.0** (archived recipes and backups).
+Current version: **0.12.0** (planning across weeks).
 
 ## Stack
 
@@ -232,7 +232,8 @@ recipes or `null` and `variety` is the variety report (see below).
 | `DELETE /api/weeks/{week_start}` | Clear the whole week |
 | `GET /api/weeks/{week_start}/variety` | Variety report of the week |
 | `POST /api/weeks/{week_start}/suggest` | Fill the empty slots with varied, compatible recipes; optional body `{ "seed": n }` makes the result repeatable. Filled slots are never changed |
-| `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` (English), `reason_code`, `reason_params` and `good_pick` |
+| `POST /api/weeks/{week_start}/copy` | Copy the meals of `{ "from_week_start": "YYYY-MM-DD" }` into the **empty** slots of the week (never overwrites; meals with archived recipes are skipped). Answers `{ plan, copied, skipped_archived, source_meals }`. `422` when either date is not a Monday or both are the same week, `409` on a concurrent change |
+| `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` (English), `reason_code` (including `planned_recently`), `reason_params` (`protein` or `weeks_ago`) and `good_pick` |
 | `POST /api/weeks/{week_start}/move` | Move `{ from_day, from_slot, to_day, to_slot }`; swaps if the target is occupied; both recipes must fit (`404` empty source, `422` incompatible) |
 
 Deleting a recipe removes it from all weeks.
@@ -276,6 +277,13 @@ or seafood meals once 10 are filled (info). Score: `90 - 15 * warnings - 5 * inf
 `2` per distinct protein beyond the first (at most 10), clamped to 0-100. Details and the
 suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md).
 
+The analysis also looks at the two previous weeks (archived recipes included), see
+[ADR-0015](docs/adr/0015-planning-across-weeks.md): `previous_week_protein` (warning, slot
+Monday lunch, params `{ protein, recipe }`) when Monday lunch has the same main protein as last
+week's Sunday dinner, and `recent_repeat` (info, params `{ recipe, weeks_ago }` with 1 or 2,
+batch cooking exempt) when a recipe was also planned in the last two weeks. `recent_repeat`
+never changes the score: it is a hint, not a fault.
+
 ## How to plan a week
 
 1. **Look at the recipes.** The panel lists your catalogue; search by name or ingredient, filter
@@ -284,7 +292,9 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
 2. **Fill slots by hand.** Drag a recipe onto a lunch or dinner slot, or tap: tap an empty slot
    and choose from the recipes that fit, or tap **Add** on a recipe and then a highlighted slot.
    Dinner-only recipes never fit lunch slots and vice versa.
-3. **Let Cociboard suggest.** **Suggest** fills only the empty slots with varied recipes; use
+3. **Start from last week, or let Cociboard suggest.** **Copy last week** fills the empty slots
+   with the previous week's meals (archived recipes are skipped). **Suggest** fills only the
+   empty slots with varied recipes, preferring ones you have not cooked recently; use
    **Undo** in the toast if you do not like the result, or run it again after clearing some
    slots. Your own picks are never replaced.
 4. **Check the variety.** The badge shows the week's score. Open it to see the issues (a
@@ -317,12 +327,15 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
 
 - **Weeks:** use the ‹ and › buttons or **This week** in the planner header; the address bar
   shows `?week=YYYY-MM-DD`, so weeks can be bookmarked and Back/Forward work.
-- **Suggest** fills the empty slots with varied recipes (existing meals stay). **Clear week**
-  asks for confirmation. Both show a toast with **Undo** for a few seconds.
+- **Suggest** fills the empty slots with varied recipes (existing meals stay) and **Copy last
+  week** fills them with the previous week's meals. **Clear week** asks for confirmation. All
+  three show a toast with **Undo** for a few seconds.
 - **Variety:** the badge shows the week's score (green, amber, red). Open it to read the issues;
   click one to highlight its slots. A ⚠ on a slot means it takes part in a warning. In the
   recipe panel, "×2 this week" marks recipes already planned and **Best for variety** sorts the
-  list; the slot picker puts the best fits first, with a reason and a "Good pick" mark.
+  list; the slot picker puts the best fits first, with a reason and a "Good pick" mark. Variety
+  also looks back: the same protein from last Sunday's dinner on Monday lunch is a warning, and
+  recipes from the last two weeks get a tip (and "Planned last week" in the picker).
 
 - **Desktop:** drag a recipe card (or an assigned recipe) onto a slot. Dragging an assigned
   recipe onto another slot moves it or swaps the two; dropping it on the recipe list

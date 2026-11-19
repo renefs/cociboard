@@ -102,6 +102,36 @@ describe("usePlanActions request ordering", () => {
   });
 });
 
+describe("usePlanActions following weeks", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(client, "getWeek").mockResolvedValue(makePlan());
+  });
+
+  it("marks the next two weeks stale once a change settles, and no others", async () => {
+    vi.spyOn(client, "assignSlot").mockResolvedValue(makePlan());
+    const { queryClient, actions } = setup();
+    const keys = ["2026-11-02", "2026-11-09", "2026-11-16", "2026-10-19"].map(weekKey);
+    for (const key of keys) queryClient.setQueryData(key, makePlan());
+
+    act(() => actions.current.assign(slotA, soup));
+    await waitFor(() => expect(queryClient.getQueryState(keys[0]!)?.isInvalidated).toBe(true));
+    expect(queryClient.getQueryState(keys[1]!)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(keys[2]!)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(keys[3]!)?.isInvalidated).toBe(false);
+  });
+
+  it("also does it when the change fails", async () => {
+    vi.spyOn(client, "assignSlot").mockRejectedValue(new ApiError(500, "boom"));
+    const { queryClient, actions } = setup();
+    queryClient.setQueryData(weekKey("2026-11-02"), makePlan());
+    act(() => actions.current.assign(slotA, soup));
+    await waitFor(() =>
+      expect(queryClient.getQueryState(weekKey("2026-11-02"))?.isInvalidated).toBe(true),
+    );
+  });
+});
+
 describe("describePlanError", () => {
   it("explains a 409 conflict", () => {
     expect(describePlanError(new ApiError(409, "Conflict"), i18n.getFixedT("en"))).toBe(
