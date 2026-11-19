@@ -5,6 +5,29 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-11-19
+
+Installable app with offline reading ([ADR-0019](docs/adr/0019-pwa-offline.md)).
+
+### Added
+- **Installable (PWA)**: web app manifest, app icons (plate, fork and knife; maskable and
+  Apple touch variants, rendered by `frontend/scripts/render_icons.py`) and standalone display.
+- **Service worker** (hand-written, no new dependency) built to `/sw.js`: precached app shell
+  and assets, network-first reads of `GET /api/*` kept for offline use. Auth, backup and health
+  requests are never cached; a `401` or logging out deletes the cached API data.
+- **Update prompt**: a bar with a **Reload** button when a new version is ready; the page also
+  checks for updates when it becomes visible again.
+- **Offline banner** (English and Spanish) with the number of changes waiting to be saved,
+  a "Back online" notice and a warning before leaving the page with unsaved changes. Queries
+  use TanStack `offlineFirst`; changes made offline pause and resume when the connection returns.
+- The backend serves `/`, `/sw.js` and `/manifest.webmanifest` with `Cache-Control: no-cache`,
+  hashed assets as immutable, and `.webmanifest` as `application/manifest+json`.
+- README section "Install on a phone / offline".
+
+### Changed
+- `theme-color` now matches the primary colour token (`#b9461f`).
+- `npm run typecheck` also type-checks the service worker (`tsconfig.sw.json`).
+
 ## [0.15.0] - 2026-11-19
 
 Optional household password ([ADR-0018](docs/adr/0018-optional-household-password.md)).

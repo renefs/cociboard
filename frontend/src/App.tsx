@@ -8,6 +8,7 @@ import { useAuthStatus } from "./features/auth/useAuthStatus";
 import { BackupButton } from "./features/backup/BackupButton";
 import { BackupDialog } from "./features/backup/BackupDialog";
 import { Planner } from "./features/planner/Planner";
+import { OfflineBanner } from "./pwa/OfflineBanner";
 import { Toast, type ToastMessage } from "./features/planner/Toast";
 
 type VersionState = { kind: "loading" } | { kind: "ready"; version: string } | { kind: "offline" };
@@ -45,6 +46,7 @@ export default function App() {
           <LanguageSwitcher />
         </div>
       </header>
+      <OfflineBanner />
       {auth.data?.exposed && <ExposureBanner />}
       <main className="app-main">
         <Planner />

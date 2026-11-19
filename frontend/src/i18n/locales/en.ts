@@ -256,6 +256,14 @@ const en = {
       "This planner is open and your device connects from a public address. Set COCIBOARD_PASSWORD (or COCIBOARD_PASSWORD_HASH) on the server to protect it; the README explains how.",
     exposedDismiss: "Dismiss",
   },
+  pwa: {
+    offline: "You're offline. You're seeing the last saved plan; changes will be saved when the connection returns.",
+    waiting_one: "{{count}} change waiting to be saved",
+    waiting_other: "{{count}} changes waiting to be saved",
+    backOnline: "Back online",
+    updateAvailable: "A new version is available.",
+    reload: "Reload",
+  },
   backup: {
     button: "Backup",
     buttonTitle: "Download or restore a backup of your data",
