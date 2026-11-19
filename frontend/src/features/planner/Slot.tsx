@@ -155,13 +155,21 @@ function FilledSlot({ day, slot, recipe, selecting, disabled, onActivate, onRemo
         ref={setActivatorNodeRef}
         {...attributes}
         aria-pressed={undefined}
-        aria-label={t("planner.slotRecipe", { name: recipe.name, where })}
+        aria-label={t(recipe.archived ? "planner.slotRecipeArchived" : "planner.slotRecipe", {
+          name: recipe.name,
+          where,
+        })}
         disabled={disabled}
         onClick={() => onActivate(day, slot)}
       >
         <span className="slot-name" lang={RECIPE_LANG} title={recipe.name}>
           {recipe.name}
         </span>
+        {recipe.archived && (
+          <span className="slot-archived" aria-hidden="true">
+            {t("planner.archivedMark")}
+          </span>
+        )}
         <span className="slot-icons">
           <MetaIcon meta={meal} />
           <span className="slot-protein" aria-hidden="true">

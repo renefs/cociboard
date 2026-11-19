@@ -8,6 +8,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -71,7 +72,9 @@ class RecipeCreate(BaseModel):
         return value.strip() or None if value is not None else None
 
 
-_REQUIRED_ON_UPDATE = frozenset({"name", "meal_type", "protein", "ingredients", "properties"})
+_REQUIRED_ON_UPDATE = frozenset(
+    {"name", "meal_type", "protein", "ingredients", "properties", "archived"}
+)
 
 
 class RecipeUpdate(BaseModel):
@@ -84,6 +87,7 @@ class RecipeUpdate(BaseModel):
     prep_minutes: int | None = Field(default=None, gt=0)
     ingredients: list[str] | None = Field(default=None, min_length=1)
     properties: list[RecipeProperty] | None = None
+    archived: bool | None = None
 
     @field_validator("ingredients")
     @classmethod
@@ -126,6 +130,13 @@ class RecipeRead(BaseModel):
     ingredients: list[str]
     properties: list[RecipeProperty]
     created_at: datetime
+    archived_at: datetime | None = Field(default=None, exclude=True)
+
+    @computed_field  # type: ignore[prop-decorator]  # pydantic documents this pattern
+    @property
+    def archived(self) -> bool:
+        """Whether the recipe is archived (hidden from the catalogue, kept in plans)."""
+        return self.archived_at is not None
 
 
 class RecipeUsage(BaseModel):
@@ -148,6 +159,22 @@ class MealTypeConflictDetail(BaseModel):
     code: Literal["meal_type_conflict"] = "meal_type_conflict"
     message: str
     conflicts: list[ConflictSlot]
+
+
+class DuplicateNameDetail(BaseModel):
+    """The ``detail`` of the 409 returned when a recipe name is already taken."""
+
+    code: Literal["duplicate_name"] = "duplicate_name"
+    message: str
+    archived: bool  # the existing recipe is archived: the client explains how to restore it
+
+
+class RecipeArchivedDetail(BaseModel):
+    """The ``detail`` of the 422 returned when an archived recipe is assigned to a slot."""
+
+    code: Literal["recipe_archived"] = "recipe_archived"
+    message: str
+    recipe_id: int
 
 
 class SlotAssign(BaseModel):

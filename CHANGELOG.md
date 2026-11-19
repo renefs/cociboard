@@ -5,6 +5,40 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-11-19
+
+Archived recipes and exportable backups ([ADR-0014](docs/adr/0014-archive-and-backups.md)).
+
+### Added
+- **Archive recipes** instead of deleting them. An archived recipe is hidden from the
+  catalogue, from suggestions and from slot pickers, but stays in the weeks where it was
+  planned (marked "Archived") and still counts for variety. **Archive** / **Restore** in the
+  recipe details; an **Archived (N)** list under the catalogue with **Restore**.
+- Deleting a planned recipe now explains that its meals disappear from every week, past ones
+  included, and offers **Archive instead** (recommended) or **Delete permanently**.
+- **Backup** button in the header: download everything (recipes, plans, shopping lists) as
+  one JSON file, or restore from such a file after a summary and a confirmation. Restoring
+  replaces all data in one transaction.
+- API: `GET /api/backup` (download), `POST /api/backup/restore` (replace all data; `422` with
+  a code, `413` above 10 MB); `archived` on recipes (`PATCH`, `RecipeRead`) and
+  `GET /api/recipes?archived=true`.
+- Before a restore, a copy of the SQLite file is written next to it
+  (`cociboard.db.bak-pre-restore-<UTC timestamp>`).
+- Migration `0003_recipe_archived_at`.
+
+### Changed
+- Assigning an archived recipe to a slot answers `422` with `code: "recipe_archived"`.
+  Moving or swapping meals that already use one, and Undo, keep working.
+- The `409` for a duplicate recipe name now has `detail: { code: "duplicate_name", message,
+  archived }` (it was a plain string); the form tells when the name belongs to an archived
+  recipe.
+- Backup rotation: `pre-restore` copies and migration copies are each limited to the three
+  most recent (previously one shared list of migration copies).
+
+### Fixed
+- The icon-only backup button on narrow screens is a 44px touch target
+  ([review 0004](docs/reviews/0004-v0.11.0-review.md)).
+
 ## [0.10.0] - 2026-11-19
 
 Schema migrations ([ADR-0013](docs/adr/0013-schema-migrations.md)).

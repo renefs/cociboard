@@ -10,6 +10,7 @@ from cociboard.db import get_session
 from cociboard.domain import MealSlot, RecipeProperty
 from cociboard.schemas import (
     ConflictSlot,
+    DuplicateNameDetail,
     MealTypeConflictDetail,
     RecipeCreate,
     RecipeRead,
@@ -26,8 +27,11 @@ def _not_found(recipe_id: int) -> HTTPException:
     return HTTPException(status.HTTP_404_NOT_FOUND, f"Recipe {recipe_id} not found")
 
 
-def _duplicate(name: str) -> HTTPException:
-    return HTTPException(status.HTTP_409_CONFLICT, f"A recipe named '{name}' already exists")
+def _duplicate(exc: repository.DuplicateRecipeNameError) -> HTTPException:
+    detail = DuplicateNameDetail(
+        message=f"A recipe named '{exc.args[0]}' already exists", archived=exc.archived
+    )
+    return HTTPException(status.HTTP_409_CONFLICT, detail=detail.model_dump(mode="json"))
 
 
 @router.get("", response_model=list[RecipeRead])
@@ -39,9 +43,12 @@ def list_recipes(
         list[RecipeProperty] | None,
         Query(alias="property", description="Required property; repeat to require several"),
     ] = None,
+    archived: Annotated[
+        bool, Query(description="true returns only archived recipes; default hides them")
+    ] = False,
 ) -> list[RecipeRead]:
-    """List recipes, optionally filtered."""
-    recipes = repository.list_recipes(session, slot, q, properties or [])
+    """List recipes, optionally filtered. Archived recipes are hidden unless asked for."""
+    recipes = repository.list_recipes(session, slot, q, properties or [], archived)
     return [RecipeRead.model_validate(r) for r in recipes]
 
 
@@ -68,8 +75,8 @@ def create_recipe(data: RecipeCreate, session: SessionDep) -> RecipeRead:
     """Create a recipe."""
     try:
         return RecipeRead.model_validate(repository.create_recipe(session, data))
-    except repository.DuplicateRecipeNameError:
-        raise _duplicate(data.name) from None
+    except repository.DuplicateRecipeNameError as exc:
+        raise _duplicate(exc) from None
 
 
 @router.patch("/{recipe_id}", response_model=RecipeRead)
@@ -83,6 +90,7 @@ def update_recipe(
 ) -> RecipeRead:
     """Partially update a recipe.
 
+    ``archived`` archives or restores the recipe without touching planned meals.
     Answers 409 with a structured ``detail`` (``code: meal_type_conflict``) when a meal-type
     change would leave the recipe in slots it no longer fits, unless ``force=true``.
     """
@@ -102,13 +110,13 @@ def update_recipe(
         ) from None
     except repository.RecipeNotFoundError:
         raise _not_found(recipe_id) from None
-    except repository.DuplicateRecipeNameError:
-        raise _duplicate(data.name or "") from None
+    except repository.DuplicateRecipeNameError as exc:
+        raise _duplicate(exc) from None
 
 
 @router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_recipe(recipe_id: int, session: SessionDep) -> Response:
-    """Delete a recipe."""
+    """Delete a recipe permanently, including its planned meals in every week."""
     try:
         repository.delete_recipe(session, recipe_id)
     except repository.RecipeNotFoundError:

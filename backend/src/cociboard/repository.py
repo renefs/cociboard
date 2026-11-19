@@ -1,6 +1,7 @@
 """Persistence operations for recipes."""
 
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +17,11 @@ class RecipeNotFoundError(Exception):
 
 
 class DuplicateRecipeNameError(Exception):
-    """Raised when a recipe name is already taken."""
+    """Raised when a recipe name is already taken; ``archived`` tells if by an archived one."""
+
+    def __init__(self, name: str, archived: bool = False) -> None:
+        super().__init__(name)
+        self.archived = archived
 
 
 class MealTypeConflictError(Exception):
@@ -27,9 +32,16 @@ class MealTypeConflictError(Exception):
         self.conflicts = conflicts
 
 
-def _name_taken(session: Session, name: str, exclude_id: int | None = None) -> bool:
-    statement = select(Recipe.id).where(func.lower(col(Recipe.name)) == name.lower())
-    return any(found != exclude_id for found in session.exec(statement))
+def _name_clash(session: Session, name: str, exclude_id: int | None = None) -> Recipe | None:
+    """The recipe (archived or not) already holding ``name``, if any."""
+    statement = select(Recipe).where(func.lower(col(Recipe.name)) == name.lower())
+    return next((r for r in session.exec(statement) if r.id != exclude_id), None)
+
+
+def _raise_if_taken(session: Session, name: str, exclude_id: int | None = None) -> None:
+    clash = _name_clash(session, name, exclude_id)
+    if clash is not None:
+        raise DuplicateRecipeNameError(name, archived=clash.archived_at is not None)
 
 
 def matches(
@@ -56,10 +68,18 @@ def list_recipes(
     slot: MealSlot | None = None,
     query: str | None = None,
     properties: Sequence[RecipeProperty] = (),
+    archived: bool = False,
 ) -> list[Recipe]:
-    """Return recipes ordered by name, filtered by slot, text and properties."""
+    """Return recipes ordered by name, filtered by slot, text and properties.
+
+    Archived recipes are left out unless ``archived`` is true, which returns only them.
+    """
     recipes = session.exec(select(Recipe).order_by(func.lower(col(Recipe.name)))).all()
-    return [r for r in recipes if matches(r, slot, query, properties)]
+    return [
+        r
+        for r in recipes
+        if (r.archived_at is not None) == archived and matches(r, slot, query, properties)
+    ]
 
 
 def get_recipe(session: Session, recipe_id: int) -> Recipe:
@@ -83,8 +103,7 @@ def _commit(session: Session, recipe: Recipe) -> Recipe:
 
 def create_recipe(session: Session, data: RecipeCreate) -> Recipe:
     """Insert a recipe; raise :class:`DuplicateRecipeNameError` on a name clash."""
-    if _name_taken(session, data.name):
-        raise DuplicateRecipeNameError(data.name)
+    _raise_if_taken(session, data.name)
     recipe = Recipe(
         name=data.name,
         description=data.description,
@@ -131,8 +150,8 @@ def update_recipe(
     recipe = get_recipe(session, recipe_id)
     changes = data.changes()
     new_name = changes.get("name")
-    if isinstance(new_name, str) and _name_taken(session, new_name, exclude_id=recipe_id):
-        raise DuplicateRecipeNameError(new_name)
+    if isinstance(new_name, str):
+        _raise_if_taken(session, new_name, exclude_id=recipe_id)
     if data.meal_type is not None and data.meal_type != recipe.meal_type:
         conflicts = incompatible_assignments(session, recipe_id, data.meal_type)
         if conflicts and not force:
@@ -141,13 +160,21 @@ def update_recipe(
             session.delete(assignment)
     if "properties" in changes:
         changes["properties"] = [p.value for p in data.properties or []]
+    if "archived" in changes:
+        # Archiving only flips the flag: planned meals are never touched.
+        archived = bool(changes.pop("archived"))
+        if archived != (recipe.archived_at is not None):
+            recipe.archived_at = datetime.now(UTC) if archived else None
     for key, value in changes.items():
         setattr(recipe, key, value)
     return _commit(session, recipe)
 
 
 def delete_recipe(session: Session, recipe_id: int) -> None:
-    """Delete a recipe or raise :class:`RecipeNotFoundError`."""
+    """Delete a recipe and every planned meal using it (all weeks).
+
+    Raises :class:`RecipeNotFoundError`. Archiving is the non-destructive alternative.
+    """
     recipe = get_recipe(session, recipe_id)
     session.exec(delete(MealAssignment).where(col(MealAssignment.recipe_id) == recipe_id))
     session.delete(recipe)

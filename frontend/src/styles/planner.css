@@ -1000,3 +1000,29 @@ button.issue-button:hover {
 .toast--error {
   border-left-color: var(--color-danger);
 }
+
+/* ---------- Archived recipes ---------- */
+
+.confirm-actions--stack {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 479px) {
+  .confirm-actions--stack {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-actions--stack .btn {
+    min-height: 2.75rem;
+  }
+}
+
+.slot-archived {
+  align-self: flex-start;
+  padding: 0 var(--space-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 999px;
+}

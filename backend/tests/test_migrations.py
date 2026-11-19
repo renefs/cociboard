@@ -214,3 +214,32 @@ def test_configure_logging_shows_info_once() -> None:
     finally:
         logger.handlers[:] = saved_handlers
         logger.setLevel(saved_level)
+
+
+def test_v010_database_gains_archived_at(tmp_path: Path) -> None:
+    db = tmp_path / "v010.db"
+    engine = _engine(db)
+    config = Config()
+    config.set_main_option("script_location", "cociboard:migrations")
+    with engine.connect() as conn:
+        config.attributes["connection"] = conn
+        command.upgrade(config, "0002_shopping_list")
+        conn.commit()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO recipe (name, meal_type, protein, ingredients, properties, "
+                "created_at) VALUES ('Lentils', 'lunch', 'legumes', '[\"x\"]', '[]', "
+                "'2026-01-01 00:00:00')"
+            )
+        )
+    assert "archived_at" not in {c["name"] for c in inspect(engine).get_columns("recipe")}
+
+    run_migrations(engine)
+
+    assert _version(engine) == _head()
+    assert _diff(engine) == []
+    with engine.connect() as conn:
+        archived = conn.execute(text("SELECT archived_at FROM recipe")).scalar_one()
+    assert archived is None
+    assert len(_backups(db)) == 1

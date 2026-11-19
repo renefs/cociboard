@@ -83,9 +83,11 @@ def test_unused_recipe_meal_type_change(client: TestClient) -> None:
     assert response.status_code == 200
 
 
-def test_duplicate_name_still_plain_409(client: TestClient) -> None:
+def test_duplicate_name_409_has_code(client: TestClient) -> None:
     make(client, "Paella")
     other = make(client, "Tortilla")
     response = client.patch(f"/api/recipes/{other}", json={"name": "paella"})
     assert response.status_code == 409
-    assert isinstance(response.json()["detail"], str)
+    detail = response.json()["detail"]
+    assert detail["code"] == "duplicate_name"
+    assert detail["archived"] is False

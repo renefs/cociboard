@@ -7,6 +7,7 @@ import type {
   RecipeFilters,
   RecipeUpdate,
   RecipeUsage,
+  RestoreResult,
   SlotFill,
   ShoppingExtraUpdate,
   ShoppingList,
@@ -61,6 +62,7 @@ export function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
 export function listRecipes(filters: RecipeFilters = {}, signal?: AbortSignal): Promise<Recipe[]> {
   const params = new URLSearchParams();
   if (filters.slot) params.set("slot", filters.slot);
+  if (filters.archived) params.set("archived", "true");
   const q = filters.q?.trim();
   if (q) params.set("q", q);
   for (const property of filters.properties ?? []) params.append("property", property);
@@ -206,4 +208,43 @@ export function updateShoppingExtra(
 
 export function deleteShoppingExtra(weekStart: string, id: number): Promise<ShoppingList> {
   return request<ShoppingList>(`${shoppingPath(weekStart)}/extras/${id}`, { method: "DELETE" });
+}
+
+/** A downloaded backup: the JSON text and the file name suggested by the server. */
+export interface BackupDownload {
+  blob: Blob;
+  filename: string;
+}
+
+/** File name from a `Content-Disposition: attachment; filename="..."` header. */
+export function filenameFromDisposition(header: string | null, fallback: string): string {
+  const match = header ? /filename="([^"\\/]+)"/.exec(header) : null;
+  return match?.[1] ?? fallback;
+}
+
+export async function downloadBackup(): Promise<BackupDownload> {
+  const response = await fetch("/api/backup", { headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `Request to /backup failed with ${response.status}`,
+      await readDetail(response),
+    );
+  }
+  return {
+    blob: await response.blob(),
+    filename: filenameFromDisposition(
+      response.headers.get("Content-Disposition"),
+      "cociboard-backup.json",
+    ),
+  };
+}
+
+/** Replace all data with the given backup document (already parsed from the file). */
+export function restoreBackup(document: unknown): Promise<RestoreResult> {
+  return request<RestoreResult>("/backup/restore", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(document),
+  });
 }

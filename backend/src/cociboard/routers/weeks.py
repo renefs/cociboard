@@ -11,6 +11,7 @@ from cociboard.db import get_session
 from cociboard.domain import MealSlot, week_start_for
 from cociboard.schemas import (
     CandidateRead,
+    RecipeArchivedDetail,
     SlotAssign,
     SlotMove,
     SuggestRequest,
@@ -43,6 +44,14 @@ def _translate(exc: Exception) -> HTTPException:
         return _unprocessable("week_start must be a Monday")
     if isinstance(exc, planner.InvalidDayError):
         return _unprocessable("day must be between 0 and 6")
+    if isinstance(exc, planner.RecipeArchivedError):
+        detail = RecipeArchivedDetail(
+            message="Archived recipes cannot be added to the plan; restore the recipe first",
+            recipe_id=int(exc.args[0]),
+        )
+        return HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail.model_dump(mode="json")
+        )
     if isinstance(exc, planner.IncompatibleSlotError):
         return _unprocessable("The recipe's meal type does not fit that slot")
     if isinstance(exc, planner.PlanConflictError):
@@ -132,6 +141,7 @@ def assign_slot(
         return planner.assign_slot(session, week_start, day, slot, body.recipe_id)
     except (
         repository.RecipeNotFoundError,
+        planner.RecipeArchivedError,
         planner.InvalidWeekError,
         planner.IncompatibleSlotError,
         planner.PlanConflictError,

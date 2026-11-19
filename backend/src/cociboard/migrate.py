@@ -1,9 +1,6 @@
 """Run Alembic migrations on startup, with a safety backup of existing SQLite files."""
 
 import logging
-import sqlite3
-from datetime import UTC, datetime
-from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
@@ -11,12 +8,13 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, inspect
 
+from cociboard.dbfiles import backup_sqlite, sqlite_file
+
 logger = logging.getLogger("cociboard.migrate")
 
 BASELINE_REVISION = "0001_initial"
 CORE_TABLES = frozenset({"recipe", "mealassignment"})
 KNOWN_TABLES = CORE_TABLES | {"shoppingcheck", "shoppingextra"}
-BACKUPS_KEPT = 3
 
 
 class MigrationError(RuntimeError):
@@ -27,40 +25,6 @@ def _config() -> Config:
     config = Config()
     config.set_main_option("script_location", "cociboard:migrations")
     return config
-
-
-def _sqlite_file(engine: Engine) -> Path | None:
-    """Path of the SQLite database file, or None for other or in-memory databases."""
-    url = engine.url
-    if url.get_backend_name() != "sqlite" or url.database in (None, "", ":memory:"):
-        return None
-    if url.database.startswith("file:"):
-        return None
-    return Path(url.database)
-
-
-def _backup(engine: Engine, path: Path, label: str) -> Path:
-    """Copy the database with the SQLite online backup API and prune old backups."""
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    target = path.with_name(f"{path.name}.bak-{label}-{stamp}")
-    source = sqlite3.connect(path)
-    try:
-        dest = sqlite3.connect(target)
-        try:
-            source.backup(dest)
-        finally:
-            dest.close()
-    finally:
-        source.close()
-    logger.info("Backed up database to %s", target)
-    # Timestamps sort lexicographically; the label can differ, so sort by mtime then name.
-    backups = sorted(
-        path.parent.glob(f"{path.name}.bak-*"), key=lambda p: (p.stat().st_mtime_ns, p.name)
-    )
-    for old in backups[:-BACKUPS_KEPT]:
-        old.unlink()
-        logger.info("Removed old backup %s", old)
-    return target
 
 
 def run_migrations(engine: Engine) -> None:
@@ -92,9 +56,8 @@ def run_migrations(engine: Engine) -> None:
         logger.info("Database schema is up to date (revision %s)", head)
         return
 
-    path = _sqlite_file(engine)
-    if path is not None and tables:
-        _backup(engine, path, "legacy" if legacy else str(current))
+    if sqlite_file(engine) is not None and tables:
+        backup_sqlite(engine, "legacy" if legacy else str(current))
 
     with engine.connect() as connection:
         config.attributes["connection"] = connection

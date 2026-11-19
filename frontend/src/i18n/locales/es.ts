@@ -66,6 +66,9 @@ const es = {
     slotName: { lunch: "comida del {{dayLower}}", dinner: "cena del {{dayLower}}" },
     slotHint: { lunch: "No es para la comida", dinner: "No es para la cena" },
     varietyWarning: "Aviso de variedad: {{messages}}",
+    slotRecipeArchived:
+      "{{name}} (receta archivada), {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+    archivedMark: "Archivada",
     slotRecipe:
       "{{name}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
     removeFrom: {
@@ -101,6 +104,8 @@ const es = {
       "Para coger una receta, pulsa Espacio. Usa las flechas para saltar entre huecos, Espacio para soltarla y Escape para cancelar.",
     errors: {
       unprocessable: "Esa receta no encaja en ese hueco. No se ha cambiado nada.",
+      recipeArchived:
+        "Esa receta está archivada. Restáurala desde la lista de recetas para volver a planificarla.",
       conflict: "El plan ha cambiado entretanto; recarga e inténtalo de nuevo.",
       notFound: "Esa receta o ese hueco ya no existe. Se ha actualizado tu plan.",
       generic:
@@ -183,11 +188,32 @@ const es = {
         "No se pudo comprobar si esta receta está planificada. Al eliminarla también se quitará de todas las semanas que la usen.",
       notPlanned: "Esta receta no está planificada en ninguna semana. No se puede deshacer.",
       planned_one:
-        "Esta receta está planificada en <strong>{{count}}</strong> comida de tus semanas. Al eliminarla también se quitará esa comida del plan. No se puede deshacer.",
+        "Esta receta está planificada en <strong>{{count}}</strong> comida de tus semanas. Al eliminarla también se quitará esa comida del plan, incluidas las semanas pasadas. No se puede deshacer.",
       planned_other:
-        "Esta receta está planificada en <strong>{{count}}</strong> comidas de tus semanas. Al eliminarla también se quitarán esas comidas del plan. No se puede deshacer.",
+        "Esta receta está planificada en <strong>{{count}}</strong> comidas de tus semanas. Al eliminarla también se quitarán esas comidas del plan, incluidas las semanas pasadas. No se puede deshacer.",
       deleted: "Se ha eliminado {{name}}.",
       deleteFailed: "No se pudo eliminar {{name}}. Inténtalo de nuevo.",
+      archive: "Archivar",
+      restore: "Restaurar",
+      archiving: "Archivando…",
+      archiveInstead: "Archivar en su lugar",
+      deletePermanently: "Eliminar definitivamente",
+      archiveAdvice:
+        "Archivar oculta la receta del catálogo y de las sugerencias, pero la mantiene en las semanas donde está planificada. Puedes restaurarla cuando quieras.",
+      archivedNote:
+        "Archivada: oculta del catálogo y de las sugerencias, pero visible en las semanas donde estaba planificada.",
+      archived: "Se ha archivado {{name}}. Sigue en las semanas donde está planificada.",
+      restored: "Se ha restaurado {{name}}.",
+      archiveFailed: "No se pudo archivar {{name}}. Inténtalo de nuevo.",
+      restoreFailed: "No se pudo restaurar {{name}}. Inténtalo de nuevo.",
+    },
+    archived: {
+      show: "Archivadas ({{count}})",
+      hide: "Ocultar archivadas",
+      heading: "Recetas archivadas",
+      empty: "No hay recetas archivadas.",
+      noMatches: "Ninguna receta archivada coincide con la búsqueda o los filtros.",
+      restoreNamed: "Restaurar {{name}}",
     },
     saved: {
       created: "Se ha creado {{name}}.",
@@ -196,6 +222,66 @@ const es = {
         "Se ha guardado {{name}}. Se ha quitado {{count}} comida planificada que ya no encaja.",
       updatedRemoved_other:
         "Se ha guardado {{name}}. Se han quitado {{count}} comidas planificadas que ya no encajan.",
+    },
+  },
+  backup: {
+    button: "Copia",
+    buttonTitle: "Descargar o restaurar una copia de seguridad de tus datos",
+    title: "Copia de seguridad",
+    downloadHeading: "Descargar una copia",
+    downloadHelp:
+      "Guarda un único archivo con todas tus recetas (también las archivadas), planes semanales y listas de la compra. Guárdalo en un lugar seguro.",
+    download: "Descargar copia",
+    downloading: "Preparando…",
+    downloaded: "Copia descargada: {{name}}.",
+    downloadFailed: "No se pudo descargar la copia. Comprueba tu conexión e inténtalo de nuevo.",
+    restoreHeading: "Restaurar desde un archivo",
+    restoreHelp:
+      "Elige un archivo de copia hecho por Cociboard. Verás lo que contiene antes de que cambie nada.",
+    chooseFile: "Archivo de copia",
+    contains: "{{name}} contiene {{summary}}.",
+    restore: "Restaurar…",
+    confirmTitle: "¿Reemplazar todos tus datos?",
+    confirmBody:
+      "Esto reemplaza todas tus recetas, planes y listas de la compra por el contenido de {{name}} ({{summary}}). En el servidor se conserva una copia de los datos actuales.",
+    confirm: "Reemplazar todo",
+    restoring: "Restaurando…",
+    tryAgain: "Reintentar",
+    retryHint: "Tus datos no han cambiado.",
+    restored: "Copia restaurada: {{counts}}.",
+    summary: {
+      recipes_one: "{{count}} receta",
+      recipes_other: "{{count}} recetas",
+      meals_one: "{{count}} comida planificada",
+      meals_other: "{{count}} comidas planificadas",
+      shopping_one: "{{count}} artículo de la compra",
+      shopping_other: "{{count}} artículos de la compra",
+      withDate: "{{counts}}, exportada el {{date}}",
+    },
+    fileErrors: {
+      notJson: "Ese archivo no es una copia válida (no es JSON).",
+      wrongFormat: "Ese archivo no es una copia de Cociboard.",
+      unsupportedVersion:
+        "Esa copia la hizo una versión más reciente de Cociboard y no se puede leer.",
+      incomplete: "El archivo de copia está incompleto.",
+      readFailed: "No se pudo leer ese archivo. Inténtalo de nuevo.",
+    },
+    restoreErrors: {
+      tooLarge: "Ese archivo es demasiado grande para ser una copia.",
+      network: "No se pudo conectar con el servidor.",
+      server: "El servidor no pudo restaurar la copia.",
+      invalid_document: "El archivo de copia está dañado o incompleto.",
+      wrong_format: "Ese archivo no es una copia de Cociboard.",
+      unsupported_version:
+        "Esta versión no admite esa copia (versión de formato {{version}}).",
+      duplicate_recipe_ref: "La copia lista la misma receta dos veces.",
+      duplicate_recipe_name: "La copia tiene dos recetas llamadas «{{name}}».",
+      invalid_week: "La copia tiene una semana ({{week_start}}) que no empieza en lunes.",
+      invalid_day: "La copia tiene una comida planificada en un día no válido.",
+      unknown_recipe_ref: "La copia planifica una receta que no incluye.",
+      meal_does_not_fit: "La copia planifica «{{recipe}}» en un hueco al que no encaja.",
+      duplicate_slot: "La copia tiene dos comidas en el mismo hueco.",
+      duplicate_shopping_check: "La copia marca dos veces el mismo artículo de la compra.",
     },
   },
   recipeForm: {
@@ -239,6 +325,8 @@ const es = {
       nameRequired: "Escribe un nombre.",
       nameTooLong: "Usa como máximo {{max}} caracteres.",
       nameDuplicate: "Ya hay otra receta con este nombre.",
+      nameDuplicateArchived:
+        "Ya hay una receta archivada con este nombre. Restáurala desde la lista de archivadas o elige otro nombre.",
       minutesFormat: "Escribe minutos enteros, p. ej. 30.",
       minutesMin: "El tiempo de preparación debe ser de al menos 1 minuto.",
       minutesMax: "Es demasiado largo.",

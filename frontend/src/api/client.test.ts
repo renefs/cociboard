@@ -3,10 +3,13 @@ import {
   assignSlot,
   clearSlot,
   clearWeek,
+  downloadBackup,
+  filenameFromDisposition,
   getCandidates,
   getWeek,
   listRecipes,
   moveSlot,
+  restoreBackup,
   replaceWeek,
   suggestWeek,
 } from "./client";
@@ -23,6 +26,8 @@ describe("listRecipes", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/recipes?slot=lunch&q=pollo&property=vegan&property=quick");
     await listRecipes();
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/recipes");
+    await listRecipes({ archived: true });
+    expect(fetchMock.mock.calls[2]?.[0]).toBe("/api/recipes?archived=true");
   });
 });
 
@@ -79,5 +84,50 @@ describe("v0.4 week endpoints", () => {
 
     await getCandidates(week, 2, "lunch");
     expect(fetchMock.mock.calls[4]?.[0]).toBe(`/api/weeks/${week}/days/2/lunch/candidates`);
+  });
+});
+
+describe("backup endpoints", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("takes the file name from the Content-Disposition header", () => {
+    const header = 'attachment; filename="cociboard-backup-2026-11-19.json"';
+    expect(filenameFromDisposition(header, "x.json")).toBe("cociboard-backup-2026-11-19.json");
+    expect(filenameFromDisposition(null, "x.json")).toBe("x.json");
+    expect(filenameFromDisposition('attachment; filename="../evil.json"', "x.json")).toBe("x.json");
+  });
+
+  it("downloads the backup blob with the server file name", async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(() =>
+      Promise.resolve(
+        new Response("{}", {
+          status: 200,
+          headers: { "Content-Disposition": 'attachment; filename="cociboard-backup-2026-11-19.json"' },
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { blob, filename } = await downloadBackup();
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/backup");
+    expect(filename).toBe("cociboard-backup-2026-11-19.json");
+    expect(blob.size).toBe(2);
+  });
+
+  it("posts the document and surfaces 422 details", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ detail: { code: "wrong_format", message: "m", params: {} } }), {
+          status: 422,
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(restoreBackup({ a: 1 })).rejects.toMatchObject({
+      status: 422,
+      detail: { code: "wrong_format" },
+    });
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe('{"a":1}');
   });
 });

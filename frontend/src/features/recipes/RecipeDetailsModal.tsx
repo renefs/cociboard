@@ -5,7 +5,7 @@ import { ConfirmDialog } from "../planner/ConfirmDialog";
 import { Modal } from "../planner/Modal";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
-import { useDeleteRecipe, useRecipeUsage } from "./useRecipeMutations";
+import { useDeleteRecipe, useRecipeUsage, useUpdateRecipe } from "./useRecipeMutations";
 
 export type Notify = (kind: "error" | "info", text: string) => void;
 
@@ -19,11 +19,36 @@ interface RecipeDetailsModalProps {
 
 type Mode = "view" | "edit" | "delete";
 
-/** Everything about one recipe, with Edit and Delete (with a usage-aware confirmation). */
+/**
+ * Everything about one recipe, with Edit, Archive / Restore and Delete. Deleting asks for a
+ * usage-aware confirmation that recommends archiving when the recipe is planned somewhere.
+ */
 export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerStart }: RecipeDetailsModalProps) {
   const { t } = useTranslation();
   const [recipe, setRecipe] = useState(initial);
   const [mode, setMode] = useState<Mode>("view");
+  const update = useUpdateRecipe();
+
+  const setArchived = (archived: boolean) =>
+    update.mutate(
+      { id: recipe.id, changes: { archived } },
+      {
+        onSuccess: () => {
+          onNotify?.(
+            "info",
+            t(archived ? "recipes.details.archived" : "recipes.details.restored", { name: recipe.name }),
+          );
+          onClose();
+        },
+        onError: () =>
+          onNotify?.(
+            "error",
+            t(archived ? "recipes.details.archiveFailed" : "recipes.details.restoreFailed", {
+              name: recipe.name,
+            }),
+          ),
+      },
+    );
 
   if (mode === "edit") {
     return (
@@ -49,6 +74,8 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
           onNotify?.("info", t("recipes.details.deleted", { name: recipe.name }));
           onClose();
         }}
+        onArchive={() => setArchived(true)}
+        archiving={update.isPending}
         onError={() => onNotify?.("error", t("recipes.details.deleteFailed", { name: recipe.name }))}
       />
     );
@@ -59,6 +86,11 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
   return (
     <Modal key="view" title={recipe.name} onClose={onClose}>
       <div className="details">
+        {recipe.archived && (
+          <p className="details-archived" role="note">
+            <span aria-hidden="true">🗄️</span> {t("recipes.details.archivedNote")}
+          </p>
+        )}
         <dl className="details-facts">
           <div>
             <dt>{t("recipes.legendMeal")}</dt>
@@ -110,6 +142,14 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
         <button type="button" className="btn btn-large btn-danger" onClick={() => setMode("delete")}>
           {t("common.delete")}
         </button>
+        <button
+          type="button"
+          className="btn btn-large"
+          disabled={update.isPending}
+          onClick={() => setArchived(!recipe.archived)}
+        >
+          {recipe.archived ? t("recipes.details.restore") : t("recipes.details.archive")}
+        </button>
         <button type="button" className="btn btn-large btn-primary" onClick={() => setMode("edit")}>
           {t("common.edit")}
         </button>
@@ -122,14 +162,47 @@ interface DeleteConfirmProps {
   recipe: Recipe;
   onCancel: () => void;
   onDeleted: () => void;
+  onArchive: () => void;
+  archiving: boolean;
   onError: () => void;
 }
 
-function DeleteConfirm({ recipe, onCancel, onDeleted, onError }: DeleteConfirmProps) {
+function DeleteConfirm({ recipe, onCancel, onDeleted, onArchive, archiving, onError }: DeleteConfirmProps) {
   const { t } = useTranslation();
   const usage = useRecipeUsage(recipe.id);
   const remove = useDeleteRecipe();
   const count = usage.data?.count ?? 0;
+
+  // Planned somewhere: deleting rewrites history, so archiving is the recommended button.
+  if (usage.data && count > 0 && !recipe.archived) {
+    const busy = remove.isPending || archiving;
+    return (
+      <Modal title={t("recipes.details.deleteTitle", { name: recipe.name })} onClose={onCancel}>
+        <div className="confirm-body">
+          <p>
+            <Trans i18nKey="recipes.details.planned" count={count} components={{ strong: <strong /> }} />
+          </p>
+          <p>{t("recipes.details.archiveAdvice")}</p>
+        </div>
+        <div className="confirm-actions confirm-actions--stack">
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={onArchive}>
+            {archiving ? t("recipes.details.archiving") : t("recipes.details.archiveInstead")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={busy}
+            onClick={() => remove.mutate(recipe.id, { onSuccess: onDeleted, onError })}
+          >
+            {remove.isPending ? t("recipes.details.deleting") : t("recipes.details.deletePermanently")}
+          </button>
+          <button type="button" className="btn" disabled={busy} onClick={onCancel}>
+            {t("common.cancel")}
+          </button>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <ConfirmDialog
@@ -147,11 +220,7 @@ function DeleteConfirm({ recipe, onCancel, onDeleted, onError }: DeleteConfirmPr
       {usage.data && count === 0 && <p>{t("recipes.details.notPlanned")}</p>}
       {usage.data && count > 0 && (
         <p>
-          <Trans
-            i18nKey="recipes.details.planned"
-            count={count}
-            components={{ strong: <strong /> }}
-          />
+          <Trans i18nKey="recipes.details.planned" count={count} components={{ strong: <strong /> }} />
         </p>
       )}
     </ConfirmDialog>

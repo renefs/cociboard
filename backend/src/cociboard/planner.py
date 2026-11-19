@@ -33,6 +33,10 @@ class IncompatibleSlotError(Exception):
     """A recipe's meal type does not fit the target slot."""
 
 
+class RecipeArchivedError(Exception):
+    """An archived recipe cannot be newly assigned to a slot."""
+
+
 class EmptySlotError(Exception):
     """The source slot of a move holds no recipe."""
 
@@ -120,10 +124,13 @@ def assign_slot(
 ) -> WeekPlanRead:
     """Place a recipe in a slot, replacing any current one.
 
-    Raises :class:`repository.RecipeNotFoundError` or :class:`IncompatibleSlotError`.
+    Raises :class:`repository.RecipeNotFoundError`, :class:`RecipeArchivedError` or
+    :class:`IncompatibleSlotError`.
     """
     _check_position(week_start, day)
     recipe = repository.get_recipe(session, recipe_id)
+    if recipe.archived_at is not None:
+        raise RecipeArchivedError(recipe_id)
     if not fits_slot(recipe.meal_type, slot):
         raise IncompatibleSlotError(recipe_id)
     existing = _find(session, week_start, day, slot)
@@ -196,7 +203,8 @@ def replace_week(session: Session, week_start: date, slots: list[SlotFill]) -> W
     """Replace the whole plan of a week atomically (used by undo).
 
     Every recipe must exist and fit its slot, otherwise nothing is changed. If a slot is
-    listed twice the last entry wins.
+    listed twice the last entry wins. Archived recipes are accepted on purpose: undoing
+    "Clear week" must restore meals whose recipe was archived meanwhile (ADR-0014).
     """
     _check_position(week_start, 0)
     chosen: dict[tuple[int, MealSlot], int] = {}
