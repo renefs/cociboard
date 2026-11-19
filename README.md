@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.13.0** (special meals and notes).
+Current version: **0.14.0** (mobile navigation and a Today view).
 
 ## Stack
 
@@ -357,6 +357,12 @@ never changes the score: it is a hint, not a fault.
   to pick a recipe from a list of the ones that fit, tap a filled slot for Replace, Remove
   and View details, or tap **Add** on a recipe and then tap a highlighted slot (Esc or
   Cancel to leave).
+- **Phone (below 900 px):** one view at a time, chosen in the bar at the bottom: **Today**
+  (today's and tomorrow's lunch and dinner with ingredients and notes; tap a recipe for its
+  details), **Week** (the planner; it opens on today's card), **Recipes** and **Shopping**
+  (the shopping list of the week you are browsing, inline). **Add** on a recipe takes you to
+  the Week tab to pick a slot. The tab is kept in the address as `?view=today|week|recipes|shopping`.
+  On desktop everything stays on one screen.
 - **Keyboard:** Tab to a recipe's drag handle or an assigned recipe, Space to pick it up,
   arrow keys to jump between slots, Space to drop, Esc to cancel. Enter on an assigned
   recipe opens its actions; Enter on an empty slot opens the picker.
@@ -438,9 +444,9 @@ backend/
 frontend/
   src/api/              typed API client and types mirroring backend schemas
   src/features/recipes/ recipe panel, cards, form, details and delete dialogs, mutations, legend, icon metadata
-  src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, pure logic
+  src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, phone tab bar and Today view, pure logic
   src/features/variety/ variety summary and presentation helpers
-  src/features/shopping/ shopping list dialog, hooks with optimistic updates, pure logic
+  src/features/shopping/ shopping list (dialog and inline view), hooks with optimistic updates, pure logic
   src/features/backup/  backup dialog (download, restore with confirmation), header button, pure checks
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS

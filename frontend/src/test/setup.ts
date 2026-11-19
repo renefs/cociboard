@@ -11,4 +11,5 @@ beforeEach(async () => {
 
 afterEach(() => {
   cleanup();
+  Reflect.deleteProperty(window, "matchMedia");
 });

@@ -176,3 +176,19 @@
     min-height: 3rem;
   }
 }
+
+/* The inline list (phone Shopping tab) scrolls with the page, not in a box of its own. */
+.shopping--inline {
+  flex: none;
+}
+
+.shopping--inline .shopping-scroll {
+  padding: 0;
+  overflow: visible;
+}
+
+.shopping--inline .shopping-actions {
+  margin-top: var(--space-3);
+  padding-inline: 0;
+  background: transparent;
+}

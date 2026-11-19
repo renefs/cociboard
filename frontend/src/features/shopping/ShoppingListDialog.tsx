@@ -23,46 +23,61 @@ interface ShoppingListDialogProps {
   onNotify: Notify;
 }
 
-/** The shopping list of a week: tick items off, add your own, copy or share as text. */
+/** The shopping list of a week in a modal (desktop; a full-screen sheet on phones). */
 export function ShoppingListDialog({ weekStart, onClose, onNotify }: ShoppingListDialogProps) {
   const { t } = useTranslation();
   const locale = useLocale();
-  const { data: list, isPending, isError, refetch } = useShoppingList(weekStart);
-  const actions = useShoppingActions(weekStart, (message) => onNotify("error", message));
-  const [announcement, setAnnouncement] = useState("");
-
   return (
     <Modal
       title={t("shopping.title", { range: formatWeekRange(weekStart, locale) })}
       onClose={onClose}
       size="full"
     >
-      <div className="shopping">
-        <p className="visually-hidden" role="status" aria-live="polite">
-          {announcement}
-        </p>
-        {list ? (
-          <ListBody list={list} actions={actions} announce={setAnnouncement} onNotify={onNotify} />
-        ) : isError ? (
-          <div className="shopping-scroll">
-            <div className="state-box" role="alert">
-              <p>{t("shopping.loadError")}</p>
-              <button type="button" className="btn" onClick={() => void refetch()}>
-                {t("common.retry")}
-              </button>
-            </div>
-          </div>
-        ) : (
-          isPending && (
-            <div className="shopping-scroll">
-              <p className="shopping-muted" role="status">
-                {t("shopping.loading")}
-              </p>
-            </div>
-          )
-        )}
-      </div>
+      <ShoppingListView weekStart={weekStart} onNotify={onNotify} />
     </Modal>
+  );
+}
+
+interface ShoppingListViewProps {
+  weekStart: string;
+  onNotify: Notify;
+  /** Flows with the page instead of scrolling inside its own box (the phone's Shopping tab). */
+  inline?: boolean;
+}
+
+/** The body of the shopping list: tick items off, add your own, copy or share as text. */
+export function ShoppingListView({ weekStart, onNotify, inline = false }: ShoppingListViewProps) {
+  const { t } = useTranslation();
+  const { data: list, isPending, isError, refetch } = useShoppingList(weekStart);
+  const actions = useShoppingActions(weekStart, (message) => onNotify("error", message));
+  const [announcement, setAnnouncement] = useState("");
+
+  return (
+    <div className={inline ? "shopping shopping--inline" : "shopping"}>
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {announcement}
+      </p>
+      {list ? (
+        <ListBody list={list} actions={actions} announce={setAnnouncement} onNotify={onNotify} />
+      ) : isError ? (
+        <div className="shopping-scroll">
+          <div className="state-box" role="alert">
+            <p>{t("shopping.loadError")}</p>
+            <button type="button" className="btn" onClick={() => void refetch()}>
+              {t("common.retry")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        isPending && (
+          <div className="shopping-scroll">
+            <p className="shopping-muted" role="status">
+              {t("shopping.loading")}
+            </p>
+          </div>
+        )
+      )}
+    </div>
   );
 }
 

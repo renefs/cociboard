@@ -84,7 +84,14 @@ describe("WeekGrid", () => {
     expect(within(lunch).getByText("Not for lunch")).toBeInTheDocument();
     const dinner = screen.getByRole("group", { name: "Monday dinner" });
     expect(dinner).toHaveClass("slot--pulse");
-    expect(dinner).toHaveAttribute("data-select-target", "true");
+    // An empty target is marked "empty" so select mode scrolls to it before filled ones.
+    expect(dinner).toHaveAttribute("data-select-target", "empty");
+  });
+
+  it("marks a filled compatible slot as a replace target", () => {
+    const plan = makePlan("2026-10-26", { "0:dinner": makeRecipe({ id: 2, name: "Tortilla", meal_type: "dinner" }) });
+    renderGrid(plan, { selecting: makeRecipe({ meal_type: "dinner" }) });
+    expect(screen.getAllByRole("group", { name: "Monday dinner" })[0]).toHaveAttribute("data-select-target", "true");
   });
 });
 
