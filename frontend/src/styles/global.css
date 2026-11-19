@@ -18,6 +18,10 @@ body {
   outline-offset: 2px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .app {
   display: flex;
   flex-direction: column;

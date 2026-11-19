@@ -419,6 +419,22 @@ const es = {
       planned_recently_other: "Planificada hace {{count}} semanas",
     },
   },
+  mobile: {
+    nav: "Secciones principales",
+    tabs: { today: "Hoy", week: "Semana", recipes: "Recetas", shopping: "Compra" },
+  },
+  today: {
+    heading: "Hoy",
+    tomorrow: "Mañana",
+    loadError: "No se pueden cargar las comidas de hoy. Comprueba que el servidor está en marcha y tu conexión.",
+    tomorrowLoadError: "No se pueden cargar las comidas de mañana.",
+    loading: "Cargando las comidas de hoy…",
+    nothingToday: "No hay nada planificado para hoy.",
+    planWeek: "Planificar la semana",
+    nothingSlot: "Todavía no hay nada planificado.",
+    note: "Nota: {{note}}",
+    openRecipe: "Ver los detalles de {{name}}",
+  },
   shopping: {
     open: "Lista de la compra",
     openTitle: "Crear una lista de la compra con las comidas de esta semana",

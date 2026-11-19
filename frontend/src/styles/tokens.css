@@ -34,6 +34,7 @@
   --color-chip-bg: #fff1e0;
   --color-chip-active: #b9461f;
   --text-lg: 1.125rem;
+  --tab-bar-height: 3.75rem;
   --sidebar-width: clamp(18rem, 25vw, 26rem);
   --color-danger: #b42318;
   --color-slot-bg: #fbf1e4;

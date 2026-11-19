@@ -19,7 +19,7 @@ import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, SpecialMeal, WeekPlan } from "../../api/types";
 import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
-import { ShoppingListDialog } from "../shopping/ShoppingListDialog";
+import { ShoppingListDialog, ShoppingListView } from "../shopping/ShoppingListDialog";
 import { VarietySummary } from "../variety/VarietySummary";
 import {
   findIssue,
@@ -42,13 +42,18 @@ import {
   type DragSource,
 } from "./dragLogic";
 import { keyboardCoordinates } from "./keyboardNavigation";
+import { NARROW_QUERY } from "./mobileView";
+import { MobileTabBar } from "./MobileTabBar";
 import { RecipePicker } from "./RecipePicker";
 import { MouseAndPenSensor, POINTER_ACTIVATION, TOUCH_ACTIVATION, collisionDetection } from "./sensors";
 import { SlotActions } from "./SlotActions";
 import { dayParams, fitsSlot, mealAt, mealName, recipeOf, type SlotMeal } from "./slots";
 import { SPECIAL_META } from "./specialMeta";
+import { TodayView } from "./TodayView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Toast, type ToastAction, type ToastMessage } from "./Toast";
+import { useMediaQuery, prefersReducedMotion } from "./useMediaQuery";
+import { useMobileView } from "./useMobileView";
 import { useWeekNavigation } from "./useWeekNavigation";
 import { usePlanActions, usePrefetchNeighbours, useWeekPlan } from "./useWeekPlan";
 import { useWeekTools } from "./useWeekTools";
@@ -79,6 +84,11 @@ export function Planner({ now: nowProp }: PlannerProps) {
   const { weekStart, isCurrentWeek, previous, next, today } = useWeekNavigation(now);
   usePrefetchNeighbours(weekStart);
   const { data: plan, isPending, isError, refetch } = useWeekPlan(weekStart);
+
+  // Below 900px one view is shown at a time (ADR-0017); on desktop everything is visible.
+  const narrow = useMediaQuery(NARROW_QUERY);
+  const { view, setView, go } = useMobileView(narrow);
+  const shows = (target: typeof view) => !narrow || view === target;
 
   const [ui, setUi] = useState<Ui>({ kind: "none" });
   const [selecting, setSelecting] = useState<Recipe | null>(null);
@@ -136,13 +146,43 @@ export function Planner({ now: nowProp }: PlannerProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [selecting]);
 
-  // Bring the first valid target into view when select mode starts (matters on mobile,
-  // where the recipes are below the grid).
+  // Moving to another view moves focus to its heading (screen reader and keyboard users
+  // land at the top of the new view).
+  const previousView = useRef(view);
+  useEffect(() => {
+    if (previousView.current === view) return;
+    previousView.current = view;
+    if (!narrow) return;
+    const heading = document.querySelector<HTMLElement>(`[data-view="${view}"] h2`);
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus();
+  }, [view, narrow]);
+
+  // Opening the Week tab on the current week shows today's card (select mode has its own scroll).
+  const selectingRef = useRef(selecting);
+  useEffect(() => {
+    selectingRef.current = selecting;
+  }, [selecting]);
+  const hasPlan = plan !== undefined;
+  useEffect(() => {
+    if (!narrow || view !== "week" || !isCurrentWeek || !hasPlan || selectingRef.current) return;
+    const card = document.querySelector<HTMLElement>(".day--today");
+    if (typeof card?.scrollIntoView === "function") {
+      card.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    }
+  }, [narrow, view, isCurrentWeek, hasPlan]);
+
+  // Bring the first valid target into view when select mode starts (on phones the Add button
+  // has just switched to the Week tab). An empty slot is the likelier destination than one
+  // that would be replaced, so it goes first.
   useEffect(() => {
     if (!selecting) return;
-    const target = document.querySelector<HTMLElement>('[data-select-target="true"]');
+    const target =
+      document.querySelector<HTMLElement>('[data-select-target="empty"]') ??
+      document.querySelector<HTMLElement>('[data-select-target="true"]');
     if (typeof target?.scrollIntoView === "function") {
-      target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      target.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
     }
   }, [selecting]);
 
@@ -174,8 +214,12 @@ export function Planner({ now: nowProp }: PlannerProps) {
     );
   };
 
-  const toggleSelect = (recipe: Recipe) =>
-    setSelecting((current) => (current?.id === recipe.id ? null : recipe));
+  const toggleSelect = (recipe: Recipe) => {
+    const starting = selecting?.id !== recipe.id;
+    setSelecting(starting ? recipe : null);
+    // The slots are on the Week tab; cancelling stays wherever the user is.
+    if (starting && narrow) go("start-select");
+  };
 
   const sourceOf = (data: unknown) => (isDragSource(data) ? data : null);
 
@@ -231,7 +275,11 @@ export function Planner({ now: nowProp }: PlannerProps) {
       accessibility={{ announcements, screenReaderInstructions: screenReader }}
     >
       <div className="planner-layout">
-        <section className="planner" aria-labelledby="planner-heading">
+        {narrow && view === "today" && (
+          <TodayView now={now} onPlanWeek={() => go("plan-week")} onNotify={(kind, text) => notify(kind, text)} />
+        )}
+
+        <section className="planner" data-view="week" hidden={!shows("week")} aria-labelledby="planner-heading">
           <header className="planner-head">
             <h2 id="planner-heading">{t("planner.heading")}</h2>
             <nav className="week-nav" aria-label={t("planner.weekNav")}>
@@ -288,7 +336,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
                 className="btn"
                 disabled={!plan}
                 title={t("shopping.openTitle")}
-                onClick={() => setUi({ kind: "shopping" })}
+                onClick={() => (narrow ? go("open-shopping") : setUi({ kind: "shopping" }))}
               >
                 <span aria-hidden="true">🛒 </span>{t("shopping.open")}
               </button>
@@ -339,7 +387,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
           )}
         </section>
 
-        <RecipeArea>
+        <RecipeArea hidden={!shows("recipes")}>
           <RecipePanel
             density="compact"
             {...(usage ? { usage } : {})}
@@ -356,7 +404,16 @@ export function Planner({ now: nowProp }: PlannerProps) {
             )}
           />
         </RecipeArea>
+
+        {narrow && view === "shopping" && (
+          <section className="shopping-view" data-view="shopping" aria-labelledby="shopping-view-heading">
+            <h2 id="shopping-view-heading">{t("shopping.title", { range: formatWeekRange(weekStart, locale) })}</h2>
+            <ShoppingListView weekStart={weekStart} inline onNotify={(kind, text) => notify(kind, text)} />
+          </section>
+        )}
       </div>
+
+      {narrow && <MobileTabBar view={view} onChange={setView} />}
 
       <DragOverlay>{dragging ? <DragChip source={dragging} /> : null}</DragOverlay>
 
@@ -476,7 +533,7 @@ function SlotDetails({
 }
 
 /** The recipe sidebar doubles as the drop zone that removes a recipe from the plan. */
-function RecipeArea({ children }: { children: ReactNode }) {
+function RecipeArea({ children, hidden }: { children: ReactNode; hidden: boolean }) {
   const { t } = useTranslation();
   const { active } = useDndContext();
   const raw: unknown = active?.data.current;
@@ -489,6 +546,8 @@ function RecipeArea({ children }: { children: ReactNode }) {
   return (
     <aside
       ref={setNodeRef}
+      data-view="recipes"
+      hidden={hidden}
       className={`recipe-area${removing ? " is-drop-zone" : ""}${removing && isOver ? " is-over" : ""}`}
       aria-label={t("planner.recipeCatalogue")}
     >

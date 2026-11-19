@@ -1113,3 +1113,209 @@ button.issue-button:hover {
   font-weight: 400;
   color: var(--color-text-muted);
 }
+
+/* ---------- Phone layout: one view at a time with a bottom tab bar (ADR-0017) ---------- */
+
+.tab-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-strong);
+  box-shadow: 0 -2px 8px rgb(59 42 32 / 10%);
+}
+
+.tab-bar-button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tab-bar-height);
+  padding: var(--space-2) var(--space-1);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-top: 3px solid transparent;
+  cursor: pointer;
+}
+
+.tab-bar-button.is-active {
+  font-weight: 700;
+  color: var(--color-primary);
+  border-top-color: var(--color-primary);
+}
+
+.tab-bar-button:focus-visible {
+  outline-offset: -4px;
+}
+
+.tab-bar-icon {
+  font-size: 1.375rem;
+  line-height: 1;
+}
+
+[data-view] h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
+[data-view] h2[tabindex="-1"]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 899px) {
+  /* Nothing (footer, last card) hides behind the fixed bar. */
+  .app {
+    padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
+  }
+
+  /* Scrolling an element into view (select mode, keyboard focus) keeps it above the bar. */
+  html {
+    scroll-padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + var(--space-2));
+  }
+
+  .toast {
+    bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + var(--space-2));
+  }
+}
+
+@media (min-width: 900px) {
+  .tab-bar {
+    display: none;
+  }
+}
+
+/* Today view */
+
+.today-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.today-view h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.today-date,
+.today-tomorrow-date {
+  margin: 0;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.today-date {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.today-view .today-tomorrow {
+  margin-top: var(--space-4);
+  font-size: var(--text-lg);
+}
+
+.today-tomorrow-date {
+  font-size: var(--text-base);
+}
+
+.today-muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.meal-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.meal-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.meal-card--empty {
+  background: var(--color-slot-bg);
+  box-shadow: none;
+}
+
+.meal-card-slot {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.meal-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+  min-height: 2.75rem;
+  padding: 0;
+  font: inherit;
+  color: var(--color-text);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.meal-card-name {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.meal-card-prep {
+  color: var(--color-text-muted);
+}
+
+.meal-card-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meal-card-ingredients li {
+  padding: 0 var(--space-2);
+  background: var(--color-chip-bg);
+  border-radius: 999px;
+}
+
+.meal-card-special {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.meal-card-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.shopping-view h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xl);
+}

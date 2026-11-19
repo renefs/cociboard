@@ -112,6 +112,12 @@ CHANGELOG entry.
 - Notes (up to 120 characters) on any filled slot; migration `0004_slot_special_and_note`;
   backup format version 2 (version 1 still restores).
 
-## Model usage
+### v0.14.0 — Mobile navigation and Today view (done)
+- Below 900px one view at a time with a bottom tab bar: **Today**, **Week**, **Recipes**,
+  **Shopping** (ADR-0017); desktop is unchanged.
+- Today shows today's and tomorrow's meals (ingredients, notes, special meals) for the real
+  current week; **Add** on a recipe jumps to the Week tab; the shopping list is inline.
+- The view is kept in `?view=` with `replaceState`.
+
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).

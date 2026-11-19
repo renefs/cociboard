@@ -104,7 +104,7 @@ export function Slot({
       className={classes}
       role="group"
       aria-label={describeSlot(ref, t, locale)}
-      data-select-target={selecting && selectAllowed ? "true" : undefined}
+      data-select-target={selecting && selectAllowed ? (meal ? "true" : "empty") : undefined}
     >
       <div className="slot-head">
         <span className="slot-label">{slotLabel(slot, t)}</span>

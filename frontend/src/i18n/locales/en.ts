@@ -398,6 +398,22 @@ const en = {
       planned_recently_other: "Planned {{count}} weeks ago",
     },
   },
+  mobile: {
+    nav: "Main sections",
+    tabs: { today: "Today", week: "Week", recipes: "Recipes", shopping: "Shopping" },
+  },
+  today: {
+    heading: "Today",
+    tomorrow: "Tomorrow",
+    loadError: "Can't load today's meals. Check that the server is running and your connection.",
+    tomorrowLoadError: "Can't load tomorrow's meals.",
+    loading: "Loading today's meals…",
+    nothingToday: "Nothing planned for today.",
+    planWeek: "Plan the week",
+    nothingSlot: "Nothing planned yet.",
+    note: "Note: {{note}}",
+    openRecipe: "View details of {{name}}",
+  },
   shopping: {
     open: "Shopping list",
     openTitle: "Build a shopping list from this week's meals",

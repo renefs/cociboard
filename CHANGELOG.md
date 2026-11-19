@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-11-19
+
+Mobile navigation and a Today view ([ADR-0017](docs/adr/0017-mobile-navigation.md)).
+
+### Added
+- Below 900px the app shows **one view at a time** with a fixed bottom tab bar: **Today**,
+  **Week**, **Recipes** and **Shopping**. The active tab has `aria-current="page"`, focus
+  moves to the view's heading on change, and the toasts sit above the bar.
+- **Today** view: today's and tomorrow's lunch and dinner as large cards (recipe, prep time,
+  ingredients, special meal, note); tapping a recipe opens its details. It always reads the
+  real current week (Sunday's tomorrow is Monday of next week), with empty and error states.
+- The view is kept in the address as `?view=today|week|recipes|shopping` next to `?week=`,
+  written with `replaceState` so tabs do not fill the Back history. Ignored on desktop.
+- The Week tab opens scrolled to today's card (instantly with reduced motion).
+
+### Changed
+- **Add** on a recipe switches to the Week tab, where the first valid slot is brought into
+  view and the select banner stays; cancelling stays on Week.
+- The shopping list body is a reusable `ShoppingListView`: inline in the Shopping tab, in the
+  dialog on desktop. On phones the toolbar's **Shopping list** button opens the tab.
+- Desktop layout and behaviour are unchanged.
+
+### Fixed
+- Select mode now brings the first **empty** compatible slot into view, centred and above
+  the tab bar, instead of the first compatible one
+  ([review 0007](docs/reviews/0007-v0.14.0-review.md)).
+
 ## [0.13.0] - 2026-11-19
 
 Special meals and slot notes ([ADR-0016](docs/adr/0016-special-slots-and-notes.md)).
