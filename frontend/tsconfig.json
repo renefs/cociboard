@@ -13,7 +13,10 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client", "@testing-library/jest-dom"]
   },
-  "include": ["src", "vite.config.ts", "eslint.config.js"]
+  "include": ["src", "plugins", "vite.config.ts", "eslint.config.js", "package.json"],
+  "exclude": ["src/sw/sw.ts"]
 }

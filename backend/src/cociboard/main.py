@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 import logging
+import mimetypes
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -8,6 +9,8 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
+from starlette.responses import Response
+from starlette.types import Scope
 
 from cociboard import __version__
 from cociboard.auth import build_auth_state
@@ -17,6 +20,12 @@ from cociboard.db import get_engine, init_db
 from cociboard.routers import auth, backup, recipes, shopping, weeks
 from cociboard.schemas import HealthResponse
 from cociboard.seed import seed_if_empty
+
+# Python's table may not know the web app manifest type (it depends on the platform).
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+
+# Files the browser must revalidate on every load, or a new release would not be noticed.
+REVALIDATE_PATHS = {"", ".", "index.html", "sw.js", "manifest.webmanifest"}
 
 router = APIRouter(prefix="/api")
 router.include_router(auth.router)
@@ -30,6 +39,23 @@ router.include_router(backup.router)
 def health() -> HealthResponse:
     """Report service status and version."""
     return HealthResponse(status="ok", version=__version__)
+
+
+class FrontendFiles(StaticFiles):
+    """Serves the built frontend with cache headers suited to a PWA.
+
+    The shell, the service worker and the manifest are always revalidated (``no-cache``),
+    while content-hashed ``assets/*`` never change and may be cached for a year.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            if path in REVALIDATE_PATHS:
+                response.headers["Cache-Control"] = "no-cache"
+            elif path.startswith("assets/"):
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
 
 def configure_logging() -> None:
@@ -75,7 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(router)
     if settings.static_dir is not None:
         # Mounted after the API so /api routes take precedence; serves index.html at /.
-        app.mount("/", StaticFiles(directory=settings.static_dir, html=True), name="static")
+        app.mount("/", FrontendFiles(directory=settings.static_dir, html=True), name="static")
     return app
 
 

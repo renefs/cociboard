@@ -1,0 +1,52 @@
+/* ---------- Installable app: update prompt and offline banner ---------- */
+
+.update-prompt {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-primary-contrast);
+  background: var(--color-primary);
+}
+
+.update-prompt p {
+  margin: 0;
+  min-width: 0;
+}
+
+.update-prompt .btn {
+  flex: none;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.offline-banner {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  background: var(--color-primary-tint);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.offline-banner--ok {
+  background: var(--color-drop-ok);
+}
+
+.offline-banner p {
+  margin: 0;
+}
+
+.offline-banner p + p {
+  margin-top: var(--space-1);
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .update-prompt,
+  .offline-banner {
+    padding-inline: var(--space-8);
+  }
+}

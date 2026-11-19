@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.15.0** (optional household password).
+Current version: **0.16.0** (installable app with offline reading).
 
 ## Stack
 
@@ -232,6 +232,29 @@ How it works:
 - The page shell (HTML/JS) stays public; it contains no data. The API requires the session.
 
 Reasoning and alternatives: [ADR-0018](docs/adr/0018-optional-household-password.md).
+
+## Install on a phone / offline
+
+Cociboard is an installable web app (PWA). Open it in the phone's browser and use **Add to
+Home Screen** (Safari: Share, then *Add to Home Screen*; Chrome/Android: menu, then *Install
+app*). It then opens full screen with its own icon.
+
+- **Offline reading needs HTTPS or `localhost`.** Browsers only allow service workers in a
+  secure context. On plain `http://nas:8000` the app works as before but without the
+  service worker, so there is no offline mode and no installable prompt on most browsers. Put
+  the app behind the HTTPS reverse proxy described under [Security (password)](#security-password).
+- **What works offline:** the app opens, and you can see the last plans, recipes and shopping
+  lists you loaded while online. A banner says you are offline.
+- **Edits made offline** (assigning recipes, ticking shopping items) are applied on screen and
+  sent when the connection returns, with the number of waiting changes in the banner. They are
+  kept **only while the page stays open**: closing or reloading it first loses them (the
+  browser asks before leaving). Backups, login and logout always need the server.
+- **Updates:** when a new version is installed, a bar offers **Reload**; nothing changes
+  under you until you tap it.
+- Logging out also removes the offline copy of your data from the device.
+- Icons are rendered by `uv run --with pillow python frontend/scripts/render_icons.py`.
+
+Reasoning and alternatives: [ADR-0019](docs/adr/0019-pwa-offline.md).
 
 ## API
 

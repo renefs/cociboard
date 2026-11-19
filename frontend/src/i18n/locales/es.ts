@@ -272,6 +272,15 @@ const es = {
       "Este planificador está abierto y tu dispositivo se conecta desde una dirección pública. Define COCIBOARD_PASSWORD (o COCIBOARD_PASSWORD_HASH) en el servidor para protegerlo; el README explica cómo.",
     exposedDismiss: "Descartar",
   },
+  pwa: {
+    offline:
+      "Estás sin conexión. Ves el último plan guardado; los cambios se guardarán cuando vuelva la conexión.",
+    waiting_one: "{{count}} cambio pendiente de guardar",
+    waiting_other: "{{count}} cambios pendientes de guardar",
+    backOnline: "Conexión recuperada",
+    updateAvailable: "Hay una versión nueva disponible.",
+    reload: "Recargar",
+  },
   backup: {
     button: "Copia",
     buttonTitle: "Descargar o restaurar una copia de seguridad de tus datos",

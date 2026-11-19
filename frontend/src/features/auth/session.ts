@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AuthStatus } from "../../api/types";
+import { clearApiCache } from "../../pwa/apiCache";
 
 export const AUTH_STATUS_KEY = ["auth", "status"] as const;
 
@@ -7,6 +8,8 @@ export const AUTH_STATUS_KEY = ["auth", "status"] as const;
 export function dropSessionData(queryClient: QueryClient): void {
   void queryClient.cancelQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
   queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
+  // The service worker keeps an offline copy of the API responses; it must go too.
+  void clearApiCache();
 }
 
 /** Show the login screen: the session ended (logout) or the server rejected it. */

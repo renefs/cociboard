@@ -14,7 +14,11 @@ export default tseslint.config(
     rules: { ...reactHooks.configs.recommended.rules },
   },
   {
-    files: ["*.config.{js,ts}"],
+    files: ["src/sw/sw.ts"],
+    languageOptions: { globals: { ...globals.serviceworker } },
+  },
+  {
+    files: ["*.config.{js,ts}", "plugins/*.ts"],
     languageOptions: { globals: { ...globals.node } },
   },
 );
