@@ -66,7 +66,7 @@ def normalised(doc: dict[str, Any]) -> dict[str, Any]:
     for recipe in out["recipes"]:
         del recipe["ref"]
     for meal in out["meals"]:
-        meal["recipe"] = by_ref[meal.pop("recipe_ref")]
+        meal["recipe"] = by_ref.get(meal.pop("recipe_ref"))
     return out
 
 
@@ -83,7 +83,7 @@ def test_export_shape_and_header(client: TestClient) -> None:
     )
     doc = response.json()
     assert doc["format"] == "cociboard-backup"
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     assert doc["app_version"] == __version__
     assert doc["exported_at"]
     assert [r["name"] for r in doc["recipes"]] == ["Alpha", "Beta", "Gamma"]
@@ -107,6 +107,8 @@ def test_export_shape_and_header(client: TestClient) -> None:
         "day": 0,
         "slot": "lunch",
         "recipe_ref": alpha["ref"],
+        "special": None,
+        "note": None,
     } in doc["meals"]
     assert doc["shopping_checks"] == [{"week_start": MONDAY, "item_key": "tomate"}]
     assert [(e["name"], e["checked"]) for e in doc["shopping_extras"]] == [("Milk", False)]
@@ -205,9 +207,9 @@ def test_rejects_non_documents(client: TestClient) -> None:
 def test_rejects_wrong_format_and_versions(client: TestClient) -> None:
     doc = valid_doc(client)
     assert code_of(restore(client, {**doc, "format": "other"}))["code"] == "wrong_format"
-    unsupported = code_of(restore(client, {**doc, "format_version": 2}))
+    unsupported = code_of(restore(client, {**doc, "format_version": 3}))
     assert unsupported["code"] == "unsupported_version"
-    assert unsupported["params"] == {"version": 2}
+    assert unsupported["params"] == {"version": 3}
     assert code_of(restore(client, {**doc, "format_version": "1"}))["code"] == "invalid_document"
 
 
@@ -332,3 +334,75 @@ def test_backup_sqlite_ignores_memory_databases() -> None:
     from cociboard.dbfiles import backup_sqlite
 
     assert backup_sqlite(create_engine("sqlite://"), "pre-restore") is None
+
+
+def special_populate(client: TestClient) -> None:
+    a = make(client, "Alpha")
+    client.put(f"/api/weeks/{MONDAY}/days/0/lunch", json={"recipe_id": a, "note": "Double batch"})
+    client.put(f"/api/weeks/{MONDAY}/days/0/dinner", json={"special": "eating_out"})
+    client.put(f"/api/weeks/{MONDAY}/days/1/dinner", json={"special": "leftovers", "note": "Ana"})
+
+
+def test_v2_round_trip_keeps_specials_and_notes(client: TestClient) -> None:
+    special_populate(client)
+    before = export(client)
+    assert before["format_version"] == 2
+    kinds = {
+        (m["day"], m["slot"]): (m["recipe_ref"], m["special"], m["note"]) for m in before["meals"]
+    }
+    assert kinds[(0, "dinner")] == (None, "eating_out", None)
+    assert kinds[(1, "dinner")] == (None, "leftovers", "Ana")
+    assert kinds[(0, "lunch")][1:] == (None, "Double batch")
+
+    assert restore(client, before).status_code == 200
+    assert normalised(export(client)) == normalised(before)
+    week = client.get(f"/api/weeks/{MONDAY}").json()["days"]
+    assert week[0]["dinner_special"] == "eating_out"
+    assert week[0]["lunch_note"] == "Double batch"
+    assert week[1]["dinner_note"] == "Ana"
+
+
+def test_v1_backup_still_restores(client: TestClient) -> None:
+    populate(client)
+    doc = export(client)
+    v1 = copy.deepcopy(doc)
+    v1["format_version"] = 1
+    for meal in v1["meals"]:
+        del meal["special"]
+        del meal["note"]
+    result = restore(client, v1)
+    assert result.status_code == 200, result.text
+    assert result.json()["meals"] == 3
+    assert normalised(export(client)) == normalised({**doc, "format_version": 2})
+
+
+def test_note_is_trimmed_and_validated(client: TestClient) -> None:
+    special_populate(client)
+    doc = export(client)
+    doc["meals"][0]["note"] = "   "
+    assert restore(client, doc).status_code == 200
+    assert all(m["note"] != "   " for m in export(client)["meals"])
+    long = mutate(doc, lambda d: d["meals"][0].update(note="x" * 121))
+    detail = code_of(restore(client, long))
+    assert detail["code"] == "note_too_long"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda d: d["meals"][0].update(recipe_ref=1, special="free"),
+        lambda d: d["meals"][0].update(recipe_ref=None, special=None),
+    ],
+)
+def test_meal_needs_exactly_one_of_recipe_and_special(client: TestClient, change: Any) -> None:
+    special_populate(client)
+    bad = mutate(export(client), change)
+    assert code_of(restore(client, bad))["code"] == "meal_needs_recipe_or_special"
+
+
+def test_unknown_special_is_invalid(client: TestClient) -> None:
+    special_populate(client)
+    bad = mutate(
+        export(client), lambda d: d["meals"][1].update(recipe_ref=None, special="takeaway")
+    )
+    assert code_of(restore(client, bad))["code"] == "invalid_document"

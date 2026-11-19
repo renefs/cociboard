@@ -20,6 +20,17 @@ class MealSlot(StrEnum):
     dinner = "dinner"
 
 
+class SpecialMeal(StrEnum):
+    """A slot that holds no recipe: a meal that is not cooked from the catalogue."""
+
+    eating_out = "eating_out"
+    leftovers = "leftovers"
+    free = "free"
+
+
+NOTE_MAX_LENGTH = 120
+
+
 class Protein(StrEnum):
     """Main protein source of a recipe, used later for variety analysis."""
 

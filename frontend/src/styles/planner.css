@@ -1046,3 +1046,70 @@ button.issue-button:hover {
   border: 1px dashed var(--color-border-strong);
   border-radius: 999px;
 }
+
+/* Special meals (eating out, leftovers, free): calm, dashed, no recipe icons. */
+.slot--special .slot-recipe {
+  background: var(--color-slot-bg);
+  border-style: dashed;
+}
+
+.slot-special {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* A slot note: up to two muted lines (slots are narrow on phones); the full text is in the
+   accessible name and the title. */
+.slot-note {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.specials-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.specials-label {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.note-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-weight: 600;
+}
+
+.note-field input {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-weight: 400;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.note-hint {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}

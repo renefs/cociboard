@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.12.0** (planning across weeks).
+Current version: **0.13.0** (special meals and notes).
 
 ## Stack
 
@@ -219,22 +219,27 @@ one non-empty string) and `properties` (`vegetarian`, `vegan`, `gluten_free`, `d
 
 A week is keyed by the date of its Monday (`week_start`). `day` is 0 (Monday) to 6
 (Sunday) and `slot` is `lunch` or `dinner`. Every response is the full week plan:
-`{ week_start, days: [{ day, date, lunch, dinner } x7], variety }` where `lunch`/`dinner` are
-recipes or `null` and `variety` is the variety report (see below).
+`{ week_start, days: [{ day, date, lunch, dinner, lunch_special, dinner_special, lunch_note, dinner_note } x7], variety }`
+where `lunch`/`dinner` are recipes or `null`, `*_special` is `eating_out`, `leftovers`, `free` or
+`null` (a slot holds a recipe **or** a special meal, never both), `*_note` is the slot's note
+(at most 120 characters) or `null`, and `variety` is the variety report (see below). Special
+meals are filled slots without a recipe: Suggest leaves them alone, and variety and the shopping
+list ignore them ([ADR-0016](docs/adr/0016-special-slots-and-notes.md)).
 
 | Method and path | Description |
 | --- | --- |
 | `GET /api/weeks/current` | Plan of the current week |
 | `GET /api/weeks/{week_start}` | Plan of a week (`422` if the date is not a Monday) |
-| `PUT /api/weeks/{week_start}/days/{day}/{slot}` | Assign `{ "recipe_id": n }`, replacing the current recipe (`404` unknown recipe; `422` not a Monday, day outside 0-6, recipe does not fit the slot, or recipe is archived: `detail: { code: "recipe_archived", message, recipe_id }`) |
+| `PUT /api/weeks/{week_start}/days/{day}/{slot}` | Assign `{ "recipe_id": n, "note"?: s }` **or** `{ "special": "eating_out" \| "leftovers" \| "free", "note"?: s }`, replacing the current entry. The note sent is the note stored (omitted means none; the UI re-sends the existing one). `404` unknown recipe; `422` not a Monday, day outside 0-6, neither or both of `recipe_id`/`special`, note over 120 characters, recipe does not fit the slot, or recipe is archived: `detail: { code: "recipe_archived", message, recipe_id }` |
+| `PATCH /api/weeks/{week_start}/days/{day}/{slot}/note` | `{ "note": string \| null }` sets or clears the note of a filled slot (`404` when the slot is empty, `422` when over 120 characters) |
 | `DELETE /api/weeks/{week_start}/days/{day}/{slot}` | Clear a slot |
-| `PUT /api/weeks/{week_start}` | Replace the whole week with `{ "slots": [{ day, slot, recipe_id }] }`, atomically (used by Undo; `404`/`422` as for a single slot, except that archived recipes are accepted so Undo can restore them) |
+| `PUT /api/weeks/{week_start}` | Replace the whole week with `{ "slots": [{ day, slot, recipe_id \| special, note? }] }`, atomically (used by Undo, so special meals and notes come back too; `404`/`422` as for a single slot, except that archived recipes are accepted so Undo can restore them) |
 | `DELETE /api/weeks/{week_start}` | Clear the whole week |
 | `GET /api/weeks/{week_start}/variety` | Variety report of the week |
 | `POST /api/weeks/{week_start}/suggest` | Fill the empty slots with varied, compatible recipes; optional body `{ "seed": n }` makes the result repeatable. Filled slots are never changed |
-| `POST /api/weeks/{week_start}/copy` | Copy the meals of `{ "from_week_start": "YYYY-MM-DD" }` into the **empty** slots of the week (never overwrites; meals with archived recipes are skipped). Answers `{ plan, copied, skipped_archived, source_meals }`. `422` when either date is not a Monday or both are the same week, `409` on a concurrent change |
+| `POST /api/weeks/{week_start}/copy` | Copy the meals (special meals and notes included) of `{ "from_week_start": "YYYY-MM-DD" }` into the **empty** slots of the week (never overwrites; meals with archived recipes are skipped). Answers `{ plan, copied, skipped_archived, source_meals }`. `422` when either date is not a Monday or both are the same week, `409` on a concurrent change |
 | `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` (English), `reason_code` (including `planned_recently`), `reason_params` (`protein` or `weeks_ago`) and `good_pick` |
-| `POST /api/weeks/{week_start}/move` | Move `{ from_day, from_slot, to_day, to_slot }`; swaps if the target is occupied; both recipes must fit (`404` empty source, `422` incompatible) |
+| `POST /api/weeks/{week_start}/move` | Move `{ from_day, from_slot, to_day, to_slot }`; swaps if the target is occupied, moving the whole entry (recipe or special meal, with its note); recipes must fit their new slot, special meals fit anywhere (`404` empty source, `422` incompatible) |
 
 Deleting a recipe removes it from all weeks.
 
@@ -260,8 +265,8 @@ quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`): recipes (with `archived`), planned meals, shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md) |
-| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
+| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 2): recipes (with `archived`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
+| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; version 1 and 2 files are accepted), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
 
@@ -292,6 +297,10 @@ never changes the score: it is a hint, not a fault.
 2. **Fill slots by hand.** Drag a recipe onto a lunch or dinner slot, or tap: tap an empty slot
    and choose from the recipes that fit, or tap **Add** on a recipe and then a highlighted slot.
    Dinner-only recipes never fit lunch slots and vice versa.
+   **Not cooking?** The picker starts with three chips: **Eating out**, **Leftovers** and
+   **Free**. Special meals fill the slot so Suggest leaves it alone, they break a run of the
+   same protein and add nothing to the shopping list. Use **Add note** in a filled slot's
+   actions for a short note (up to 120 characters, "double batch", "Ana's birthday").
 3. **Start from last week, or let Cociboard suggest.** **Copy last week** fills the empty slots
    with the previous week's meals (archived recipes are skipped). **Suggest** fills only the
    empty slots with varied recipes, preferring ones you have not cooked recently; use
@@ -337,6 +346,10 @@ never changes the score: it is a hint, not a fault.
   also looks back: the same protein from last Sunday's dinner on Monday lunch is a warning, and
   recipes from the last two weeks get a tip (and "Planned last week" in the picker).
 
+- **Special meals and notes:** tap an empty slot and choose **Eating out**, **Leftovers** or
+  **Free** above the recipe list; tap a filled slot for **Replace**, **Add note** / **Edit
+  note** and **Remove**. Special meals are dragged, swapped and removed like recipes; a note
+  stays on its slot when you replace the content (edit or remove it from the same actions).
 - **Desktop:** drag a recipe card (or an assigned recipe) onto a slot. Dragging an assigned
   recipe onto another slot moves it or swaps the two; dropping it on the recipe list
   removes it. Compatible slots light up, incompatible ones are dimmed ("Not for lunch").
@@ -367,8 +380,9 @@ never changes the score: it is a hint, not a fault.
 
 The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
 
-- **Download backup** saves one JSON file with all recipes (archived ones too), weekly plans
-  and shopping lists. Keep it somewhere safe; it is also a way to move your data to another
+- **Download backup** saves one JSON file (format version 2) with all recipes (archived ones
+  too), weekly plans (special meals and notes included) and shopping lists. Files written by
+  earlier versions (format version 1) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
   installation.
 - **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
   shopping items, export date) and asks for confirmation. Restoring **replaces everything**

@@ -34,6 +34,8 @@ def _planned_meals(session: Session, week_start: date) -> list[PlannedMeal]:
     ).all()
     meals = []
     for row in sorted(rows, key=lambda r: slot_index(r.day, MealSlot(r.slot))):
+        if row.recipe_id is None:
+            continue  # special meals have no ingredients
         recipe = repository.get_recipe(session, row.recipe_id)
         meals.append(
             PlannedMeal(

@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useLocale } from "../../i18n/useLocale";
-import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
+import type { MealSlot, Recipe, SpecialMeal, WeekPlan } from "../../api/types";
 import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
 import { ShoppingListDialog } from "../shopping/ShoppingListDialog";
@@ -45,7 +45,8 @@ import { keyboardCoordinates } from "./keyboardNavigation";
 import { RecipePicker } from "./RecipePicker";
 import { MouseAndPenSensor, POINTER_ACTIVATION, TOUCH_ACTIVATION, collisionDetection } from "./sensors";
 import { SlotActions } from "./SlotActions";
-import { dayParams, fitsSlot, recipeAt } from "./slots";
+import { dayParams, fitsSlot, mealAt, mealName, recipeOf, type SlotMeal } from "./slots";
+import { SPECIAL_META } from "./specialMeta";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Toast, type ToastAction, type ToastMessage } from "./Toast";
 import { useWeekNavigation } from "./useWeekNavigation";
@@ -158,8 +159,19 @@ export function Planner({ now: nowProp }: PlannerProps) {
       }
       return;
     }
-    const filled = plan ? recipeAt(plan, { day, slot }) : null;
+    const filled = plan ? mealAt(plan, { day, slot }) : null;
     setUi(filled ? { kind: "actions", day, slot } : { kind: "picker", day, slot });
+  };
+
+  const placeSpecial = (special: SpecialMeal, day: number, slot: MealSlot) => {
+    actions.assignSpecial({ day, slot }, special);
+    notify(
+      "info",
+      t(`planner.specialSet.${slot}`, {
+        name: t(SPECIAL_META[special].labelKey),
+        ...dayParams(day, locale),
+      }),
+    );
   };
 
   const toggleSelect = (recipe: Recipe) =>
@@ -346,11 +358,11 @@ export function Planner({ now: nowProp }: PlannerProps) {
         </RecipeArea>
       </div>
 
-      <DragOverlay>{dragging ? <DragChip recipe={dragging.recipe} /> : null}</DragOverlay>
+      <DragOverlay>{dragging ? <DragChip source={dragging} /> : null}</DragOverlay>
 
       {ui.kind === "picker" && (
         <RecipePicker
-          title={t(plan && recipeAt(plan, ui) ? `planner.pickerReplace.${ui.slot}` : `planner.pickerAdd.${ui.slot}`, dayParams(ui.day, locale))}
+          title={t(plan && mealAt(plan, ui) ? `planner.pickerReplace.${ui.slot}` : `planner.pickerAdd.${ui.slot}`, dayParams(ui.day, locale))}
           weekStart={weekStart}
           day={ui.day}
           slot={ui.slot}
@@ -359,9 +371,13 @@ export function Planner({ now: nowProp }: PlannerProps) {
             place(recipe, ui.day, ui.slot);
             closeUi();
           }}
+          onPickSpecial={(special) => {
+            placeSpecial(special, ui.day, ui.slot);
+            closeUi();
+          }}
         />
       )}
-      {ui.kind === "actions" && plan && <ActionsFor plan={plan} ui={ui} actions={actions} setUi={setUi} />}
+      {ui.kind === "actions" && plan && <ActionsFor plan={plan} ui={ui} actions={actions} setUi={setUi} notify={(kind, text) => notify(kind, text)} />}
       {ui.kind === "details" && plan && (
         <SlotDetails plan={plan} ui={ui} setUi={setUi} onNotify={(kind, text) => notify(kind, text)} />
       )}
@@ -399,18 +415,25 @@ interface ActionsForProps {
   ui: { day: number; slot: MealSlot };
   actions: ReturnType<typeof usePlanActions>;
   setUi: (ui: Ui) => void;
+  notify: (kind: "info", text: string) => void;
 }
 
-function ActionsFor({ plan, ui, actions, setUi }: ActionsForProps) {
-  const recipe = recipeAt(plan, ui);
-  if (!recipe) return null;
+function ActionsFor({ plan, ui, actions, setUi, notify }: ActionsForProps) {
+  const { t } = useTranslation();
+  const meal: SlotMeal | null = mealAt(plan, ui);
+  if (!meal) return null;
   return (
     <SlotActions
-      recipe={recipe}
+      meal={meal}
       slot={ui}
       onClose={() => setUi({ kind: "none" })}
       onReplace={() => setUi({ kind: "picker", day: ui.day, slot: ui.slot })}
       onDetails={() => setUi({ kind: "details", day: ui.day, slot: ui.slot })}
+      onSaveNote={(note) => {
+        actions.setNote(ui, note);
+        notify("info", t(note ? "planner.noteSaved" : "planner.noteRemoved"));
+        setUi({ kind: "none" });
+      }}
       onRemove={() => {
         actions.clear(ui);
         setUi({ kind: "none" });
@@ -432,7 +455,7 @@ function SlotDetails({
   onNotify: (kind: "error" | "info", text: string) => void;
 }) {
   const { t } = useTranslation();
-  const recipe = recipeAt(plan, ui);
+  const recipe = recipeOf(mealAt(plan, ui));
   if (!recipe) return null;
   return (
     <RecipeDetailsModal
@@ -479,11 +502,18 @@ function RecipeArea({ children }: { children: ReactNode }) {
   );
 }
 
-function DragChip({ recipe }: { recipe: Recipe }) {
-  const meal = MEAL_TYPE_META[recipe.meal_type];
+function DragChip({ source }: { source: DragSource }) {
+  const { t } = useTranslation();
+  const recipe = source.kind === "recipe" ? source.recipe : recipeOf(source.meal);
+  const icon = recipe
+    ? MEAL_TYPE_META[recipe.meal_type].icon
+    : source.kind === "slot" && source.meal.kind === "special"
+      ? SPECIAL_META[source.meal.special].icon
+      : "";
+  const name = source.kind === "recipe" ? source.recipe.name : mealName(source.meal, t);
   return (
     <div className="drag-chip">
-      <span aria-hidden="true">{meal.icon}</span> {recipe.name}
+      <span aria-hidden="true">{icon}</span> {name}
     </div>
   );
 }

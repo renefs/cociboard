@@ -38,11 +38,16 @@ describe("checkBackup", () => {
     }
   });
 
+  it("accepts format versions 1 and 2", () => {
+    expect(checkBackup({ ...valid, format_version: 1 }).ok).toBe(true);
+    expect(checkBackup({ ...valid, format_version: 2 }).ok).toBe(true);
+  });
+
   it("rejects what is not a backup of this format", () => {
     expect(checkBackup(null)).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup([valid])).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup({ ...valid, format: "other" })).toEqual({ ok: false, reason: "wrongFormat" });
-    expect(checkBackup({ ...valid, format_version: 2 })).toEqual({ ok: false, reason: "unsupportedVersion" });
+    expect(checkBackup({ ...valid, format_version: 3 })).toEqual({ ok: false, reason: "unsupportedVersion" });
     expect(checkBackup({ ...valid, meals: undefined })).toEqual({ ok: false, reason: "incomplete" });
     expect(checkBackup({ ...valid, recipes: {} })).toEqual({ ok: false, reason: "incomplete" });
   });
@@ -88,7 +93,7 @@ describe("describeRestoreError", () => {
 
   it("translates server codes with their parameters", () => {
     expect(describeRestoreError(detail("duplicate_recipe_name", { name: "paella" }), en)).toContain("paella");
-    expect(describeRestoreError(detail("unsupported_version", { version: 2 }), en)).toContain("2");
+    expect(describeRestoreError(detail("unsupported_version", { version: 3 }), en)).toContain("3");
     expect(describeRestoreError(detail("wrong_format"), es)).toContain("no es una copia");
   });
 

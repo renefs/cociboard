@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+**Update (v0.13.0):** a slot holds a recipe or a special meal, and an optional note; see
+[ADR-0016](0016-special-slots-and-notes.md).
+
 ## Context
 Menus are planned per week, Monday to Sunday. The planner must read and write single
 slots, move recipes between slots, survive recipe deletion, and later support week

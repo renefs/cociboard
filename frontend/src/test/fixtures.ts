@@ -16,7 +16,7 @@ export function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
   };
 }
 
-import type { DayPlan, MealSlot, VarietyReport, WeekPlan } from "../api/types";
+import type { DayPlan, MealSlot, SpecialMeal, VarietyReport, WeekPlan } from "../api/types";
 
 export const NO_VARIETY: VarietyReport = {
   score: null,
@@ -25,11 +25,20 @@ export const NO_VARIETY: VarietyReport = {
   protein_counts: {},
 };
 
-/** A week plan with empty slots; `placements` maps "day:slot" to a recipe. */
+type SlotKey = `${number}:${MealSlot}`;
+
+/**
+ * A week plan with empty slots; `placements` maps "day:slot" to a recipe, `specials` to a
+ * special meal and `notes` to a slot note.
+ */
 export function makePlan(
   weekStart = "2026-10-26",
-  placements: Partial<Record<`${number}:${MealSlot}`, Recipe>> = {},
+  placements: Partial<Record<SlotKey, Recipe>> = {},
   variety: VarietyReport = NO_VARIETY,
+  extras: {
+    specials?: Partial<Record<SlotKey, SpecialMeal>>;
+    notes?: Partial<Record<SlotKey, string>>;
+  } = {},
 ): WeekPlan {
   const [year, month, day] = weekStart.split("-").map(Number) as [number, number, number];
   const days: DayPlan[] = Array.from({ length: 7 }, (_, index) => {
@@ -40,6 +49,10 @@ export function makePlan(
       date: iso,
       lunch: placements[`${index}:lunch`] ?? null,
       dinner: placements[`${index}:dinner`] ?? null,
+      lunch_special: extras.specials?.[`${index}:lunch`] ?? null,
+      dinner_special: extras.specials?.[`${index}:dinner`] ?? null,
+      lunch_note: extras.notes?.[`${index}:lunch`] ?? null,
+      dinner_note: extras.notes?.[`${index}:dinner`] ?? null,
     };
   });
   return { week_start: weekStart, days, variety };

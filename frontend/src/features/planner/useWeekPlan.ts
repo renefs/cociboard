@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { assignSlot, clearSlot, getWeek, moveSlot } from "../../api/client";
-import type { Recipe, SlotRef, WeekPlan } from "../../api/types";
+import { assignSlot, clearSlot, getWeek, moveSlot, setSlotNote } from "../../api/client";
+import type { Recipe, SlotRef, SpecialMeal, WeekPlan } from "../../api/types";
 import { describePlanError } from "./planErrors";
-import { assignInPlan, clearInPlan, moveInPlan } from "./planTransforms";
+import {
+  assignInPlan,
+  assignSpecialInPlan,
+  clearInPlan,
+  moveInPlan,
+  setNoteInPlan,
+} from "./planTransforms";
+import { mealAt } from "./slots";
 import { shiftWeek } from "./weekMath";
 
 export const weekKey = (weekStart: string) => ["week", weekStart] as const;
@@ -50,14 +57,20 @@ export function usePrefetchNeighbours(weekStart: string): void {
 }
 
 type Change =
-  | { type: "assign"; to: SlotRef; recipe: Recipe }
+  | { type: "assign"; to: SlotRef; recipe: Recipe; note: string | null }
+  | { type: "special"; to: SlotRef; special: SpecialMeal; note: string | null }
+  | { type: "note"; at: SlotRef; note: string | null }
   | { type: "clear"; from: SlotRef }
   | { type: "move"; from: SlotRef; to: SlotRef };
 
 function applyChange(plan: WeekPlan, change: Change): WeekPlan {
   switch (change.type) {
     case "assign":
-      return assignInPlan(plan, change.to, change.recipe);
+      return assignInPlan(plan, change.to, change.recipe, change.note);
+    case "special":
+      return assignSpecialInPlan(plan, change.to, change.special, change.note);
+    case "note":
+      return setNoteInPlan(plan, change.at, change.note);
     case "clear":
       return clearInPlan(plan, change.from);
     case "move":
@@ -68,7 +81,17 @@ function applyChange(plan: WeekPlan, change: Change): WeekPlan {
 function send(weekStart: string, change: Change): Promise<WeekPlan> {
   switch (change.type) {
     case "assign":
-      return assignSlot(weekStart, change.to.day, change.to.slot, change.recipe.id);
+      return assignSlot(weekStart, change.to.day, change.to.slot, {
+        recipe_id: change.recipe.id,
+        note: change.note,
+      });
+    case "special":
+      return assignSlot(weekStart, change.to.day, change.to.slot, {
+        special: change.special,
+        note: change.note,
+      });
+    case "note":
+      return setSlotNote(weekStart, change.at.day, change.at.slot, change.note);
     case "clear":
       return clearSlot(weekStart, change.from.day, change.from.slot);
     case "move":
@@ -102,7 +125,12 @@ function sendInOrder(weekStart: string, change: Change): Promise<WeekPlan> {
 }
 
 export interface PlanActions {
+  /** Place a recipe. A note already on the slot is kept (the API stores the note it is sent). */
   assign: (to: SlotRef, recipe: Recipe) => void;
+  /** Set the slot to eating out, leftovers or free. A note already on the slot is kept. */
+  assignSpecial: (to: SlotRef, special: SpecialMeal) => void;
+  /** Set (or clear with `null`) the note of a filled slot. */
+  setNote: (at: SlotRef, note: string | null) => void;
   clear: (from: SlotRef) => void;
   move: (from: SlotRef, to: SlotRef) => void;
 }
@@ -144,8 +172,14 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
   });
 
   const { mutate } = mutation;
+  const noteAt = (ref: SlotRef): string | null => {
+    const plan = queryClient.getQueryData<WeekPlan>(key);
+    return (plan && mealAt(plan, ref)?.note) ?? null;
+  };
   return {
-    assign: (to, recipe) => mutate({ type: "assign", to, recipe }),
+    assign: (to, recipe) => mutate({ type: "assign", to, recipe, note: noteAt(to) }),
+    assignSpecial: (to, special) => mutate({ type: "special", to, special, note: noteAt(to) }),
+    setNote: (at, note) => mutate({ type: "note", at, note }),
     clear: (from) => mutate({ type: "clear", from }),
     move: (from, to) => mutate({ type: "move", from, to }),
   };

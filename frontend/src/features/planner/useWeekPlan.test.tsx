@@ -69,7 +69,7 @@ describe("usePlanActions request ordering", () => {
       expect(recipeAt(queryClient.getQueryData<WeekPlan>(weekKey(WEEK))!, slotA)?.name).toBe("Stew"),
     );
     await waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
-    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", 1);
+    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", { recipe_id: 1, note: null });
 
     // Give the second request every chance to start early.
     await new Promise((r) => setTimeout(r, 20));
@@ -77,7 +77,7 @@ describe("usePlanActions request ordering", () => {
 
     await act(async () => first.resolve(makePlan()));
     await waitFor(() => expect(assign).toHaveBeenCalledTimes(2));
-    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", 2);
+    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", { recipe_id: 2, note: null });
     await act(async () => second.resolve(makePlan()));
   });
 
@@ -97,7 +97,7 @@ describe("usePlanActions request ordering", () => {
 
     await act(async () => first.reject(new ApiError(500, "boom")));
     await waitFor(() => expect(assign).toHaveBeenCalledTimes(2));
-    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", 2);
+    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", { recipe_id: 2, note: null });
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
   });
 });
@@ -137,5 +137,51 @@ describe("describePlanError", () => {
     expect(describePlanError(new ApiError(409, "Conflict"), i18n.getFixedT("en"))).toBe(
       "The plan changed meanwhile; reload and try again.",
     );
+  });
+});
+
+describe("usePlanActions notes and special meals", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(client, "getWeek").mockResolvedValue(makePlan());
+  });
+
+  it("keeps the note of the slot when a recipe or a special replaces its content", async () => {
+    const assign = vi.spyOn(client, "assignSlot").mockResolvedValue(makePlan());
+    const { queryClient, actions } = setup();
+    queryClient.setQueryData(
+      weekKey(WEEK),
+      makePlan(WEEK, { "0:lunch": soup }, undefined, { notes: { "0:lunch": "Double batch" } }),
+    );
+
+    act(() => actions.current.assign(slotA, stew));
+    await waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
+    expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", { recipe_id: 2, note: "Double batch" });
+
+    act(() => actions.current.assignSpecial({ day: 3, slot: "dinner" }, "free"));
+    await waitFor(() => expect(assign).toHaveBeenCalledTimes(2));
+    expect(assign).toHaveBeenLastCalledWith(WEEK, 3, "dinner", { special: "free", note: null });
+  });
+
+  it("applies a special and a note optimistically and sends the note request", async () => {
+    const first = deferred();
+    vi.spyOn(client, "assignSlot").mockReturnValue(first.promise);
+    const note = vi.spyOn(client, "setSlotNote").mockResolvedValue(makePlan());
+    const { queryClient, actions } = setup();
+
+    act(() => {
+      actions.current.assignSpecial(slotA, "leftovers");
+      actions.current.setNote(slotA, "From Sunday");
+    });
+    await waitFor(() => {
+      const day = queryClient.getQueryData<WeekPlan>(weekKey(WEEK))!.days[0]!;
+      expect(day.lunch_special).toBe("leftovers");
+      expect(day.lunch_note).toBe("From Sunday");
+    });
+    // The note request waits for the special request of the same week.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(note).not.toHaveBeenCalled();
+    await act(async () => first.resolve(makePlan()));
+    await waitFor(() => expect(note).toHaveBeenCalledWith(WEEK, 0, "lunch", "From Sunday"));
   });
 });

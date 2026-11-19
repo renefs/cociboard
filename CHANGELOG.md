@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-11-19
+
+Special meals and slot notes ([ADR-0016](docs/adr/0016-special-slots-and-notes.md)).
+
+### Added
+- **Special meals**: a slot can be set to **Eating out**, **Leftovers** or **Free** instead of
+  a recipe, from three chips above the recipe list in the slot picker. Special meals are
+  planned meals: **Suggest** never fills them, they break a run of the same protein, and they
+  contribute no ingredients to the shopping list. They can be dragged, swapped and removed
+  like recipes.
+- **Slot notes** (up to 120 characters) on recipes and special meals: **Add note** /
+  **Edit note** in the slot actions, shown as a muted line in the slot and read out in its
+  accessible name.
+- API: `PUT .../days/{day}/{slot}` takes `{ recipe_id }` or `{ special }` (exactly one) plus
+  an optional `note`; `PATCH .../days/{day}/{slot}/note`; `DayPlanRead` gains `lunch_special`,
+  `dinner_special`, `lunch_note` and `dinner_note`; `PUT /api/weeks/{week_start}` (Undo) and
+  Copy last week carry special meals and notes.
+- Backups use **format version 2** (meals gain `special` and `note`; `recipe_ref` is optional).
+  Version 1 files still restore. New restore error codes `meal_needs_recipe_or_special` and
+  `note_too_long`.
+
+### Changed
+- Schema: migration `0004_slot_special_and_note` makes `mealassignment.recipe_id` nullable and
+  adds `special` and `note`, with a CHECK that exactly one of `recipe_id` and `special` is set.
+- `POST .../move` answers `404 "The slot is empty"` (the message no longer says "source").
+
+### Fixed
+- Slot notes wrap to two lines instead of one on narrow screens, and the keyboard
+  instructions mention meals as well as recipes
+  ([review 0006](docs/reviews/0006-v0.13.0-review.md)).
+
 ## [0.12.0] - 2026-11-19
 
 Planning across weeks ([ADR-0015](docs/adr/0015-planning-across-weeks.md)).

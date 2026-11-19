@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+**Update (v0.13.0):** backups are written as format version 2 (special meals and notes);
+version 1 files still restore. See [ADR-0016](0016-special-slots-and-notes.md).
+
 ## Context
 Two ways to lose data silently:
 
