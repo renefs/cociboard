@@ -28,6 +28,8 @@ Run from the repository root:
 | `make install` | `uv sync` (backend, Python 3.12) and `npm install` (frontend) |
 | `make dev` | Backend on :8000 with reload, Vite on :5173 proxying `/api` |
 | `make seed` | Add the seed recipes to the database (idempotent) |
+| `make migrate` | Apply pending Alembic migrations to `COCIBOARD_DATABASE_URL` |
+| `make migration m="..."` | Autogenerate a migration after a `models.py` change |
 | `make lint` | ruff check + ruff format --check, ESLint |
 | `make typecheck` | mypy --strict, `tsc --noEmit` |
 | `make test` | pytest, vitest run |
@@ -47,6 +49,9 @@ To fix formatting: `cd backend && uv run ruff format .`.
   - `repository.py` (recipes), `planner.py` (week plans): persistence and rules
   - `routers/`: thin FastAPI routes that translate domain errors to HTTP status codes
   - `seed.py`: starter recipes
+  - `migrate.py`: runs the Alembic migrations on startup (backs up existing SQLite files);
+    `migrations/` holds the Alembic environment and `versions/` (inside the package so the
+    Docker image ships them); `alembic.ini` is for the CLI
 - `backend/tests/`: pytest, with an in-memory SQLite fixture in `conftest.py`
 - `frontend/src/`
   - `api/`: `client.ts` (typed fetch) and `types.ts` (mirrors `schemas.py`)
@@ -79,6 +84,11 @@ To fix formatting: `cd backend && uv run ruff format .`.
   dates and weekday names only through the locale-aware `weekMath.ts` helpers. Recipe
   content is data and is never translated. The backend sends codes and params, not
   localised text (ADR-0009). Spanish is Spain Spanish ("comida", "cena").
+- **Schema changes need a migration.** Any change to `models.py` ships a migration in the
+  same change: `make migration m="..."`, then review the generated file (readable, keep it
+  SQLite-compatible: batch operations, no unsupported ALTERs). `test_migrations.py` fails
+  when the models and the migrations disagree, and must pass. Never use `create_all` at
+  runtime.
 - Match the surrounding code's style, naming and comment density.
 
 ## UX requirements

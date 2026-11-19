@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -27,9 +28,25 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", version=__version__)
 
 
+def configure_logging() -> None:
+    """Show the app's own INFO logs (migrations, backups) next to uvicorn's.
+
+    Uvicorn only configures its own loggers, so without a handler the ``cociboard``
+    loggers would print warnings and errors only. Does nothing if a handler is set.
+    """
+    logger = logging.getLogger("cociboard")
+    if logger.handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
-    """Create tables and optionally seed an empty database."""
+    """Migrate the database and optionally seed an empty database."""
+    configure_logging()
     init_db()
     if get_settings().seed_on_startup:
         with Session(get_engine()) as session:

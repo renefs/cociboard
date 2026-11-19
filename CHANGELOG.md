@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-19
+
+Schema migrations ([ADR-0013](docs/adr/0013-schema-migrations.md)).
+
+### Added
+- Database schema changes are now versioned with Alembic and applied automatically when
+  the app starts. Existing databases (v0.8.0 and v0.9.0) are upgraded in place and keep
+  their data.
+- Before changing an existing SQLite database, a backup is written next to it
+  (`cociboard.db.bak-<previous revision>-<UTC timestamp>`); the three most recent are kept.
+  README explains how to restore one.
+- `make migrate` and `make migration m="message"`.
+- `test_migrations.py` checks fresh, v0.8.0 and v0.9.0 databases, backups, rotation,
+  downgrade and that the models match the migrations.
+
+### Changed
+- The app no longer uses `create_all` at runtime; `init_db()` runs the migrations.
+- The app's own INFO logs (migrations, backup path) are printed at startup next to
+  uvicorn's ([review 0003](docs/reviews/0003-v0.10.0-review.md)).
+
 ## [0.9.0] - 2026-11-19
 
 Shopping list ([ADR-0012](docs/adr/0012-shopping-list.md)).

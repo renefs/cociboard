@@ -1,4 +1,4 @@
-.PHONY: install dev seed test lint typecheck check-version check
+.PHONY: install dev seed migrate migration test lint typecheck check-version check
 
 VERSION := $(shell cat VERSION)
 
@@ -17,6 +17,14 @@ dev:
 # Top up the recipe catalogue with the seed recipes (idempotent).
 seed:
 	cd backend && uv run python -m cociboard.seed
+
+# Apply pending schema migrations to COCIBOARD_DATABASE_URL (the app also does this on start).
+migrate:
+	cd backend && uv run alembic upgrade head
+
+# Generate a migration after changing models.py: make migration m="add slot notes"
+migration:
+	cd backend && uv run alembic revision --autogenerate -m "$(m)"
 
 test:
 	cd backend && uv run pytest

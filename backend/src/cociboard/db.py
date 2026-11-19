@@ -1,13 +1,14 @@
-"""Database engine, session dependency and schema initialisation."""
+"""Database engine, session dependency and schema migration."""
 
 from collections.abc import Iterator
 from functools import lru_cache
 
 from sqlalchemy import Engine
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, create_engine
 
 from cociboard import models  # noqa: F401  (registers tables on the metadata)
 from cociboard.config import get_settings
+from cociboard.migrate import run_migrations
 
 
 @lru_cache
@@ -19,8 +20,8 @@ def get_engine() -> Engine:
 
 
 def init_db(engine: Engine | None = None) -> None:
-    """Create all tables if they do not exist."""
-    SQLModel.metadata.create_all(engine or get_engine())
+    """Bring the database schema up to date with Alembic migrations."""
+    run_migrations(engine or get_engine())
 
 
 def get_session() -> Iterator[Session]:
