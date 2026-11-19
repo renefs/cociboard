@@ -80,6 +80,13 @@ CHANGELOG entry.
 - `docker-compose.ghcr.yml` runs the prebuilt image; `COCIBOARD_TAG` picks the tag.
 - README steps for logging in to ghcr.io, updating, and running on Synology.
 
+### v0.9.0 — Shopping list (done)
+- Ingredients of the week's planned meals, merged by case/accent-folded name, shown in a
+  dialog with the recipes that use each one (ADR-0012).
+- Ticking items off (shared across devices), manual extra items, uncheck all, copy and
+  share as plain text.
+- Ideas for later: a "from today" filter, pantry staples, categories/aisles.
+
 ## Model usage
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).

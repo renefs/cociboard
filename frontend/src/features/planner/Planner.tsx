@@ -19,6 +19,7 @@ import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
+import { ShoppingListDialog } from "../shopping/ShoppingListDialog";
 import { VarietySummary } from "../variety/VarietySummary";
 import {
   findIssue,
@@ -60,7 +61,8 @@ type Ui =
   | { kind: "picker"; day: number; slot: MealSlot }
   | { kind: "actions"; day: number; slot: MealSlot }
   | { kind: "details"; day: number; slot: MealSlot }
-  | { kind: "confirm-clear" };
+  | { kind: "confirm-clear" }
+  | { kind: "shopping" };
 
 interface PlannerProps {
   /** Current time; injectable for tests. */
@@ -256,6 +258,15 @@ export function Planner({ now: nowProp }: PlannerProps) {
               >
                 {t("planner.clearWeek")}
               </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={!plan}
+                title={t("shopping.openTitle")}
+                onClick={() => setUi({ kind: "shopping" })}
+              >
+                <span aria-hidden="true">🛒 </span>{t("shopping.open")}
+              </button>
             </div>
             {plan && (
               <VarietySummary
@@ -359,6 +370,10 @@ export function Planner({ now: nowProp }: PlannerProps) {
             })}
           </p>
         </ConfirmDialog>
+      )}
+
+      {ui.kind === "shopping" && (
+        <ShoppingListDialog weekStart={weekStart} onClose={closeUi} onNotify={(kind, text) => notify(kind, text)} />
       )}
 
       <Toast toast={toast} onDismiss={dismissToast} />

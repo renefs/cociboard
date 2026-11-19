@@ -36,3 +36,23 @@ class MealAssignment(SQLModel, table=True):
     day: int  # 0 = Monday ... 6 = Sunday
     slot: MealSlot
     recipe_id: int = Field(foreign_key="recipe.id", index=True)
+
+
+class ShoppingCheck(SQLModel, table=True):
+    """A generated shopping item ticked off for a week. Row present = checked."""
+
+    __table_args__ = (UniqueConstraint("week_start", "item_key", name="uq_week_item_key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    week_start: date = Field(index=True)
+    item_key: str
+
+
+class ShoppingExtra(SQLModel, table=True):
+    """An item added by hand to the shopping list of a week."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    week_start: date = Field(index=True)
+    name: str = Field(max_length=80)
+    checked: bool = False
+    created_at: datetime = Field(default_factory=_utcnow)
