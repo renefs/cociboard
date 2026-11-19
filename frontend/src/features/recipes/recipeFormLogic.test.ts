@@ -8,6 +8,7 @@ import {
   describeConflict,
   emptyValues,
   isDuplicateNameError,
+  isDuplicateOfArchived,
   mapValidationErrors,
   splitPastedIngredients,
   toPayload,
@@ -126,6 +127,13 @@ describe("server errors", () => {
       conflicts: [{ week_start: "2026-10-26", day: 1, slot: "dinner" }],
     });
     expect(isDuplicateNameError(duplicate)).toBe(true);
+    expect(isDuplicateOfArchived(duplicate)).toBe(false);
+    const structured = (archived: boolean) =>
+      new ApiError(409, "x", { code: "duplicate_name", message: "m", archived });
+    expect(isDuplicateNameError(structured(false))).toBe(true);
+    expect(isDuplicateOfArchived(structured(false))).toBe(false);
+    expect(isDuplicateOfArchived(structured(true))).toBe(true);
+    expect(isDuplicateOfArchived(conflict)).toBe(false);
     expect(isDuplicateNameError(conflict)).toBe(false);
     expect(asMealTypeConflict(duplicate)).toBeNull();
     expect(asMealTypeConflict(conflict)?.conflicts).toHaveLength(1);

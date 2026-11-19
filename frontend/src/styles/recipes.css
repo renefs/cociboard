@@ -440,3 +440,117 @@
     background: var(--color-border);
   }
 }
+
+/* Archived recipes: a quiet list under the catalogue */
+
+.archived-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+}
+
+.archived-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.archived-empty {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.archived-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.archived-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0;
+  overflow: hidden;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.archived-meta {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-1);
+}
+
+.archived-restore {
+  flex-shrink: 0;
+  min-height: 2.75rem;
+}
+
+.details-archived {
+  padding: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-sm);
+}
+
+/* Backup dialog */
+
+.backup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.backup-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.backup-section h3,
+.backup-section p {
+  margin: 0;
+}
+
+.backup-section .btn {
+  min-height: 2.75rem;
+}
+
+.backup-file {
+  font-weight: 600;
+}
+
+.backup-chosen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.backup-chosen p {
+  margin: 0;
+}
+
+.backup-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-weight: 600;
+}

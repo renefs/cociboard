@@ -18,6 +18,7 @@ import {
   describeConflict,
   emptyValues,
   isDuplicateNameError,
+  isDuplicateOfArchived,
   mapValidationErrors,
   toPayload,
   validateValues,
@@ -110,7 +111,11 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
       return;
     }
     if (isDuplicateNameError(error)) {
-      showErrors({ name: t("recipeForm.errors.nameDuplicate") });
+      showErrors({
+        name: isDuplicateOfArchived(error)
+          ? t("recipeForm.errors.nameDuplicateArchived")
+          : t("recipeForm.errors.nameDuplicate"),
+      });
       return;
     }
     if (error instanceof ApiError && error.status === 422) {

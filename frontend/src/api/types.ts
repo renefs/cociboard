@@ -47,6 +47,8 @@ export interface Recipe {
   ingredients: string[];
   properties: RecipeProperty[];
   created_at: string;
+  /** Hidden from the catalogue and suggestions, but still shown in the plans that use it. */
+  archived: boolean;
 }
 
 export interface RecipeCreate {
@@ -59,7 +61,8 @@ export interface RecipeCreate {
   properties?: RecipeProperty[];
 }
 
-export type RecipeUpdate = Partial<RecipeCreate>;
+/** `archived` archives or restores the recipe without touching planned meals. */
+export type RecipeUpdate = Partial<RecipeCreate> & { archived?: boolean };
 
 /** Response of `GET /api/recipes/{id}/usage`. */
 export interface RecipeUsage {
@@ -81,7 +84,23 @@ export interface MealTypeConflictDetail {
   conflicts: ConflictSlot[];
 }
 
+/** `detail` of the 409 answered when a recipe name is taken; `archived` if by an archived one. */
+export interface DuplicateNameDetail {
+  code: "duplicate_name";
+  message: string;
+  archived: boolean;
+}
+
+/** `detail` of the 422 answered when an archived recipe is assigned to a slot. */
+export interface RecipeArchivedDetail {
+  code: "recipe_archived";
+  message: string;
+  recipe_id: number;
+}
+
 export interface RecipeFilters {
+  /** true lists only archived recipes; the default hides them. */
+  archived?: boolean | undefined;
   slot?: MealSlot | undefined;
   q?: string | undefined;
   properties?: readonly RecipeProperty[] | undefined;
@@ -212,4 +231,23 @@ export interface ShoppingList {
 export interface ShoppingExtraUpdate {
   name?: string;
   checked?: boolean;
+}
+
+/** Backup file written by `GET /api/backup` and read by `POST /api/backup/restore`. */
+export const BACKUP_FORMAT = "cociboard-backup";
+export const BACKUP_FORMAT_VERSION = 1;
+
+/** Response of `POST /api/backup/restore`. */
+export interface RestoreResult {
+  recipes: number;
+  meals: number;
+  shopping_checks: number;
+  shopping_extras: number;
+}
+
+/** `detail` of the 422 answered when a backup file is rejected; `params` depend on the code. */
+export interface BackupErrorDetail {
+  code: string;
+  message: string;
+  params: Record<string, string | number>;
 }

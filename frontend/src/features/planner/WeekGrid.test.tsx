@@ -63,6 +63,20 @@ describe("WeekGrid", () => {
     expect(onActivate).toHaveBeenCalledWith(1, "lunch");
   });
 
+  it("marks planned archived recipes, which still open their actions", async () => {
+    const user = userEvent.setup();
+    const recipe = makeRecipe({ name: "Gazpacho viejo", archived: true });
+    const { onActivate } = renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
+    const slot = screen.getByRole("group", { name: "Tuesday lunch" });
+    expect(within(slot).getByText("Archived")).toBeInTheDocument();
+    const body = within(slot).getByRole("button", { name: /^Gazpacho viejo \(archived recipe\), Tuesday lunch/ });
+    await user.click(body);
+    expect(onActivate).toHaveBeenCalledWith(1, "lunch");
+    const plain = makeRecipe({ id: 2, name: "Tortilla" });
+    renderGrid(makePlan("2026-10-26", { "2:lunch": plain }));
+    expect(within(screen.getAllByRole("group", { name: "Wednesday lunch" })[1]!).queryByText("Archived")).not.toBeInTheDocument();
+  });
+
   it("dims incompatible slots with a hint while a recipe is being placed", () => {
     renderGrid(makePlan(), { selecting: makeRecipe({ meal_type: "dinner" }) });
     const lunch = screen.getByRole("group", { name: "Monday lunch" });

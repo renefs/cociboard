@@ -28,15 +28,15 @@ beforeEach(() => {
   onNotify.mockReset();
 });
 
-function renderModal() {
+function renderModal(shown = recipe) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-  render(
+  const { unmount } = render(
     <QueryClientProvider client={queryClient}>
-      <RecipeDetailsModal recipe={recipe} onClose={onClose} onNotify={onNotify} />
+      <RecipeDetailsModal recipe={shown} onClose={onClose} onNotify={onNotify} />
     </QueryClientProvider>,
   );
-  return { invalidate };
+  return { invalidate, unmount };
 }
 
 describe("RecipeDetailsModal", () => {
@@ -53,7 +53,7 @@ describe("RecipeDetailsModal", () => {
     expect(within(properties).getByText("Quick (30 min or less)")).toBeInTheDocument();
   });
 
-  it("asks for confirmation with the usage count before deleting", async () => {
+  it("explains the impact and recommends archiving when the recipe is planned", async () => {
     const user = userEvent.setup();
     vi.mocked(client.getRecipeUsage).mockResolvedValue({ count: 3 });
     vi.mocked(client.deleteRecipe).mockResolvedValue(undefined);
@@ -61,15 +61,60 @@ describe("RecipeDetailsModal", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
     const confirm = await screen.findByRole("dialog", { name: "Delete Fabada asturiana?" });
-    expect(await within(confirm).findByText(/planned in/)).toHaveTextContent("planned in 3 meals");
+    const text = await within(confirm).findByText(/planned in/);
+    expect(text).toHaveTextContent("planned in 3 meals");
+    expect(text).toHaveTextContent("past weeks included");
+    expect(within(confirm).getByRole("button", { name: "Archive instead" })).toBeInTheDocument();
     expect(client.deleteRecipe).not.toHaveBeenCalled();
 
-    await user.click(within(confirm).getByRole("button", { name: "Delete recipe" }));
+    await user.click(within(confirm).getByRole("button", { name: "Delete permanently" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(client.deleteRecipe).toHaveBeenCalledWith(7);
     expect(onNotify).toHaveBeenCalledWith("info", "Deleted Fabada asturiana.");
     const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey?.[0]);
     expect(keys).toEqual(expect.arrayContaining(["recipes", "week"]));
+  });
+
+  it("archives instead of deleting from the confirmation", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.getRecipeUsage).mockResolvedValue({ count: 2 });
+    vi.mocked(client.updateRecipe).mockResolvedValue({ ...recipe, archived: true });
+    const { invalidate } = renderModal();
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: "Archive instead" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(client.updateRecipe).toHaveBeenCalledWith(7, { archived: true }, undefined);
+    expect(client.deleteRecipe).not.toHaveBeenCalled();
+    expect(onNotify).toHaveBeenCalledWith("info", expect.stringContaining("Archived Fabada asturiana"));
+    const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey?.[0]);
+    expect(keys).toEqual(expect.arrayContaining(["recipes", "week", "candidates"]));
+  });
+
+  it("archives and restores from the details", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.updateRecipe).mockResolvedValue({ ...recipe, archived: true });
+    const { unmount } = renderModal();
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(client.updateRecipe).toHaveBeenCalledWith(7, { archived: true }, undefined);
+    unmount();
+
+    onClose.mockReset();
+    vi.mocked(client.updateRecipe).mockResolvedValue({ ...recipe, archived: false });
+    renderModal({ ...recipe, archived: true });
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(client.updateRecipe).toHaveBeenLastCalledWith(7, { archived: false }, undefined);
+    expect(onNotify).toHaveBeenLastCalledWith("info", "Restored Fabada asturiana.");
+  });
+
+  it("keeps the details open when archiving fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.updateRecipe).mockRejectedValue(new TypeError("offline"));
+    renderModal();
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(onNotify).toHaveBeenCalledWith("error", expect.stringContaining("Couldn't archive")));
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("says so when the recipe is not planned, and Cancel keeps it", async () => {
@@ -90,7 +135,7 @@ describe("RecipeDetailsModal", () => {
     renderModal();
     await user.click(screen.getByRole("button", { name: "Delete" }));
     await screen.findByText(/planned in/);
-    await user.click(screen.getByRole("button", { name: "Delete recipe" }));
+    await user.click(screen.getByRole("button", { name: "Delete permanently" }));
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith("error", expect.stringContaining("Couldn't delete")));
     expect(onClose).not.toHaveBeenCalled();
   });

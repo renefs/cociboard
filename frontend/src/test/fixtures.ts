@@ -11,6 +11,7 @@ export function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
     ingredients: ["Lentejas", "Chorizo", "Zanahoria", "Cebolla", "Laurel", "Aceite"],
     properties: ["gluten_free", "batch_cooking"],
     created_at: "2026-01-01T00:00:00Z",
+    archived: false,
     ...overrides,
   };
 }

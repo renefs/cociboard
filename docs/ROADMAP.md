@@ -94,6 +94,13 @@ CHANGELOG entry.
 - Automatic backup next to the SQLite file before changing existing data (last 3 kept).
 - `make migrate` and `make migration m="..."`; a test fails when models and migrations differ.
 
+### v0.11.0 — Archived recipes and backups (done)
+- Archive instead of delete: archived recipes leave the catalogue and suggestions but stay in
+  the weeks where they were planned; restore from the **Archived (N)** list (ADR-0014).
+- Delete confirmation explains the impact on past weeks and recommends archiving.
+- Backup dialog in the header: download everything as JSON, restore from a file (replace-all in
+  one transaction, validated first, server-side `pre-restore` copy).
+
 ## Model usage
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).

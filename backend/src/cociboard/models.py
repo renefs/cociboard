@@ -24,6 +24,8 @@ class Recipe(SQLModel, table=True):
     ingredients: list[str] = Field(sa_column=Column(JSON, nullable=False))
     properties: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     created_at: datetime = Field(default_factory=_utcnow)
+    # Set when the recipe is archived: hidden from the catalogue and suggestions, kept in plans.
+    archived_at: datetime | None = Field(default=None)
 
 
 class MealAssignment(SQLModel, table=True):

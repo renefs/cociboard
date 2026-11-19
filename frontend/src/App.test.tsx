@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { makePlan, makeRecipe } from "./test/fixtures";
@@ -36,5 +37,16 @@ describe("App", () => {
     mockFetch(() => Promise.reject(new TypeError("Failed to fetch")));
     renderWithQuery(<App />);
     expect(await screen.findByText("Backend offline")).toBeInTheDocument();
+  });
+
+  it("opens the backup dialog from the header", async () => {
+    mockFetch(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "ok", version: "0.11.0" }), { status: 200 })),
+    );
+    renderWithQuery(<App />);
+    await userEvent.setup().click(screen.getByRole("button", { name: /Backup/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Backup" });
+    expect(dialog).toHaveTextContent("Download backup");
+    expect(dialog).toHaveTextContent("Restore from a file");
   });
 });

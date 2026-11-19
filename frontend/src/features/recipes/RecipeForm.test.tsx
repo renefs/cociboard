@@ -165,6 +165,17 @@ describe("server errors", () => {
     expect(screen.getByRole("button", { name: "Create recipe" })).toBeEnabled();
   });
 
+  it("tells when the duplicate name belongs to an archived recipe", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.createRecipe).mockRejectedValue(
+      new client.ApiError(409, "conflict", { code: "duplicate_name", message: "m", archived: true }),
+    );
+    renderForm();
+    await fillAndSubmit(user);
+    expect(await screen.findByText(/An archived recipe already has this name\. Restore it/)).toBeInTheDocument();
+    expect(name()).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("maps 422 errors to fields", async () => {
     const user = userEvent.setup();
     vi.mocked(client.createRecipe).mockRejectedValue(

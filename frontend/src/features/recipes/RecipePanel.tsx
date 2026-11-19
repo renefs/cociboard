@@ -13,6 +13,7 @@ import { RecipeCard, type CardDensity } from "./RecipeCard";
 import { RecipeDetailsModal, type Notify } from "./RecipeDetailsModal";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
 import { RecipeListSkeleton } from "./RecipeListSkeleton";
+import { ArchivedRow } from "./ArchivedRow";
 import { PROPERTY_META } from "./recipeMeta";
 import { useRecipes } from "./useRecipes";
 
@@ -64,11 +65,12 @@ export function RecipePanel({
   >({ kind: "none" });
   const q = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
 
-  const { data, isPending, isError, refetch } = useRecipes({
-    slot: meal === "all" ? undefined : meal,
-    q,
-    properties,
-  });
+  const filters = { slot: meal === "all" ? undefined : meal, q, properties };
+  const { data, isPending, isError, refetch } = useRecipes(filters);
+  // The count ignores the filters; the list below the toggle follows them.
+  const archivedCount = useRecipes({ archived: true }).data?.length ?? 0;
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedList = useRecipes({ ...filters, archived: true }, showArchived);
 
   const recipes = useMemo(
     () =>
@@ -218,6 +220,32 @@ export function RecipePanel({
           ),
         )}
       </div>
+
+      {(archivedCount > 0 || showArchived) && (
+        <div className="archived-section">
+          <button
+            type="button"
+            className="link-button"
+            aria-expanded={showArchived}
+            aria-controls="archived-list"
+            onClick={() => setShowArchived((value) => !value)}
+          >
+            {showArchived ? t("recipes.archived.hide") : t("recipes.archived.show", { count: archivedCount })}
+          </button>
+          {showArchived && (
+            <ul className="archived-list" id="archived-list" aria-label={t("recipes.archived.heading")}>
+              {archivedList.data?.length === 0 && (
+                <li className="archived-empty">
+                  {filtersActive ? t("recipes.archived.noMatches") : t("recipes.archived.empty")}
+                </li>
+              )}
+              {archivedList.data?.map((recipe) => (
+                <ArchivedRow key={recipe.id} recipe={recipe} onOpen={openDetails} onNotify={onNotify} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <Legend />
 

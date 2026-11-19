@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.10.0** (schema migrations).
+Current version: **0.11.0** (archived recipes and backups).
 
 ## Stack
 
@@ -199,12 +199,15 @@ Interactive docs are served at http://localhost:8000/docs.
 | Method and path | Description |
 | --- | --- |
 | `GET /api/health` | Status and version |
-| `GET /api/recipes` | List recipes, ordered by name. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
+| `GET /api/recipes` | List recipes, ordered by name. Archived recipes are left out unless `archived=true`, which returns only them. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
-| `POST /api/recipes` | Create (`201`; `409` duplicate name; `422` invalid) |
-| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
+| `POST /api/recipes` | Create (`201`; `409` duplicate name, with `detail: { code: "duplicate_name", message, archived }`; `422` invalid) |
+| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). `archived: true\|false` archives or restores the recipe without touching planned meals ([ADR-0014](docs/adr/0014-archive-and-backups.md)). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
 | `GET /api/recipes/{id}/usage` | `{ count }`: planned slots, across all weeks, that use the recipe (`404`) |
-| `DELETE /api/recipes/{id}` | Delete (`204`; `404`) |
+| `DELETE /api/recipes/{id}` | Delete permanently, including its planned meals in every week (`204`; `404`). Prefer archiving |
+
+Recipes also carry `archived` (read-only except through `PATCH`). Archived recipes disappear from
+the catalogue, suggestions and slot candidates but stay in the weeks where they are planned.
 
 A recipe has `name` (1-80 chars, unique), optional `description`, `meal_type`
 (`lunch`, `dinner`, `both`), `protein` (`meat`, `poultry`, `fish`, `seafood`, `eggs`,
@@ -223,9 +226,9 @@ recipes or `null` and `variety` is the variety report (see below).
 | --- | --- |
 | `GET /api/weeks/current` | Plan of the current week |
 | `GET /api/weeks/{week_start}` | Plan of a week (`422` if the date is not a Monday) |
-| `PUT /api/weeks/{week_start}/days/{day}/{slot}` | Assign `{ "recipe_id": n }`, replacing the current recipe (`404` unknown recipe; `422` not a Monday, day outside 0-6 or recipe does not fit the slot) |
+| `PUT /api/weeks/{week_start}/days/{day}/{slot}` | Assign `{ "recipe_id": n }`, replacing the current recipe (`404` unknown recipe; `422` not a Monday, day outside 0-6, recipe does not fit the slot, or recipe is archived: `detail: { code: "recipe_archived", message, recipe_id }`) |
 | `DELETE /api/weeks/{week_start}/days/{day}/{slot}` | Clear a slot |
-| `PUT /api/weeks/{week_start}` | Replace the whole week with `{ "slots": [{ day, slot, recipe_id }] }`, atomically (used by Undo; `404`/`422` as for a single slot) |
+| `PUT /api/weeks/{week_start}` | Replace the whole week with `{ "slots": [{ day, slot, recipe_id }] }`, atomically (used by Undo; `404`/`422` as for a single slot, except that archived recipes are accepted so Undo can restore them) |
 | `DELETE /api/weeks/{week_start}` | Clear the whole week |
 | `GET /api/weeks/{week_start}/variety` | Variety report of the week |
 | `POST /api/weeks/{week_start}/suggest` | Fill the empty slots with varied, compatible recipes; optional body `{ "seed": n }` makes the result repeatable. Filled slots are never changed |
@@ -251,6 +254,13 @@ quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
 | `POST /api/weeks/{week_start}/shopping-list/extras` | Add `{ "name": "..." }` (1-80 chars after trimming; `201`) |
 | `PATCH /api/weeks/{week_start}/shopping-list/extras/{id}` | Change `name` and/or `checked` of an extra (`404` if missing or from another week) |
 | `DELETE /api/weeks/{week_start}/shopping-list/extras/{id}` | Remove an extra (`404`) |
+
+### Backup
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`): recipes (with `archived`), planned meals, shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md) |
+| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
 
@@ -293,8 +303,13 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
   prep time, description, ingredients (Enter adds a row; pasting a list splits it into rows)
   and properties. Errors are shown next to the fields.
 - Click a recipe name (or choose **View details** on a planned meal) to see everything, then
-  **Edit** or **Delete**. Deleting asks for confirmation and shows in how many planned meals the
-  recipe is used; those meals are removed with it.
+  **Edit**, **Archive** or **Delete**.
+- **Archive** hides a recipe from the catalogue and from suggestions but keeps it in the weeks
+  where it is planned (marked "Archived"; it still counts for variety). Find archived recipes
+  under **Archived (N)** below the catalogue and bring them back with **Restore**. Archived
+  recipes cannot be added to a slot until restored.
+- **Delete** is permanent. When the recipe is planned, the confirmation shows how many meals
+  will disappear from your weeks (past ones included) and recommends **Archive instead**.
 - If you change a recipe's meal type and it is planned in slots that no longer fit, the form
   lists them and offers **Remove them and save**.
 
@@ -335,6 +350,27 @@ suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md)
 - The list follows the plan and recipe edits; ticks of ingredients that are no longer needed
   are kept and come back if the ingredient does.
 
+## Backups
+
+The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
+
+- **Download backup** saves one JSON file with all recipes (archived ones too), weekly plans
+  and shopping lists. Keep it somewhere safe; it is also a way to move your data to another
+  installation.
+- **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
+  shopping items, export date) and asks for confirmation. Restoring **replaces everything**
+  (there is no merge). Nothing changes if the file is invalid.
+- Before a restore the server copies the database next to it as
+  `cociboard.db.bak-pre-restore-<UTC timestamp>`. The three most recent `pre-restore` copies
+  are kept, and the three most recent schema-upgrade copies (`.bak-<revision>-...`) are kept
+  separately. To undo a restore, stop the container, replace `./data/cociboard.db` with that
+  copy and start it again.
+- Disaster recovery without the UI: stop the container and copy `./data/cociboard.db`
+  (the whole file) somewhere safe; to go back, copy it over the database and start the image
+  version that matches it.
+
+Design: [ADR-0014](docs/adr/0014-archive-and-backups.md).
+
 ## Languages
 
 The interface is available in **English** and **Spanish (Spain)**. Only the interface is
@@ -367,6 +403,8 @@ backend/
   src/cociboard/        FastAPI app (main.py), settings, domain rules, models, schemas,
                         repository, planner (week plans), variety (analysis), suggest (auto-fill, candidates),
                         shopping (ingredient grouping), shopping_repo (ticks and extras),
+                        backup (backup format and validation), backup_repo (export, restore),
+                        dbfiles (SQLite file copies and rotation),
                         routers/, seed.py, migrate.py, migrations/
   alembic.ini           CLI configuration for `make migrate` / `make migration`
   tests/
@@ -376,6 +414,7 @@ frontend/
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, pure logic
   src/features/variety/ variety summary and presentation helpers
   src/features/shopping/ shopping list dialog, hooks with optimistic updates, pure logic
+  src/features/backup/  backup dialog (download, restore with confirmation), header button, pure checks
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS
   src/App.tsx           app shell

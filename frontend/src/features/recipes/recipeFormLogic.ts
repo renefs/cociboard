@@ -4,6 +4,7 @@ import { dayParams } from "../planner/slots";
 import { formatShortDate } from "../planner/weekMath";
 import type {
   ConflictSlot,
+  DuplicateNameDetail,
   MealType,
   MealTypeConflictDetail,
   Protein,
@@ -160,8 +161,18 @@ function fieldMessage(field: FormField, type: string, t: TFunction): string {
   }
 }
 
+/** The 409 for a taken name; also accepts the plain-text detail of older servers. */
 export function isDuplicateNameError(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 409 && typeof error.detail === "string";
+  if (!(error instanceof ApiError) || error.status !== 409) return false;
+  const detail = error.detail as Partial<DuplicateNameDetail> | string | null | undefined;
+  return typeof detail === "string" || (typeof detail === "object" && detail?.code === "duplicate_name");
+}
+
+/** Whether the recipe holding the taken name is archived (so it can be restored instead). */
+export function isDuplicateOfArchived(error: unknown): boolean {
+  if (!isDuplicateNameError(error) || !(error instanceof ApiError)) return false;
+  const detail = error.detail as Partial<DuplicateNameDetail> | string;
+  return typeof detail === "object" && detail.archived === true;
 }
 
 export function asMealTypeConflict(error: unknown): MealTypeConflictDetail | null {

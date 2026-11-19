@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
+import type { Recipe } from "../../api/types";
 import { makeRecipe } from "../../test/fixtures";
 import { renderWithQuery } from "../../test/utils";
 import { RecipePanel } from "./RecipePanel";
@@ -11,12 +12,19 @@ vi.mock("../../api/client");
 const lunch = makeRecipe({ id: 1, name: "Fabada asturiana" });
 const dinner = makeRecipe({ id: 2, name: "Tortilla de espinacas", meal_type: "dinner" });
 
-beforeEach(() => {
-  vi.mocked(client.listRecipes).mockResolvedValue([lunch, dinner]);
-});
+const archivedRecipe = makeRecipe({ id: 3, name: "Gazpacho viejo", archived: true });
+
+// Archived recipes come from their own query; the other tests only see the active ones.
+function serve(archived: Recipe[] = []) {
+  vi.mocked(client.listRecipes).mockImplementation((filters) =>
+    Promise.resolve(filters?.archived ? archived : [lunch, dinner]),
+  );
+}
+
+beforeEach(() => serve());
 
 function lastFilters() {
-  const calls = vi.mocked(client.listRecipes).mock.calls;
+  const calls = vi.mocked(client.listRecipes).mock.calls.filter(([filters]) => !filters?.archived);
   return calls[calls.length - 1]?.[0];
 }
 
@@ -32,7 +40,7 @@ describe("RecipePanel", () => {
   it("filters by meal type through the slot parameter", async () => {
     const user = userEvent.setup();
     vi.mocked(client.listRecipes).mockImplementation((filters) =>
-      Promise.resolve(filters?.slot === "dinner" ? [dinner] : [lunch, dinner]),
+      Promise.resolve(filters?.archived ? [] : filters?.slot === "dinner" ? [dinner] : [lunch, dinner]),
     );
     renderWithQuery(<RecipePanel />);
     await screen.findByRole("heading", { name: "Fabada asturiana" });
@@ -105,6 +113,58 @@ describe("RecipePanel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Can't load the recipes.");
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("heading", { name: "Fabada asturiana" })).toBeInTheDocument();
+  });
+});
+
+describe("RecipePanel archived recipes", () => {
+  it("hides the archived section when nothing is archived", async () => {
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Fabada asturiana" });
+    expect(screen.queryByRole("button", { name: /Archived/ })).not.toBeInTheDocument();
+  });
+
+  it("shows an Archived (N) toggle that lists archived recipes with Restore, not as cards", async () => {
+    const user = userEvent.setup();
+    serve([archivedRecipe]);
+    vi.mocked(client.updateRecipe).mockResolvedValue({ ...archivedRecipe, archived: false });
+    const onNotify = vi.fn();
+    renderWithQuery(<RecipePanel onNotify={onNotify} />);
+    const toggle = await screen.findByRole("button", { name: "Archived (1)" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Gazpacho viejo")).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    const list = await screen.findByRole("list", { name: "Archived recipes" });
+    expect(within(list).getByText("Gazpacho viejo")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Gazpacho viejo" })).not.toBeInTheDocument();
+
+    await user.click(within(list).getByRole("button", { name: "Restore Gazpacho viejo" }));
+    await waitFor(() => expect(client.updateRecipe).toHaveBeenCalledWith(3, { archived: false }, undefined));
+    expect(onNotify).toHaveBeenCalledWith("info", "Restored Gazpacho viejo.");
+  });
+
+  it("opens the details of an archived recipe, offering Restore", async () => {
+    const user = userEvent.setup();
+    serve([archivedRecipe]);
+    renderWithQuery(<RecipePanel />);
+    await user.click(await screen.findByRole("button", { name: "Archived (1)" }));
+    await user.click(await screen.findByRole("button", { name: "Gazpacho viejo" }));
+    const dialog = await screen.findByRole("dialog", { name: "Gazpacho viejo" });
+    expect(within(dialog).getByRole("note")).toHaveTextContent("Archived");
+    expect(within(dialog).getByRole("button", { name: "Restore" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Archive" })).not.toBeInTheDocument();
+  });
+
+  it("applies the search to archived recipes", async () => {
+    const user = userEvent.setup();
+    serve([archivedRecipe]);
+    renderWithQuery(<RecipePanel />);
+    await user.click(await screen.findByRole("button", { name: "Archived (1)" }));
+    await user.type(screen.getByRole("searchbox", { name: "Search recipes" }), "xyz");
+    await waitFor(() => {
+      const calls = vi.mocked(client.listRecipes).mock.calls;
+      expect(calls.some(([f]) => f?.archived && f.q === "xyz")).toBe(true);
+    });
   });
 });
 
