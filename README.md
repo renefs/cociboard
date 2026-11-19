@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.9.0** (shopping list).
+Current version: **0.10.0** (schema migrations).
 
 ## Stack
 
@@ -62,6 +62,8 @@ uv fetches Python 3.12 automatically (see `backend/.python-version`).
 | `make install` | Install backend and frontend dependencies |
 | `make dev` | Run backend (`:8000`, uvicorn `--reload`) and frontend (`:5173`, Vite) together; Vite proxies `/api` to the backend (override the target with `COCIBOARD_API_URL`). Ctrl+C stops both |
 | `make seed` | Add any missing seed recipes to the database (idempotent) |
+| `make migrate` | Apply pending schema migrations to `COCIBOARD_DATABASE_URL` (the app also does this on start) |
+| `make migration m="message"` | Generate a migration after changing `models.py` (review the file before committing) |
 | `make test` | pytest and vitest |
 | `make lint` | ruff and ESLint |
 | `make typecheck` | mypy --strict and `tsc --noEmit` |
@@ -92,6 +94,12 @@ docker compose up -d --build
 Open `http://<host>:8000`. To update, pull the new sources and run the same command;
 the data in `./data` is kept. Back up by copying `./data/cociboard.db` while the
 container is stopped.
+
+Database schema changes are applied automatically on start. Before changing an existing
+database, the app copies it next to the original as
+`cociboard.db.bak-<previous version>-<UTC timestamp>` (the three most recent copies are
+kept). To go back to a backup: stop the container, replace `./data/cociboard.db` with the
+backup file (copy it, keeping the same name) and start the image version that matches it.
 
 | Setting (`.env`) | Default | Description |
 | --- | --- | --- |
@@ -155,7 +163,9 @@ docker compose up -d
 ```
 
 The settings are the ones in the table above, plus `COCIBOARD_TAG` (default `latest`) to
-run another tag. To update, run the same two commands; the data in `./data` is kept.
+run another tag. To update, run the same two commands; the data in `./data` is kept and the database is
+migrated automatically (a `cociboard.db.bak-*` backup is written next to it first; to
+restore one, stop the container and replace `./data/cociboard.db` with the backup).
 Switching an existing installation from the source build only needs this compose file in
 the same folder, since both use `./data`.
 
@@ -357,7 +367,8 @@ backend/
   src/cociboard/        FastAPI app (main.py), settings, domain rules, models, schemas,
                         repository, planner (week plans), variety (analysis), suggest (auto-fill, candidates),
                         shopping (ingredient grouping), shopping_repo (ticks and extras),
-                        routers/, seed.py
+                        routers/, seed.py, migrate.py, migrations/
+  alembic.ini           CLI configuration for `make migrate` / `make migration`
   tests/
 frontend/
   src/api/              typed API client and types mirroring backend schemas

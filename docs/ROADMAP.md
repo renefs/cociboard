@@ -87,6 +87,13 @@ CHANGELOG entry.
   share as plain text.
 - Ideas for later: a "from today" filter, pantry staples, categories/aisles.
 
+### v0.10.0 — Schema migrations (done)
+- Alembic migrations inside the package, run automatically on start (ADR-0013):
+  `0001_initial` (v0.8.0 schema) and `0002_shopping_list` (idempotent).
+- Databases created before migrations existed (v0.8.0, v0.9.0) are stamped and upgraded.
+- Automatic backup next to the SQLite file before changing existing data (last 3 kept).
+- `make migrate` and `make migration m="..."`; a test fails when models and migrations differ.
+
 ## Model usage
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).

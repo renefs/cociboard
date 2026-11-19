@@ -36,6 +36,7 @@ catalogue is small and personal, so persistence should be simple and self-contai
 - Names are unique, compared case-insensitively; a clash returns `409`.
 - Tables are created with `create_all` on startup; there is no migration tool yet.
   Adopt Alembic when the first schema change to existing data is needed.
+  *(Update: Alembic migrations were added in v0.10.0, see [ADR-0013](0013-schema-migrations.md).)*
 - Seed data (`seed.py`, 24 recipes) is idempotent by name; it runs on startup only when
   the table is empty (`COCIBOARD_SEED_ON_STARTUP`, default true), and `make seed` tops
   up missing seed recipes on demand.
