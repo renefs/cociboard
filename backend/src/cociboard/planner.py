@@ -1,7 +1,7 @@
 """Persistence and rules for weekly plans (``MealAssignment`` rows)."""
 
 import random
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
@@ -15,10 +15,17 @@ from cociboard.schemas import (
     RecipeRead,
     SlotFill,
     VarietyReport,
+    WeekCopyRead,
     WeekPlanRead,
 )
 from cociboard.suggest import candidates_for_slot, suggest_fills
-from cociboard.variety import MealInfo, analyze_week, slot_index, slot_position
+from cociboard.variety import (
+    MealInfo,
+    WeekContext,
+    analyze_week,
+    slot_index,
+    slot_position,
+)
 
 
 class InvalidWeekError(Exception):
@@ -39,6 +46,10 @@ class RecipeArchivedError(Exception):
 
 class EmptySlotError(Exception):
     """The source slot of a move holds no recipe."""
+
+
+class InvalidCopySourceError(Exception):
+    """The source week of a copy is not a Monday or is the target week itself."""
 
 
 class PlanConflictError(Exception):
@@ -96,10 +107,25 @@ def _meals(by_slot: dict[tuple[int, MealSlot], Recipe]) -> list[MealInfo | None]
     return meals
 
 
+def week_context(session: Session, week_start: date) -> WeekContext:
+    """What the two previous weeks contribute to the variety of ``week_start``.
+
+    Archived recipes count: they were really eaten.
+    """
+    previous = week_start - timedelta(days=7)
+    before = week_start - timedelta(days=14)
+    last = _meals(_load_recipes(session, previous))
+    older = _meals(_load_recipes(session, before))
+    recent = {meal.recipe_id: 2 for meal in older if meal is not None}
+    recent.update({meal.recipe_id: 1 for meal in last if meal is not None})  # nearest wins
+    return WeekContext(previous_dinner=last[slot_index(6, MealSlot.dinner)], recent=recent)
+
+
 def get_variety(session: Session, week_start: date) -> VarietyReport:
     """Variety analysis of the stored plan of a week."""
     _check_position(week_start, 0)
-    return analyze_week(_meals(_load_recipes(session, week_start)))
+    meals = _meals(_load_recipes(session, week_start))
+    return analyze_week(meals, week_context(session, week_start))
 
 
 def get_week_plan(session: Session, week_start: date) -> WeekPlanRead:
@@ -116,7 +142,8 @@ def get_week_plan(session: Session, week_start: date) -> WeekPlanRead:
         )
         for day in range(7)
     ]
-    return WeekPlanRead(week_start=week_start, days=days, variety=analyze_week(_meals(recipes)))
+    variety = analyze_week(_meals(recipes), week_context(session, week_start))
+    return WeekPlanRead(week_start=week_start, days=days, variety=variety)
 
 
 def assign_slot(
@@ -229,7 +256,8 @@ def suggest_week(session: Session, week_start: date, seed: int | None = None) ->
     meals = _meals(_load_recipes(session, week_start))
     catalogue = [meal_info(recipe) for recipe in repository.list_recipes(session)]
     rng = random.Random(seed)
-    for index, meal in suggest_fills(meals, catalogue, rng).items():
+    context = week_context(session, week_start)
+    for index, meal in suggest_fills(meals, catalogue, rng, context).items():
         position = slot_position(index)
         session.add(
             MealAssignment(
@@ -260,5 +288,39 @@ def slot_candidates(
             reason_params=candidate.reason_params,
             good_pick=candidate.good_pick,
         )
-        for candidate in candidates_for_slot(meals, slot_index(day, slot), catalogue)
+        for candidate in candidates_for_slot(
+            meals, slot_index(day, slot), catalogue, week_context(session, week_start)
+        )
     ]
+
+
+def copy_week(session: Session, week_start: date, from_week_start: date) -> WeekCopyRead:
+    """Copy the meals of another week into the empty slots of ``week_start``.
+
+    Never overwrites a filled slot and skips meals whose recipe is archived (they are
+    counted in ``skipped_archived``). Raises :class:`InvalidWeekError` when the target is
+    not a Monday and :class:`InvalidCopySourceError` when the source is not a Monday or is
+    the target itself.
+    """
+    _check_position(week_start, 0)
+    if not is_week_start(from_week_start) or from_week_start == week_start:
+        raise InvalidCopySourceError(from_week_start)
+    source = _load_recipes(session, from_week_start)
+    filled = set(_load_recipes(session, week_start))
+    copied = skipped = 0
+    for (day, slot), recipe in sorted(source.items()):
+        if (day, slot) in filled:
+            continue
+        if recipe.archived_at is not None:
+            skipped += 1
+            continue
+        assert recipe.id is not None
+        session.add(MealAssignment(week_start=week_start, day=day, slot=slot, recipe_id=recipe.id))
+        copied += 1
+    _commit(session)
+    return WeekCopyRead(
+        plan=get_week_plan(session, week_start),
+        copied=copied,
+        skipped_archived=skipped,
+        source_meals=len(source),
+    )

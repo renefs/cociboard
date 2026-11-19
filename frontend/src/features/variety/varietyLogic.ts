@@ -67,12 +67,27 @@ export function issueMessage(issue: VarietyIssue, t: TFunction, locale: string):
       return t("variety.issue.few_vegetarian", { count, min: Number(params["min"] ?? 0) });
     case "little_fish":
       return t("variety.issue.little_fish", { count, min: Number(params["min"] ?? 0) });
+    case "previous_week_protein":
+      return t("variety.issue.previous_week_protein", {
+        protein: proteinLabel,
+        recipe: String(params["recipe"] ?? ""),
+      });
+    case "recent_repeat":
+      return t("variety.issue.recent_repeat", {
+        recipe: String(params["recipe"] ?? ""),
+        count: Number(params["weeks_ago"] ?? 1),
+      });
   }
 }
 
 /** Translated "why" of a slot candidate, built from `reason_code` and `reason_params`. */
 export function reasonText(candidate: Candidate, t: TFunction): string {
-  const protein = (candidate.reason_params["protein"] ?? "none") as Protein;
+  if (candidate.reason_code === "planned_recently") {
+    return t("variety.reason.planned_recently", {
+      count: Number(candidate.reason_params["weeks_ago"] ?? 1),
+    });
+  }
+  const protein = String(candidate.reason_params["protein"] ?? "none") as Protein;
   const label = t(`meta.protein.${protein}`);
   return t(`variety.reason.${candidate.reason_code}`, {
     protein: label,

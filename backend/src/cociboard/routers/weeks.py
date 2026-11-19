@@ -16,6 +16,8 @@ from cociboard.schemas import (
     SlotMove,
     SuggestRequest,
     VarietyReport,
+    WeekCopyRead,
+    WeekCopyRequest,
     WeekPlanRead,
     WeekReplace,
 )
@@ -42,6 +44,8 @@ def _translate(exc: Exception) -> HTTPException:
         return HTTPException(status.HTTP_404_NOT_FOUND, "The source slot is empty")
     if isinstance(exc, planner.InvalidWeekError):
         return _unprocessable("week_start must be a Monday")
+    if isinstance(exc, planner.InvalidCopySourceError):
+        return _unprocessable("from_week_start must be a Monday other than the target week")
     if isinstance(exc, planner.InvalidDayError):
         return _unprocessable("day must be between 0 and 6")
     if isinstance(exc, planner.RecipeArchivedError):
@@ -118,6 +122,19 @@ def suggest_week(
     try:
         return planner.suggest_week(session, week_start, body.seed if body else None)
     except (planner.InvalidWeekError, planner.PlanConflictError) as exc:
+        raise _translate(exc) from None
+
+
+@router.post("/{week_start}/copy", response_model=WeekCopyRead)
+def copy_week(week_start: date, body: WeekCopyRequest, session: SessionDep) -> WeekCopyRead:
+    """Copy another week's meals into the empty slots of this one (archived recipes skipped)."""
+    try:
+        return planner.copy_week(session, week_start, body.from_week_start)
+    except (
+        planner.InvalidWeekError,
+        planner.InvalidCopySourceError,
+        planner.PlanConflictError,
+    ) as exc:
         raise _translate(exc) from None
 
 

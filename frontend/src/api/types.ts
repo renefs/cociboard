@@ -120,7 +120,9 @@ export type IssueKind =
   | "consecutive_protein"
   | "protein_overload"
   | "few_vegetarian"
-  | "little_fish";
+  | "little_fish"
+  | "previous_week_protein"
+  | "recent_repeat";
 export type IssueSeverity = "info" | "warning";
 
 export interface SlotPosition {
@@ -156,6 +158,17 @@ export interface WeekPlan {
   variety: VarietyReport;
 }
 
+/** Result of `POST /api/weeks/{week}/copy`. */
+export interface WeekCopyResult {
+  plan: WeekPlan;
+  /** Meals copied into empty slots. */
+  copied: number;
+  /** Meals left out because their recipe is archived. */
+  skipped_archived: number;
+  /** Meals in the source week; 0 means there was nothing to copy. */
+  source_meals: number;
+}
+
 export interface SlotFill {
   day: number;
   slot: MealSlot;
@@ -172,6 +185,7 @@ export const CANDIDATE_REASONS = [
   "protein_overload",
   "already_planned",
   "already_planned_batch",
+  "planned_recently",
 ] as const;
 export type CandidateReason = (typeof CANDIDATE_REASONS)[number];
 
@@ -181,8 +195,11 @@ export interface Candidate {
   /** English text for API consumers; the UI translates from `reason_code`. */
   reason: string;
   reason_code: CandidateReason;
-  /** `protein` (an enum value) for `twice_in_a_row` and `protein_overload`. */
-  reason_params: Record<string, string>;
+  /**
+   * `protein` (an enum value) for `twice_in_a_row` and `protein_overload`; `weeks_ago`
+   * (1 or 2) for `planned_recently`.
+   */
+  reason_params: Record<string, string | number>;
   good_pick: boolean;
 }
 

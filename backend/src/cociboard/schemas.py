@@ -239,6 +239,12 @@ class SuggestRequest(BaseModel):
     seed: int | None = None
 
 
+class WeekCopyRequest(BaseModel):
+    """Body of ``POST /api/weeks/{week_start}/copy``."""
+
+    from_week_start: date
+
+
 class CandidateRead(BaseModel):
     """A recipe that fits a slot, with the effect it would have on variety."""
 
@@ -246,7 +252,7 @@ class CandidateRead(BaseModel):
     score_delta: int
     reason: str  # English, not localised: clients translate from ``reason_code``
     reason_code: CandidateReason
-    reason_params: dict[str, str] = Field(default_factory=dict)
+    reason_params: dict[str, str | int] = Field(default_factory=dict)
     good_pick: bool
 
 
@@ -265,6 +271,15 @@ class WeekPlanRead(BaseModel):
     week_start: date
     days: list[DayPlanRead]
     variety: VarietyReport
+
+
+class WeekCopyRead(BaseModel):
+    """Result of copying a week: the target plan and what happened."""
+
+    plan: WeekPlanRead
+    copied: int
+    skipped_archived: int  # meals left out because their recipe is archived
+    source_meals: int  # meals in the source week (0 means there was nothing to copy)
 
 
 class ShoppingMealRead(BaseModel):

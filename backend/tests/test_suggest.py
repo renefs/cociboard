@@ -167,7 +167,7 @@ def test_suggest_endpoint_is_deterministic_and_keeps_filled_slots(
     recipes = client.get("/api/recipes", params={"slot": "dinner"}).json()
     keep = recipes[0]["id"]
     client.put(f"/api/weeks/{MONDAY}/days/2/dinner", json={"recipe_id": keep})
-    other = "2026-11-02"
+    other = "2026-12-14"  # far from MONDAY: neighbouring weeks would change the context
     client.put(f"/api/weeks/{other}/days/2/dinner", json={"recipe_id": keep})
 
     first = client.post(f"/api/weeks/{MONDAY}/suggest", json={"seed": 9}).json()
@@ -230,7 +230,7 @@ def test_every_reason_code_and_params() -> None:
 
     def reasons(
         meals: list[MealInfo | None], index: int, cat: list[MealInfo]
-    ) -> dict[str, tuple[R, dict[str, str], str]]:
+    ) -> dict[str, tuple[R, dict[str, str | int], str]]:
         return {
             c.meal.name: (c.reason_code, c.reason_params, c.reason)
             for c in candidates_for_slot(meals, index, cat)

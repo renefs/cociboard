@@ -56,6 +56,8 @@ class IssueKind(StrEnum):
     protein_overload = "protein_overload"
     few_vegetarian = "few_vegetarian"
     little_fish = "little_fish"
+    previous_week_protein = "previous_week_protein"
+    recent_repeat = "recent_repeat"
 
 
 class CandidateReason(StrEnum):
@@ -69,6 +71,7 @@ class CandidateReason(StrEnum):
     protein_overload = "protein_overload"
     already_planned = "already_planned"
     already_planned_batch = "already_planned_batch"
+    planned_recently = "planned_recently"
 
 
 class IssueSeverity(StrEnum):

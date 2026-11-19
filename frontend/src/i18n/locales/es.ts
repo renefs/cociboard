@@ -41,6 +41,17 @@ const es = {
     suggest: "Sugerir",
     suggestTitle: "Rellenar los huecos vacíos con recetas variadas",
     clearWeek: "Vaciar semana",
+    copyLastWeek: "Copiar semana anterior",
+    copyLastWeekShort: "Copiar",
+    copyLastWeekTitle: "Rellenar los huecos vacíos con las comidas de la semana anterior",
+    copyNoSource: "La semana anterior no tiene comidas.",
+    copyNoEmptySlots: "No hay huecos vacíos donde copiar.",
+    copiedMeals_one: "Se ha copiado {{count}} comida de la semana anterior.",
+    copiedMeals_other: "Se han copiado {{count}} comidas de la semana anterior.",
+    copySkippedArchived_one: "Se ha omitido {{count}} porque su receta está archivada.",
+    copySkippedArchived_other: "Se han omitido {{count}} porque sus recetas están archivadas.",
+    copyOnlyArchived_one: "No se ha copiado nada: {{count}} comida usa una receta archivada.",
+    copyOnlyArchived_other: "No se ha copiado nada: {{count}} comidas usan recetas archivadas.",
     chooseSlot: "Elige un hueco para <strong>{{name}}</strong>",
     loadError: "No se puede cargar la semana. Comprueba que el servidor está en marcha y tu conexión.",
     loadingWeek: "Cargando la semana…",
@@ -370,6 +381,10 @@ const es = {
         "Solo {{count}} comida de pescado o marisco por ahora. Intenta llegar al menos a {{min}}.",
       little_fish_other:
         "Solo {{count}} comidas de pescado o marisco por ahora. Intenta llegar al menos a {{min}}.",
+      previous_week_protein:
+        "{{protein}} otra vez: la cena del domingo de la semana pasada ({{recipe}}) tenía la misma proteína principal.",
+      recent_repeat_one: "{{recipe}} también estaba planificada la semana pasada.",
+      recent_repeat_other: "{{recipe}} también estaba planificada hace {{count}} semanas.",
     },
     reason: {
       fits_week: "Encaja en la semana",
@@ -380,6 +395,8 @@ const es = {
       protein_overload: "{{protein}} en exceso esta semana",
       already_planned: "Ya planificada esta semana",
       already_planned_batch: "Ya planificada (cocina por lotes)",
+      planned_recently_one: "Planificada la semana pasada",
+      planned_recently_other: "Planificada hace {{count}} semanas",
     },
   },
   shopping: {

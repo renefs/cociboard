@@ -16,6 +16,7 @@ vi.mock("../../api/client", async (importOriginal) => {
     getWeek: vi.fn(),
     getCandidates: vi.fn(),
     suggestWeek: vi.fn(),
+    copyWeek: vi.fn(),
     clearWeek: vi.fn(),
     replaceWeek: vi.fn(),
     listRecipes: vi.fn(),
@@ -306,6 +307,65 @@ describe("Planner suggest, clear and undo", () => {
       expect(screen.getByRole("button", { name: "Add dinner on Tuesday" })).toBeInTheDocument(),
     );
     expect(await screen.findByText("Restored the previous plan.")).toBeInTheDocument();
+  });
+
+  it("copies last week into the empty slots and Undo restores the previous plan", async () => {
+    const user = userEvent.setup();
+    serverPlan = makePlan(WEEK, { "0:lunch": lentils });
+    const before = serverPlan;
+    const copied = makePlan(WEEK, { "0:lunch": lentils, "1:dinner": tortilla, "2:lunch": salad });
+    vi.mocked(client.copyWeek).mockResolvedValue({
+      plan: copied,
+      copied: 2,
+      skipped_archived: 1,
+      source_meals: 4,
+    });
+    vi.mocked(client.replaceWeek).mockResolvedValue(before);
+    await renderPlanner();
+
+    await user.click(screen.getByRole("button", { name: "Copy last week" }));
+    expect(client.copyWeek).toHaveBeenCalledWith(WEEK, "2026-10-19");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Copied 2 meals from last week.");
+    expect(toast).toHaveTextContent("1 was skipped because its recipe is archived.");
+    expect(within(screen.getByRole("group", { name: "Tuesday dinner" })).getByText("Tortilla de patatas")).toBeInTheDocument();
+
+    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+    expect(client.replaceWeek).toHaveBeenCalledWith(WEEK, [{ day: 0, slot: "lunch", recipe_id: 1 }]);
+    expect(await screen.findByText("Restored the previous plan.")).toBeInTheDocument();
+  });
+
+  it.each([
+    [{ copied: 0, skipped_archived: 0, source_meals: 0 }, "Last week has no meals."],
+    [{ copied: 0, skipped_archived: 0, source_meals: 3 }, "There are no empty slots to copy into."],
+    [{ copied: 0, skipped_archived: 2, source_meals: 2 }, "Nothing copied: 2 meals use archived recipes."],
+  ])("explains a copy that changed nothing (%j)", async (result, message) => {
+    const user = userEvent.setup();
+    vi.mocked(client.copyWeek).mockResolvedValue({ plan: makePlan(WEEK), ...result });
+    await renderPlanner();
+    await user.click(screen.getByRole("button", { name: "Copy last week" }));
+    const toast = await findToast();
+    expect(toast).toHaveTextContent(message);
+    expect(within(toast).queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+  });
+
+  it("shows an error toast when copying fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.copyWeek).mockRejectedValue(new client.ApiError(500, "boom"));
+    await renderPlanner();
+    await user.click(screen.getByRole("button", { name: "Copy last week" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't update the week/);
+  });
+
+  it("disables Copy last week when every slot is filled", async () => {
+    const placements: Record<string, Recipe> = {};
+    for (let day = 0; day < 7; day++) {
+      placements[`${day}:lunch`] = salad;
+      placements[`${day}:dinner`] = salad;
+    }
+    serverPlan = makePlan(WEEK, placements);
+    await renderPlanner();
+    expect(screen.getByRole("button", { name: "Copy last week" })).toBeDisabled();
   });
 
   it("says so when nothing could be filled", async () => {

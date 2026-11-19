@@ -12,6 +12,7 @@ import type {
   ShoppingExtraUpdate,
   ShoppingList,
   SlotMoveRequest,
+  WeekCopyResult,
   WeekPlan,
 } from "./types";
 
@@ -148,6 +149,15 @@ export function suggestWeek(weekStart: string, seed?: number): Promise<WeekPlan>
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(seed === undefined ? {} : { seed }),
+  });
+}
+
+/** Copy another week's meals into the empty slots of `weekStart` (never overwrites). */
+export function copyWeek(weekStart: string, fromWeekStart: string): Promise<WeekCopyResult> {
+  return request<WeekCopyResult>(`/weeks/${weekStart}/copy`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ from_week_start: fromWeekStart }),
   });
 }
 
