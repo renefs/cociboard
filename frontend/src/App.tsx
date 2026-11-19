@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getHealth } from "./api/client";
 import { LanguageSwitcher } from "./i18n/LanguageSwitcher";
+import { ExposureBanner } from "./features/auth/ExposureBanner";
+import { LogoutButton } from "./features/auth/LogoutButton";
+import { useAuthStatus } from "./features/auth/useAuthStatus";
 import { BackupButton } from "./features/backup/BackupButton";
 import { BackupDialog } from "./features/backup/BackupDialog";
 import { Planner } from "./features/planner/Planner";
@@ -15,6 +18,11 @@ export default function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const toastId = useRef(0);
   const dismissToast = useCallback(() => setToast(null), []);
+  const auth = useAuthStatus();
+  const notify = useCallback((kind: ToastMessage["kind"], text: string) => {
+    toastId.current += 1;
+    setToast({ id: toastId.current, kind, text });
+  }, []);
   const [backend, setBackend] = useState<VersionState>({ kind: "loading" });
 
   useEffect(() => {
@@ -33,19 +41,18 @@ export default function App() {
         <h1 className="app-title">{t("app.title")}</h1>
         <div className="app-header-tools">
           <BackupButton onClick={() => setBackupOpen(true)} />
+          {auth.data?.enabled && <LogoutButton onError={(text) => notify("error", text)} />}
           <LanguageSwitcher />
         </div>
       </header>
+      {auth.data?.exposed && <ExposureBanner />}
       <main className="app-main">
         <Planner />
       </main>
       {backupOpen && (
         <BackupDialog
           onClose={() => setBackupOpen(false)}
-          onNotify={(kind, text) => {
-            toastId.current += 1;
-            setToast({ id: toastId.current, kind, text });
-          }}
+          onNotify={notify}
         />
       )}
       <Toast toast={toast} onDismiss={dismissToast} />

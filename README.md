@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.14.0** (mobile navigation and a Today view).
+Current version: **0.15.0** (optional household password).
 
 ## Stack
 
@@ -107,6 +107,8 @@ backup file (copy it, keeping the same name) and start the image version that ma
 | `PUID` / `PGID` | `1000` / `1000` | Owner of `./data`; the server runs as this user |
 | `TZ` | `Etc/UTC` | Time zone that decides "today" and the current week (e.g. `Europe/Madrid`) |
 | `COCIBOARD_SEED_ON_STARTUP` | `true` | Add the starter recipes when the database is empty |
+| `COCIBOARD_PASSWORD` / `COCIBOARD_PASSWORD_HASH` | unset | Optional household password, see [Security](#security-password) |
+| `COCIBOARD_SECRET_KEY` | unset | Signs session cookies; by default a key is kept in `./data/cociboard.secret` |
 
 The container starts as root only to `chown` `/data`, then drops to `PUID:PGID`. Setting
 `user:` in the compose file also works if `./data` is already writable by that user.
@@ -192,13 +194,58 @@ the same folder, since both use `./data`.
 To make the image public later: GitHub → the package's page → Package settings → Change
 visibility. Then no login is needed.
 
+## Security (password)
+
+By default Cociboard has **no login**: anyone who can reach the port can see and change the
+plans. That is fine on a home network; set a household password if the app is reachable from
+elsewhere (the app shows a warning banner when it sees a request from a public address while
+no password is set).
+
+Set **one** of these in `.env` (both docker-compose files pass them through):
+
+- `COCIBOARD_PASSWORD`: the password in plain text. Simple, but anyone who can read the
+  `.env` file can read it.
+- `COCIBOARD_PASSWORD_HASH`: a salted scrypt hash, so no plain password is stored. Make it
+  with the bundled command, which asks for the password twice (or reads it from stdin):
+
+  ```sh
+  docker compose run --rm cociboard python -m cociboard.auth hash   # or: podman compose run ...
+  # without Docker: cd backend && uv run python -m cociboard.auth hash
+  ```
+
+  The result looks like `scrypt:32768:8:1:<salt>:<hash>` (no `$`, so compose does not mangle
+  it); paste it as the value. If both variables are set, the hash wins.
+
+How it works:
+
+- Everyone shares one password. After signing in, a browser keeps a signed, HTTP-only cookie
+  for 90 days (`COCIBOARD_SESSION_DAYS`), renewed while the app is used. **Log out** is in the header.
+- **Changing the password logs everyone out.**
+- Sessions are signed with `COCIBOARD_SECRET_KEY` if set; otherwise a random key is created
+  once in `cociboard.secret` next to the database (`./data`, mode 0600) and reused, so sessions
+  survive restarts. Keep that file private and out of backups you share.
+- Wrong passwords are rate limited: 10 failures per client IP in 15 minutes block that IP, and
+  100 failures across all IPs block everyone, for the rest of the window.
+- Use **HTTPS** through a reverse proxy (on Synology: DSM's reverse proxy): the password and
+  the cookie travel in clear text over plain HTTP. The server honours `X-Forwarded-Proto`, so
+  the cookie gets the `Secure` flag behind an HTTPS proxy. Do not publish port 8000 directly.
+- The page shell (HTML/JS) stays public; it contains no data. The API requires the session.
+
+Reasoning and alternatives: [ADR-0018](docs/adr/0018-optional-household-password.md).
+
 ## API
 
-Interactive docs are served at http://localhost:8000/docs.
+Interactive docs are served at http://localhost:8000/docs. When a password is set (see
+[Security](#security-password)), every `/api` route except `health` and `auth/*` answers
+`401` `detail: { code: "auth_required" }` without a valid session cookie, and unsafe
+requests whose `Origin` header is not the app's own origin get `403` `detail: { code: "bad_origin" }`.
 
 | Method and path | Description |
 | --- | --- |
 | `GET /api/health` | Status and version |
+| `GET /api/auth/status` | `{ enabled, authenticated, exposed }`. Always public. `authenticated` is `true` when no password is set; `exposed` is `true` only when no password is set and the client has a public IP address. Re-issues the session cookie when it is more than a day old |
+| `POST /api/auth/login` | Body `{ password }` (max 1024 characters). `204` and the `cociboard_session` cookie on success; `401` `detail: { code: "invalid_password" }`; `429` `detail: { code: "too_many_attempts", retry_after }` plus a `Retry-After` header; `404` `detail: { code: "auth_disabled" }` when no password is set |
+| `POST /api/auth/logout` | `204`; deletes the session cookie |
 | `GET /api/recipes` | List recipes, ordered by name. Archived recipes are left out unless `archived=true`, which returns only them. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
 | `POST /api/recipes` | Create (`201`; `409` duplicate name, with `detail: { code: "duplicate_name", message, archived }`; `422` invalid) |

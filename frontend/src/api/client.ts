@@ -1,6 +1,8 @@
 import type {
+  AuthStatus,
   Candidate,
   HealthResponse,
+  LoginBody,
   MealSlot,
   Recipe,
   RecipeCreate,
@@ -41,24 +43,56 @@ async function readDetail(response: Response): Promise<unknown> {
   }
 }
 
+let unauthorizedHandler: (() => void) | null = null;
+
+/** Called whenever the server answers `401 auth_required` (an expired or missing session). */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
+async function failure(path: string, response: Response): Promise<ApiError> {
+  const detail = await readDetail(response);
+  if (
+    response.status === 401 &&
+    typeof detail === "object" &&
+    detail !== null &&
+    (detail as { code?: unknown }).code === "auth_required"
+  ) {
+    unauthorizedHandler?.();
+  }
+  return new ApiError(response.status, `Request to ${path} failed with ${response.status}`, detail);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...init,
     headers: { Accept: "application/json", ...init?.headers },
   });
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      `Request to ${path} failed with ${response.status}`,
-      await readDetail(response),
-    );
-  }
+  if (!response.ok) throw await failure(path, response);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 export function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
   return request<HealthResponse>("/health", { signal: signal ?? null });
+}
+
+export function getAuthStatus(signal?: AbortSignal): Promise<AuthStatus> {
+  return request<AuthStatus>("/auth/status", { signal: signal ?? null });
+}
+
+/** Rejects with `ApiError` 401 (`invalid_password`) or 429 (`too_many_attempts`). */
+export function login(password: string): Promise<void> {
+  const body: LoginBody = { password };
+  return request<void>("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function logout(): Promise<void> {
+  return request<void>("/auth/logout", { method: "POST" });
 }
 
 export function listRecipes(filters: RecipeFilters = {}, signal?: AbortSignal): Promise<Recipe[]> {
@@ -249,13 +283,7 @@ export function filenameFromDisposition(header: string | null, fallback: string)
 
 export async function downloadBackup(): Promise<BackupDownload> {
   const response = await fetch("/api/backup", { headers: { Accept: "application/json" } });
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      `Request to /backup failed with ${response.status}`,
-      await readDetail(response),
-    );
-  }
+  if (!response.ok) throw await failure("/backup", response);
   return {
     blob: await response.blob(),
     filename: filenameFromDisposition(

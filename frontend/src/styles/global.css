@@ -78,6 +78,27 @@ body {
   }
 }
 
+/* The narrowest phones: with the backup, logout and language controls the header would
+   overflow 375px, so tighten the spacing and the title (touch targets stay 44px). */
+@media (max-width: 419px) {
+  .app-header {
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+  }
+
+  .app-title {
+    font-size: var(--text-lg);
+  }
+
+  .app-header-tools {
+    gap: var(--space-1);
+  }
+
+  .language-switcher button {
+    padding-inline: var(--space-2);
+  }
+}
+
 /* Language switcher: a segmented control on the primary-coloured header. */
 .language-switcher {
   display: inline-flex;

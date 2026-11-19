@@ -21,6 +21,9 @@ coverage/
 *.db-wal
 *.db-shm
 
+# Session signing key created next to the database
+*.secret
+
 # Env / OS / editors
 .env
 .env.*

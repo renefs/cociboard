@@ -5,6 +5,27 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-11-19
+
+Optional household password ([ADR-0018](docs/adr/0018-optional-household-password.md)).
+
+### Added
+- **Access protection**: set `COCIBOARD_PASSWORD` (or a scrypt `COCIBOARD_PASSWORD_HASH`,
+  made with `python -m cociboard.auth hash`) and the app asks for it. Nothing changes when
+  neither is set.
+- Login screen (bilingual, password manager friendly, show/hide toggle) and a **Log out**
+  button in the header; an expired session returns to the login screen.
+- Signed HTTP-only session cookie (90 days, `COCIBOARD_SESSION_DAYS`, renewed while in use,
+  invalidated for everyone when the password changes). The signing key is
+  `COCIBOARD_SECRET_KEY` or a generated `cociboard.secret` next to the database.
+- Every `/api` route except `health` and `auth/*` requires the session (`401 auth_required`);
+  unsafe requests from a foreign `Origin` are refused (`403 bad_origin`).
+- Failed logins are rate limited (10 per IP and 100 overall per 15 minutes, `429`).
+- `GET /api/auth/status`, `POST /api/auth/login`, `POST /api/auth/logout`.
+- A dismissible warning when no password is set and the app is reached from a public address.
+- `COCIBOARD_PASSWORD`, `COCIBOARD_PASSWORD_HASH` and `COCIBOARD_SECRET_KEY` in
+  `.env.example` and both compose files; a "Security (password)" section in the README.
+
 ## [0.14.0] - 2026-11-19
 
 Mobile navigation and a Today view ([ADR-0017](docs/adr/0017-mobile-navigation.md)).

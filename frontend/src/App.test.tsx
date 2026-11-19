@@ -49,4 +49,28 @@ describe("App", () => {
     expect(dialog).toHaveTextContent("Download backup");
     expect(dialog).toHaveTextContent("Restore from a file");
   });
+
+  it("shows Log out and the exposure warning only when the server says so", async () => {
+    const withStatus = (status: object) =>
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((url: string) => {
+          if (url === "/api/auth/status") return Promise.resolve(new Response(JSON.stringify(status), { status: 200 }));
+          if (url.startsWith("/api/recipes")) return Promise.resolve(new Response("[]", { status: 200 }));
+          if (url.startsWith("/api/weeks")) return Promise.resolve(new Response(JSON.stringify(makePlan()), { status: 200 }));
+          return Promise.resolve(new Response(JSON.stringify({ status: "ok", version: "0.15.0" }), { status: 200 }));
+        }),
+      );
+
+    withStatus({ enabled: true, authenticated: true, exposed: false });
+    const first = renderWithQuery(<App />);
+    expect(await screen.findByRole("button", { name: /Log out/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Anyone who can reach this address/)).not.toBeInTheDocument();
+    first.unmount();
+
+    withStatus({ enabled: false, authenticated: true, exposed: true });
+    renderWithQuery(<App />);
+    expect(await screen.findByText(/Anyone who can reach this address/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Log out/ })).not.toBeInTheDocument();
+  });
 });

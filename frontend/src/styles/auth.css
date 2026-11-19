@@ -1,0 +1,114 @@
+/* ---------- Login screen and exposure warning ---------- */
+
+.auth-loading {
+  margin: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.login-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.login {
+  width: 100%;
+  max-width: 24rem;
+  margin: var(--space-8) auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.login-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+}
+
+.login-intro {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-password {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.login-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.login-input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 1px var(--color-danger);
+}
+
+.login-toggle {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.login-error {
+  min-height: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.login .btn-large {
+  min-height: 2.75rem;
+}
+
+.exposure-banner {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-primary-tint);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.exposure-banner h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-base);
+}
+
+.exposure-banner p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.exposure-banner .btn {
+  flex: none;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 768px) {
+  .exposure-banner {
+    padding-inline: var(--space-8);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-input,
+  .login-toggle {
+    transition: border-color 0.15s;
+  }
+}
