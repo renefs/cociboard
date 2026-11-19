@@ -4,8 +4,9 @@ Cociboard is a web app for planning varied weekly menus from a personal recipe l
 A weekly grid (Monday–Sunday) has two slots per day — **lunch** and **dinner** — and
 recipes are dragged (or tapped, on touch devices) from the recipe area into the slots.
 
-This roadmap was written in the planning phase. Each milestone ships as one commit
-with a version bump and a CHANGELOG entry.
+This roadmap was written in the planning phase (v0.1.0–v0.5.0); the later milestones
+were added as they shipped. Each milestone ships as one commit with a version bump and a
+CHANGELOG entry.
 
 ## Milestones
 
@@ -48,6 +49,36 @@ with a version bump and a CHANGELOG entry.
 - Create / edit / delete recipes from the UI (validated forms).
 - Accessibility pass (focus states, ARIA, contrast), empty and error states,
   loading states, final docs. Review fixes from the planning/review model.
+- v0.5.1: plan requests are sent one at a time per week, and concurrent writes to
+  the same slot are handled.
+
+### v0.6.0 — Spanish interface (done)
+- English and Spain Spanish UI with react-i18next and typed catalogues (a missing key
+  is a compile error); recipe content is not translated (ADR-0009).
+- Language detection (saved choice, then browser languages, then English) and an
+  EN | ES | Auto switcher in the header.
+- Locale-aware dates and weekday names; translated announcements, toasts and
+  validation messages; proper plural rules.
+- The backend sends codes and params (variety issues, suggestion reasons) instead of
+  localised text.
+- `AGENTS.md` with the conventions for AI coding agents.
+- Patch releases: lifespan type annotation fix (v0.6.1); new seed recipes, bringing
+  the catalogue to 33 (v0.6.2–v0.6.4); accent-insensitive recipe search (v0.6.5).
+
+### v0.7.0 — Docker deployment (done)
+- One multi-stage, multi-arch (amd64/arm64) image: the backend serves the built
+  frontend through `COCIBOARD_STATIC_DIR`, with a health check (ADR-0010).
+- `docker-compose.yml` with a `./data` volume for SQLite and settings from `.env`
+  (port, `PUID`/`PGID`, time zone, seeding on startup).
+- An entrypoint that makes `/data` writable and drops root, so NAS-owned bind mounts
+  (e.g. Synology) work; README deployment steps, including Synology.
+
+### v0.8.0 — Prebuilt image on GitHub Container Registry (done)
+- GitHub Actions workflow that builds the image for amd64 and arm64 and pushes it to
+  the private `ghcr.io/renefs/cociboard` package (`main`, version tags, `latest`,
+  `sha-<commit>`) (ADR-0011).
+- `docker-compose.ghcr.yml` runs the prebuilt image; `COCIBOARD_TAG` picks the tag.
+- README steps for logging in to ghcr.io, updating, and running on Synology.
 
 ## Model usage
 - Planning and review: Opus.
