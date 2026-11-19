@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ApiError,
   assignSlot,
   clearSlot,
   clearWeek,
@@ -8,8 +9,11 @@ import {
   getCandidates,
   getWeek,
   listRecipes,
+  login,
+  logout,
   moveSlot,
   restoreBackup,
+  setUnauthorizedHandler,
   replaceWeek,
   suggestWeek,
 } from "./client";
@@ -133,5 +137,49 @@ describe("backup endpoints", () => {
     const init = fetchMock.mock.calls[0]?.[1];
     expect(init?.method).toBe("POST");
     expect(init?.body).toBe('{"a":1}');
+  });
+});
+
+describe("auth endpoints and the unauthorized handler", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setUnauthorizedHandler(null);
+  });
+
+  it("posts the password and logs out", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await login("pw");
+    await logout();
+    expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.method, init?.body])).toEqual([
+      ["/api/auth/login", "POST", JSON.stringify({ password: "pw" })],
+      ["/api/auth/logout", "POST", undefined],
+    ]);
+  });
+
+  it("calls the handler on 401 auth_required, also for backups", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ detail: { code: "auth_required" } }), { status: 401 }))),
+    );
+    await expect(getWeek("2026-10-26")).rejects.toBeInstanceOf(ApiError);
+    await expect(downloadBackup()).rejects.toBeInstanceOf(ApiError);
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not call the handler for a wrong password or other errors", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ detail: { code: "invalid_password" } }), { status: 401 }))),
+    );
+    const error: unknown = await login("bad").catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 401, detail: { code: "invalid_password" } });
+    expect(handler).not.toHaveBeenCalled();
   });
 });

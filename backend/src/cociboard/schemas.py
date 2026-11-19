@@ -34,6 +34,21 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class AuthStatus(BaseModel):
+    """Response of ``GET /api/auth/status``."""
+
+    enabled: bool
+    authenticated: bool
+    # Auth is off and the request comes from a public address.
+    exposed: bool
+
+
+class LoginRequest(BaseModel):
+    """Body of ``POST /api/auth/login``."""
+
+    password: str = Field(max_length=1024)
+
+
 RecipeName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 
 

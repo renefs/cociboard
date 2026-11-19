@@ -10,13 +10,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from cociboard import __version__
+from cociboard.auth import build_auth_state
+from cociboard.auth_middleware import AuthMiddleware
 from cociboard.config import Settings, get_settings
 from cociboard.db import get_engine, init_db
-from cociboard.routers import backup, recipes, shopping, weeks
+from cociboard.routers import auth, backup, recipes, shopping, weeks
 from cociboard.schemas import HealthResponse
 from cociboard.seed import seed_if_empty
 
 router = APIRouter(prefix="/api")
+router.include_router(auth.router)
 router.include_router(recipes.router)
 router.include_router(weeks.router)
 router.include_router(shopping.router)
@@ -59,6 +62,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the FastAPI application."""
     settings = settings or get_settings()
     app = FastAPI(title="Cociboard", version=__version__, lifespan=lifespan)
+    app.state.auth = build_auth_state(settings)
+    if app.state.auth is not None:
+        # Added before CORS so CORS is outermost and 401/403 answers carry its headers.
+        app.add_middleware(AuthMiddleware, auth=app.state.auth, cors_origins=settings.cors_origins)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

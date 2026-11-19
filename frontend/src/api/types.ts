@@ -290,3 +290,21 @@ export interface BackupErrorDetail {
   message: string;
   params: Record<string, string | number>;
 }
+
+/** Response of `GET /api/auth/status`. `exposed`: auth is off and the client has a public IP. */
+export interface AuthStatus {
+  enabled: boolean;
+  authenticated: boolean;
+  exposed: boolean;
+}
+
+/** Body of `POST /api/auth/login`. */
+export interface LoginBody {
+  password: string;
+}
+
+/** `detail` of the 429 answered when too many logins failed. */
+export interface TooManyAttemptsDetail {
+  code: "too_many_attempts";
+  retry_after: number;
+}
