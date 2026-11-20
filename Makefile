@@ -38,13 +38,8 @@ typecheck:
 	cd backend && uv run mypy src tests
 	cd frontend && npm run typecheck
 
+# Every file that holds the version must equal VERSION (see AGENTS.md).
 check-version:
-	@py=$$(sed -n 's/^version = "\(.*\)"/\1/p' backend/pyproject.toml | head -1); \
-	js=$$(node -p "require('./frontend/package.json').version"); \
-	init=$$(sed -n 's/^__version__ = "\(.*\)"/\1/p' backend/src/cociboard/__init__.py); \
-	echo "VERSION=$(VERSION) pyproject=$$py package.json=$$js __init__=$$init"; \
-	if [ "$(VERSION)" != "$$py" ] || [ "$(VERSION)" != "$$js" ] || [ "$(VERSION)" != "$$init" ]; then \
-		echo "Version mismatch" >&2; exit 1; \
-	fi
+	@sh scripts/check-version.sh
 
 check: check-version lint typecheck test

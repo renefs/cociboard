@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-11-20
+
+CI that gates the image ([ADR-0021](docs/adr/0021-ci-before-publish.md)).
+
+### Added
+- `.github/workflows/ci.yml` runs `make check` on pull requests, branch pushes and manually,
+  and is reused by the publish workflow.
+- The publish workflow now runs the checks first, verifies that a release tag matches
+  `VERSION`, and smoke tests the built container (health, version, frontend) before pushing.
+- `.github/dependabot.yml` with weekly grouped updates (GitHub Actions, npm, uv, Docker).
+
+### Changed
+- `make check-version` also verifies `frontend/package-lock.json` (both fields),
+  `backend/uv.lock` and the README "Current version" line (script in `scripts/check-version.sh`).
+
 ## [0.17.0] - 2026-11-20
 
 Richer recipes: steps, servings, a source link and leftovers from batch cooking
