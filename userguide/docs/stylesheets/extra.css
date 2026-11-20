@@ -1,0 +1,46 @@
+/* Cociboard's own colours (frontend/src/styles/tokens.css). */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #b9461f;
+  --md-primary-fg-color--light: #d0643c;
+  --md-primary-fg-color--dark: #8f3416;
+  --md-accent-fg-color: #8f3416;
+  --md-typeset-a-color: #a33d1b;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #b9461f;
+  --md-accent-fg-color: #f0a283;
+  --md-typeset-a-color: #f0a283;
+}
+
+/* Screenshots: a soft frame so light pictures stand out from the page. */
+.md-typeset img.screenshot {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Phone pictures are 750 px wide (2x); show them at phone size. */
+.md-typeset img.phone {
+  width: 300px;
+  max-width: 100%;
+}
+
+/* Two or three phone pictures side by side, wrapping on narrow screens. */
+.md-typeset .phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.md-typeset .phones figure {
+  margin: 0;
+}
+
+/* Dialog pictures are narrower than the page; do not stretch them. */
+.md-typeset img.dialog {
+  width: 480px;
+  max-width: 100%;
+}

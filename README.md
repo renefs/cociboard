@@ -6,7 +6,10 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.27.0** (seed recipes with steps and servings).
+**Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
+and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
+
+Current version: **0.28.0** (illustrated user guide).
 
 ## Stack
 
@@ -31,10 +34,12 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0018](docs/adr/0018-optional-household-password.md), [ADR-0019](docs/adr/0019-pwa-offline.md),
 [ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md),
 [ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md),
-[ADR-0023](docs/adr/0023-pantry-staples.md),
+[ADR-0023](docs/adr/0023-pantry-staples.md), [ADR-0024](docs/adr/0024-recipe-import.md),
+[ADR-0025](docs/adr/0025-print-and-share.md),
 [ADR-0026](docs/adr/0026-household-preferences.md),
 [ADR-0027](docs/adr/0027-favourites-and-history.md),
-[ADR-0029](docs/adr/0029-persisted-offline-edits.md).
+[ADR-0028](docs/adr/0028-end-to-end-tests.md), [ADR-0029](docs/adr/0029-persisted-offline-edits.md),
+[ADR-0030](docs/adr/0030-user-guide-site.md).
 
 ## Architecture
 
@@ -94,6 +99,8 @@ uv fetches Python 3.12 automatically (see `backend/.python-version`).
 | `make typecheck` | mypy --strict and `tsc --noEmit` |
 | `make e2e` | Build the frontend and run the Playwright end-to-end tests (Chromium; desktop 1440×900 and phone 375×812) against the real backend on `:8766` and `:8767`. First run `cd frontend && npx playwright install chromium`. Run one spec with `cd frontend && npx playwright test e2e/recipes.spec.ts --project=phone` (build first: the config never builds). The HTML report of a failed run is in `frontend/playwright-report/` |
 | `make check-version` | Verify every file that holds the version agrees with `VERSION` (pyproject, `__init__.py`, `package.json`, `package-lock.json`, `uv.lock`, this README) |
+| `make docs` | Build the [user guide](userguide/) into `userguide/site/` (MkDocs, `--strict`); `make docs-serve` previews it at http://127.0.0.1:8001 |
+| `make docs-screenshots` | Regenerate every screenshot of the user guide from the real app (Playwright, both languages, desktop and phone; ports 8768 and 8769) |
 | `make check` | All gates above except `make e2e` (that one needs a browser and a build; CI runs it) |
 
 Open http://localhost:5173 after `make dev`. Configuration of the backend is via
@@ -105,6 +112,9 @@ Open http://localhost:5173 after `make dev`. Configuration of the backend is via
 | `COCIBOARD_SEED_ON_STARTUP` | `true` | Seed the recipe catalogue when the database is empty |
 | `COCIBOARD_CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed CORS origins (JSON list) |
 | `COCIBOARD_STATIC_DIR` | unset | Built frontend (`frontend/dist`) to serve at `/`; the Docker image sets it |
+
+The other variables (password, sessions, backups, recipe import) are listed under
+[Deployment](#deployment-docker-compose) and work the same way outside Docker.
 
 ## Continuous integration
 
@@ -159,6 +169,7 @@ backup file (copy it, keeping the same name) and start the image version that ma
 | `COCIBOARD_SEED_ON_STARTUP` | `true` | Add the starter recipes when the database is empty |
 | `COCIBOARD_PASSWORD` / `COCIBOARD_PASSWORD_HASH` | unset | Optional household password, see [Security](#security-password) |
 | `COCIBOARD_SECRET_KEY` | unset | Signs session cookies; by default a key is kept in `./data/cociboard.secret` |
+| `COCIBOARD_SESSION_DAYS` | `90` | Days a signed-in browser stays signed in without using the app |
 | `COCIBOARD_BACKUP_INTERVAL_HOURS` | `24` | Hours between automatic database copies; `0` turns them off, see [Backups](#backups) |
 | `COCIBOARD_BACKUPS_KEPT` | `7` | How many automatic copies are kept (at least 1) |
 | `COCIBOARD_BACKUP_DIR` | unset | Folder for the automatic copies (inside the container, e.g. `/data/backups`); by default next to the database |
@@ -192,7 +203,7 @@ run Cociboard on a NAS. Tags:
 
 | Tag | Updated when |
 | --- | --- |
-| `latest`, `0.8.0`, `0.8` | A version tag `vX.Y.Z` is pushed (releases only) |
+| `latest`, `X.Y.Z`, `X.Y` (e.g. `0.27.0`, `0.27`) | A version tag `vX.Y.Z` is pushed (releases only) |
 | `main` | Every push to `main` (may be ahead of the last release) |
 | `sha-<commit>` | Every build, to pin an exact commit |
 
@@ -464,10 +475,12 @@ an empty plan. An issue is `{ kind, severity: "info" | "warning", message, param
 `message` is English and not localised; clients translate from `kind` and `params` (for example
 `{ recipe, count }`, or `{ protein, count, from, to }` with slot positions). Candidate reasons work the
 same way: `reason` is English, `reason_code` and `reason_params` are what the UI translates.
-Rules (thresholds are constants in `variety.py`): a recipe repeated in the week (info if it is
-`batch_cooking`), the same main protein in consecutive meals, one protein in more than 4 meals
-(warnings); fewer than 2 vegetable-forward meals once 7 slots are filled and fewer than 2 fish
-or seafood meals once 10 are filled (info). Score: `90 - 15 * warnings - 5 * infos` plus
+Rules: a recipe repeated in the week (info if it is `batch_cooking`), the same main protein in
+consecutive meals, one protein in more than 4 meals (warnings); fewer than 2 vegetable-forward
+meals once 7 slots are filled and fewer than 2 fish or seafood meals once 10 are filled (info).
+The three numbers are the defaults of the [household settings](#household-settings)
+(`max_meals_per_protein`, `min_vegetarian_meals`, `min_fish_meals`; a minimum of 0 turns that
+tip off); the slot counts are constants in `variety.py`. Score: `90 - 15 * warnings - 5 * infos` plus
 `2` per distinct protein beyond the first (at most 10), clamped to 0-100. Details and the
 suggestion algorithm: [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md).
 
@@ -805,14 +818,22 @@ frontend/
   src/features/shopping/ shopping list (dialog and inline view), pantry panel, hooks with optimistic updates, pure logic
   src/features/settings/ household preferences dialog, header button, hook with optimistic save, pure form logic
   src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks
+  src/features/auth/    sign-in screen, log out, exposure banner, auth status hook
+  src/pwa/              service worker registration, offline banner, update prompt, API cache rules
+  src/sw/               the service worker itself (routing of cached API reads)
+  src/offline/          waiting changes kept on the device: persister, tab leader, restore notices
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS
   e2e/                  Playwright end-to-end specs, fixtures and known test data (make e2e)
   playwright.config.ts  E2E projects (desktop, phone), servers and timings
+  userguide/            Playwright scripts that take the user guide's screenshots (make docs-screenshots)
+  playwright.userguide.config.ts  their projects (desktop and phone, English and Spanish) and servers
   src/App.tsx           app shell
 docs/
   ROADMAP.md
   adr/                  architecture decision records
+  reviews/              code reviews of each release
+userguide/              user guide website (MkDocs, English and Spanish, published to GitHub Pages)
 CHANGELOG.md
-CLAUDE.md               project conventions
+AGENTS.md               conventions for coding agents (CLAUDE.md points to it)
 ```

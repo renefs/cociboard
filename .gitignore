@@ -12,6 +12,9 @@ node_modules/
 dist/
 coverage/
 
+# User guide build output
+userguide/site/
+
 # Playwright
 playwright-report/
 test-results/

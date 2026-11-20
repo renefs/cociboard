@@ -1,0 +1,4 @@
+# Builds the user guide (userguide/mkdocs.yml). Used by `make docs` and the Pages workflow.
+mkdocs==1.6.1
+mkdocs-material==9.8.2
+mkdocs-static-i18n==1.3.1

@@ -61,13 +61,18 @@ the config never builds). E2E ports: 8766 and 8767, override with `COCIBOARD_E2E
 - `frontend/src/`
   - `api/`: `client.ts` (typed fetch) and `types.ts` (mirrors `schemas.py`)
   - `i18n/`: i18next setup, language switcher, `locales/en.ts` and `es.ts`
-  - `features/recipes/`, `features/planner/`, `features/variety/`: components, hooks
-    and pure logic modules, with tests alongside (`*.test.ts(x)`)
+  - `features/` (`recipes`, `planner`, `variety`, `shopping`, `settings`, `share`, `backup`,
+    `auth`): components, hooks and pure logic modules, with tests alongside (`*.test.ts(x)`)
+  - `pwa/`, `sw/`, `offline/`: service worker, offline banner and waiting changes kept on
+    the device
   - `styles/tokens.css`: design tokens (colours must stay WCAG AA; `contrast.test.ts`
     checks them)
 - `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`: production deployment (one
   image; the backend serves `frontend/dist` via `COCIBOARD_STATIC_DIR`, ADR-0010)
 - `docs/adr/`: decision records; `docs/reviews/`: code reviews
+- `userguide/`: the illustrated user guide (MkDocs, English and Spanish, GitHub Pages).
+  Screenshots are generated, never edited by hand: `make docs-screenshots`. When a UI change
+  alters what a guide page describes or shows, update the page and regenerate the screenshots
 
 ## Code conventions
 - Fully typed. mypy strict and TypeScript strict; no `Any` without a reason, no

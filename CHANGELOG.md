@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-11-20
+
+An illustrated user guide in English and Spanish, published to GitHub Pages
+([ADR-0030](docs/adr/0030-user-guide-site.md)), and a documentation review. No app, schema or
+API change.
+
+### Added
+- **User guide** (`userguide/`): a MkDocs Material site with eleven pages for the people who
+  plan the menus (getting started, planning, variety, recipes, shopping list and pantry, print
+  and share, household preferences, the phone and offline use, backups, questions and answers)
+  plus a short installation page, in English and Spanish, with a language switcher, search and
+  dark mode. `make docs` builds it with `--strict` (broken links and anchors fail),
+  `make docs-serve` previews it.
+- **Generated screenshots**: `make docs-screenshots` drives the built app with Playwright
+  (`frontend/playwright.userguide.config.ts`, `frontend/userguide/`), plans a demo week with the
+  starter recipes and writes 21 pictures per language, desktop and phone, into the guide.
+- `.github/workflows/userguide.yml` builds the guide on pull requests that touch it and
+  publishes it to GitHub Pages from `main`. Dependabot updates its Python packages.
+- `COCIBOARD_SESSION_DAYS` is passed through both compose files (default 90) and listed in
+  `.env.example`.
+
+### Changed
+- README: link to the user guide; the missing ADRs (0024, 0025, 0028) in the list; the variety
+  thresholds are described as household settings with defaults; `COCIBOARD_SESSION_DAYS` in
+  the settings table; the image tag example uses the current version; the project structure
+  lists `features/auth`, `pwa/`, `sw/`, `offline/`, `docs/reviews/`, `userguide/` and
+  `AGENTS.md`.
+- AGENTS.md: the frontend layout lists every feature folder and the offline modules, and says
+  when to update the guide and its screenshots.
+- `.dockerignore` leaves `docs/` and `userguide/` out of the image build context.
+
 ## [0.27.0] - 2026-11-20
 
 Seed recipes with steps and servings. No schema or API change.
