@@ -1,13 +1,15 @@
-# Runs `make check` (version consistency, lint, type checks, tests). Used on its own for
-# pull requests and branch pushes, and called by docker-publish.yml before an image is
-# published (ADR-0021). main and tags are not listed under `push` because the publish
+# Runs `make check` (version consistency, lint, type checks, tests) and builds the amd64
+# image and smoke tests it (scripts/smoke-test.sh). Used on its own for pull requests and
+# branch pushes, and called by docker-publish.yml before an image is published (ADR-0021). main and tags are not listed under `push` because the publish
 # workflow already runs this one for them.
 name: CI
 
 on:
   pull_request:
   push:
-    branches-ignore: [main]
+    # Dependabot branches already run through pull_request; running on push too would
+    # build the image twice.
+    branches-ignore: [main, "dependabot/**"]
   workflow_dispatch:
   workflow_call:
 
@@ -52,3 +54,28 @@ jobs:
 
       - name: make check
         run: make check
+
+  # Builds the production image and starts it, so a change that breaks the Dockerfile or the
+  # running app (a base image bump, say) fails on the pull request. The gha cache is shared
+  # with docker-publish.yml (same default scope), so the publish build reuses the layers.
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the amd64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: cociboard:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the container
+        run: scripts/smoke-test.sh cociboard:smoke

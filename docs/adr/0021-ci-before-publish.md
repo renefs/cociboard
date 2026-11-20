@@ -43,6 +43,22 @@ dependencies install, not that the app starts.
 - Branch protection (requiring the `CI` check on pull requests) is a repository setting and
   is not configured by this change.
 
+## Amendment (v0.18.1)
+The first Dependabot pull requests showed that CI never built the image: a bump to
+`python:3.15-slim-bookworm` (the backend requires Python `<3.14`) and one to `node:26`
+passed the checks. Changes:
+- **`ci.yml` has an `image` job**, parallel to `check`, that builds the amd64 image
+  (`load: true`, no push) and runs `scripts/smoke-test.sh`. The smoke test moved out of
+  `docker-publish.yml` into that script (`CONTAINER_ENGINE` selects docker or podman), so
+  pull requests and releases run the same check. The publish job needs the whole called
+  workflow, so it still cannot run when the image job fails. Both builds use the default gha
+  cache scope, so the publish build reuses the layers.
+- **Dependabot policy:** the Docker `python` image ignores versions `>=3.14` (tied to
+  `requires-python`), and `node` ignores semver-major updates (done by hand, following the
+  LTS line); patch and minor updates still come. For npm and uv, minor and patch updates
+  are grouped in one pull request and each major is its own pull request, so a breaking
+  major (an `ERESOLVE` failure, say) cannot block the safe updates.
+
 ## Alternatives considered
 - **One workflow with `workflow_run`:** the publish workflow would trigger after CI
   finishes. It runs in the context of the default branch, gets awkward for tags and makes
