@@ -18,9 +18,19 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
+      # Packages that must move together arrive in one PR, majors included: a React major
+      # split across react and react-dom PRs fails npm's peer check in each of them.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      i18next:
+        patterns: ["i18next", "react-i18next"]
       npm-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # typescript-eslint 8.x supports TypeScript < 6.1; lift this when it supports 7.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: uv
     directory: /backend
@@ -38,10 +48,10 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     ignore:
-      # backend/pyproject.toml has requires-python = ">=3.12,<3.14"; raise this together
-      # with that bound.
+      # The image's Python must match backend/.python-version (uv sync --frozen uses it) and
+      # requires-python in backend/pyproject.toml; move all three together, by hand.
       - dependency-name: python
-        versions: [">=3.14"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       # Node majors are bumped by hand, following the LTS line.
       - dependency-name: node
         update-types: ["version-update:semver-major"]

@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.1] - 2026-11-20
+
+### Fixed
+- Dependabot no longer opens update PRs that can't pass on their own:
+  - `react`, `react-dom` and their type packages arrive in one PR, majors included;
+  - `i18next` and `react-i18next` arrive in one PR as well;
+  - TypeScript majors are ignored until typescript-eslint supports them;
+  - the Docker image's Python only gets patch updates, since its minor version moves
+    together with `backend/.python-version` and `requires-python`.
+
+### Changed
+- Dependency updates merged from Dependabot: the Python and npm minor/patch groups.
+
 ## [0.22.0] - 2026-11-20
 
 Print and share ([ADR-0025](docs/adr/0025-print-and-share.md)). Frontend only: no API, schema or

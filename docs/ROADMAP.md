@@ -119,5 +119,17 @@ CHANGELOG entry.
   current week; **Add** on a recipe jumps to the Week tab; the shopping list is inline.
 - The view is kept in `?view=` with `replaceState`.
 
+
+## Planned
+Later releases (v0.15.0–v0.22.x) are described in `CHANGELOG.md`. Next, in order:
+- Household preferences: number of people, excluded properties, variety targets and meal
+  times (also used by the calendar export).
+- Favourites and history.
+- End-to-end tests with Playwright in CI.
+- Offline edits that survive closing the app.
+- Seed recipes with steps and servings.
+- React 19: `react`, `react-dom` and their types in one change, with whatever the code and
+  the tests need (Dependabot now proposes them as one PR).
+
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).
