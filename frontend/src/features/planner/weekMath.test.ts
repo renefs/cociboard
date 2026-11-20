@@ -3,6 +3,7 @@ import {
   addDays,
   dayName,
   daysBetween,
+  formatDateTime,
   formatShortDate,
   formatWeekRange,
   formatWeekRangeShort,
@@ -98,5 +99,17 @@ describe("week navigation helpers", () => {
     expect(searchForWeek("?week=2026-11-02", "2026-10-26", now)).toBe("");
     expect(searchForWeek("?a=1&week=2026-11-02", "2026-10-26", now)).toBe("?a=1");
     expect(searchForWeek("?a=1", "2026-11-09", now)).toBe("?a=1&week=2026-11-09");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("formats a moment in each language, day first, with the time", () => {
+    const moment = new Date(2026, 10, 19, 14, 5);
+    expect(formatDateTime(moment, "en")).toBe("19 Nov 2026, 14:05");
+    expect(formatDateTime(moment, "es")).toMatch(/^19 nov\.? 2026,? 14:05$/);
+  });
+
+  it("accepts an ISO string", () => {
+    expect(formatDateTime(new Date(2026, 10, 19, 9, 0).toISOString(), "en")).toBe("19 Nov 2026, 09:00");
   });
 });

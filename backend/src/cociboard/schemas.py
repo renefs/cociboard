@@ -441,3 +441,25 @@ class ShoppingExtraUpdate(BaseModel):
             if getattr(self, key) is None:
                 raise ValueError(f"{key} cannot be null")
         return self
+
+
+BackupErrorCode = Literal["disk_full", "permission_denied", "unknown"]
+
+
+class BackupFailureInfo(BaseModel):
+    """The last failed automatic copy: when, and a code (no raw error text)."""
+
+    at: datetime
+    code: BackupErrorCode
+
+
+class BackupStatus(BaseModel):
+    """Automatic database copies (``GET /api/backup/status``)."""
+
+    enabled: bool
+    interval_hours: int
+    kept: int
+    last_backup_at: datetime | None
+    copies: int
+    last_error: BackupFailureInfo | None
+    custom_dir: bool

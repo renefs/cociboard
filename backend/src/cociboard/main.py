@@ -1,9 +1,10 @@
 """FastAPI application factory."""
 
+import asyncio
 import logging
 import mimetypes
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,7 @@ from starlette.types import Scope
 from cociboard import __version__
 from cociboard.auth import build_auth_state
 from cociboard.auth_middleware import AuthMiddleware
+from cociboard.autobackup import AutoBackupService, BackupState
 from cociboard.config import Settings, get_settings
 from cociboard.db import get_engine, init_db
 from cociboard.routers import auth, backup, recipes, shopping, weeks
@@ -74,14 +76,23 @@ def configure_logging() -> None:
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
-    """Migrate the database and optionally seed an empty database."""
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Migrate and check the database, seed an empty one, run the automatic backups."""
     configure_logging()
     init_db()
-    if get_settings().seed_on_startup:
+    settings = get_settings()
+    if settings.seed_on_startup:
         with Session(get_engine()) as session:
             seed_if_empty(session)
-    yield
+    service = AutoBackupService(get_engine(), settings, app.state.backup_state)
+    task = asyncio.create_task(service.run_forever()) if service.enabled else None
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -89,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     app = FastAPI(title="Cociboard", version=__version__, lifespan=lifespan)
     app.state.auth = build_auth_state(settings)
+    app.state.backup_state = BackupState()
     if app.state.auth is not None:
         # Added before CORS so CORS is outermost and 401/403 answers carry its headers.
         app.add_middleware(AuthMiddleware, auth=app.state.auth, cors_origins=settings.cors_origins)

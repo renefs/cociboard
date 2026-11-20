@@ -303,6 +303,22 @@ export interface RestoreResult {
   shopping_extras: number;
 }
 
+/** Why the last automatic copy failed; the UI translates the code. */
+export type BackupErrorCode = "disk_full" | "permission_denied" | "unknown";
+
+/** Response of `GET /api/backup/status`: the automatic database copies. */
+export interface BackupStatus {
+  enabled: boolean;
+  interval_hours: number;
+  kept: number;
+  /** ISO 8601 moment of the newest automatic copy, or null when there is none yet. */
+  last_backup_at: string | null;
+  copies: number;
+  last_error: { at: string; code: BackupErrorCode } | null;
+  /** True when copies go to `COCIBOARD_BACKUP_DIR` instead of next to the database. */
+  custom_dir: boolean;
+}
+
 /** `detail` of the 422 answered when a backup file is rejected; `params` depend on the code. */
 export interface BackupErrorDetail {
   code: string;

@@ -50,11 +50,12 @@ export function isToday(iso: string, now: Date): boolean {
 const INTL_LOCALE: Record<string, string> = { en: "en-GB", es: "es-ES" };
 const intlLocale = (locale: string) => INTL_LOCALE[locale] ?? INTL_LOCALE["en"] ?? "en-GB";
 
-type FormatKind = "short" | "long" | "weekday";
+type FormatKind = "short" | "long" | "weekday" | "datetime";
 const OPTIONS: Record<FormatKind, Intl.DateTimeFormatOptions> = {
   short: { day: "numeric", month: "short" },
   long: { day: "numeric", month: "long", year: "numeric" },
   weekday: { weekday: "long" },
+  datetime: { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" },
 };
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
@@ -71,6 +72,11 @@ function formatter(locale: string, kind: FormatKind): Intl.DateTimeFormat {
 /** "26 Oct" / "26 oct" */
 export function formatShortDate(iso: string, locale: string): string {
   return formatter(locale, "short").format(parseIsoDate(iso));
+}
+
+/** "26 Oct 2026, 14:05" / "26 oct 2026, 14:05", in the viewer's time zone. */
+export function formatDateTime(moment: string | Date, locale: string): string {
+  return formatter(locale, "datetime").format(typeof moment === "string" ? new Date(moment) : moment);
 }
 
 /** "26 October 2026" / "26 de octubre de 2026" */

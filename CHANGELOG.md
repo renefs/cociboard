@@ -5,6 +5,34 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-11-20
+
+Automatic database backups and enforced foreign keys
+([ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md)).
+
+### Added
+- Automatic copies of the database (`cociboard.db.bak-auto-<timestamp>`): one at startup and
+  then about every 24 hours, only when the data changed since the last copy. The last 7 are
+  kept. Settings `COCIBOARD_BACKUP_INTERVAL_HOURS` (`0` turns them off),
+  `COCIBOARD_BACKUPS_KEPT` and `COCIBOARD_BACKUP_DIR`, also passed through both compose files
+  and `.env.example`. A failed copy is logged and never stops the app.
+- `GET /api/backup/status`, and an "Automatic copies" section in the backup dialog (last copy,
+  copies kept, the last failure, how to restore one), in English and Spanish.
+- Startup integrity check: `PRAGMA quick_check` and `PRAGMA foreign_key_check`. Planned meals
+  whose recipe no longer exists are removed after a `bak-integrity-` copy and logged.
+- README: kinds of copies, where they live and how to restore one with Docker.
+
+### Changed
+- SQLite foreign keys are now enforced on every connection, so a planned meal can no longer
+  point at a missing recipe. Migrations run with enforcement off (table rebuilds) and check
+  `foreign_key_check` afterwards.
+- Copies rotate per kind (automatic, schema upgrade and integrity, before a restore); file names
+  of existing copies are unchanged and keep rotating.
+
+### Fixed
+- The backup dialog had no side padding and could not scroll on phones (since v0.11.0): its
+  content now brings its own padding and scrolls inside the full-screen sheet.
+
 ## [0.18.1] - 2026-11-20
 
 Safe dependency updates ([ADR-0021](docs/adr/0021-ci-before-publish.md), amendment).

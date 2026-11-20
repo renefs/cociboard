@@ -9,6 +9,7 @@ vi.mock("../../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof client>()),
   downloadBackup: vi.fn(),
   restoreBackup: vi.fn(),
+  getBackupStatus: vi.fn().mockRejectedValue(new Error("offline")),
 }));
 
 const onClose = vi.fn();

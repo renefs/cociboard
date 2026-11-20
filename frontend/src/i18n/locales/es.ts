@@ -316,6 +316,19 @@ const es = {
     tryAgain: "Reintentar",
     retryHint: "Tus datos no han cambiado.",
     restored: "Copia restaurada: {{counts}}.",
+    autoHeading: "Copias automáticas",
+    autoLast_one: "Última copia automática: {{date}}. Solo se conserva la última copia.",
+    autoLast_other: "Última copia automática: {{date}}. Se conservan las últimas {{count}}.",
+    autoNone: "La primera copia automática se hará en breve.",
+    autoOff: "Las copias automáticas están desactivadas (COCIBOARD_BACKUP_INTERVAL_HOURS=0).",
+    autoRestoreHelp:
+      "Para usar una copia automática, para la aplicación, sustituye el archivo de la base de datos por la copia y vuelve a arrancarla. Los pasos están en el apartado «Backups» del README.",
+    autoErrors: {
+      disk_full: "Ha fallado la última copia automática: el disco está lleno.",
+      permission_denied:
+        "Ha fallado la última copia automática: la aplicación no tiene permiso para escribir en la carpeta de copias.",
+      unknown: "Ha fallado la última copia automática: error inesperado. Consulta el registro del servidor.",
+    },
     summary: {
       recipes_one: "{{count}} receta",
       recipes_other: "{{count}} recetas",

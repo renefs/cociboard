@@ -2,7 +2,6 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Engine
 from sqlmodel import Session, col, delete, select
 
 from cociboard import __version__
@@ -16,7 +15,7 @@ from cociboard.backup import (
     BackupShoppingExtra,
     RestoreResult,
 )
-from cociboard.dbfiles import RESTORE_LABEL, backup_sqlite
+from cociboard.dbfiles import RESTORE_LABEL, backup_sqlite, engine_of
 from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty, SpecialMeal
 from cociboard.models import MealAssignment, Recipe, ShoppingCheck, ShoppingExtra
 
@@ -79,11 +78,6 @@ def export_backup(session: Session) -> BackupDocument:
     )
 
 
-def _engine_of(session: Session) -> Engine:
-    bind = session.get_bind()
-    return bind if isinstance(bind, Engine) else bind.engine
-
-
 def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
     """Replace all data with ``doc`` in one transaction.
 
@@ -91,8 +85,9 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
     database is copied first (``pre-restore``). Any failure rolls back, leaving the data as
     it was. Recipe ids are new; meals are re-linked through ``ref``.
     """
-    backup_sqlite(_engine_of(session), RESTORE_LABEL)
+    backup_sqlite(engine_of(session), RESTORE_LABEL)
     try:
+        # Foreign keys are enforced: children first when deleting, parents first when inserting.
         for table in (MealAssignment, ShoppingCheck, ShoppingExtra, Recipe):
             session.exec(delete(table))
         new_ids: dict[int, int] = {}
