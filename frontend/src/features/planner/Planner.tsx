@@ -95,6 +95,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
   // Below 900px one view is shown at a time (ADR-0017); on desktop everything is visible.
   const narrow = useMediaQuery(NARROW_QUERY);
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const { view, setView, go } = useMobileView(narrow);
   const shows = (target: typeof view) => !narrow || view === target;
 
@@ -425,7 +426,8 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
       {narrow && <MobileTabBar view={view} onChange={setView} />}
 
-      <DragOverlay>{dragging ? <DragChip source={dragging} /> : null}</DragOverlay>
+      {/* The drop animation is skipped when the user asked for less motion. */}
+      <DragOverlay dropAnimation={reducedMotion ? null : undefined}>{dragging ? <DragChip source={dragging} /> : null}</DragOverlay>
 
       {ui.kind === "picker" && (
         <RecipePicker

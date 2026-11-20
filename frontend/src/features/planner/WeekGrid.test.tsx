@@ -69,12 +69,32 @@ describe("WeekGrid", () => {
     const { onActivate } = renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
     const slot = screen.getByRole("group", { name: "Tuesday lunch" });
     expect(within(slot).getByText("Archived")).toBeInTheDocument();
-    const body = within(slot).getByRole("button", { name: /^Gazpacho viejo \(archived recipe\), Tuesday lunch/ });
+    const body = within(slot).getByRole("button", { name: /^Gazpacho viejo, archived, Tuesday lunch/ });
     await user.click(body);
     expect(onActivate).toHaveBeenCalledWith(1, "lunch");
     const plain = makeRecipe({ id: 2, name: "Tortilla" });
     renderGrid(makePlan("2026-10-26", { "2:lunch": plain }));
     expect(within(screen.getAllByRole("group", { name: "Wednesday lunch" })[1]!).queryByText("Archived")).not.toBeInTheDocument();
+  });
+
+  it("keeps the visible text first in the accessible name: name, Archived mark, note (WCAG 2.5.3)", () => {
+    const archived = makeRecipe({ id: 1, name: "Gazpacho viejo", archived: true, meal_type: "both" });
+    renderGrid(
+      makePlan("2026-10-26", { "0:lunch": archived }, undefined, {
+        notes: { "0:lunch": "last of it", "0:dinner": "Pizza place" },
+        specials: { "0:dinner": "eating_out" },
+      }),
+    );
+    expect(
+      within(screen.getByRole("group", { name: "Monday lunch" })).getByRole("button", {
+        name: /^Gazpacho viejo, archived, last of it, Monday lunch\./,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("group", { name: "Monday dinner" })).getByRole("button", {
+        name: /^Eating out, Pizza place, Monday dinner\./,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("dims incompatible slots with a hint while a recipe is being placed", () => {
@@ -120,7 +140,7 @@ describe("WeekGrid special meals and notes", () => {
     );
     const slot = screen.getByRole("group", { name: "Monday lunch" });
     expect(within(slot).getByText(long)).toHaveClass("slot-note");
-    expect(within(slot).getByRole("button", { name: new RegExp(`^Paella, Monday lunch.*Note: ${long}\\.$`) })).toBeInTheDocument();
+    expect(within(slot).getByRole("button", { name: new RegExp(`^Paella, ${long}, Monday lunch\\.`) })).toBeInTheDocument();
   });
 
   it("shows no warning marker on a special slot and no note line when there is no note", () => {

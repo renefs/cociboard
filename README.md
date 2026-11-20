@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.24.0** (favourites and history).
+Current version: **0.25.0** (end-to-end tests).
 
 ## Stack
 
@@ -91,8 +91,9 @@ uv fetches Python 3.12 automatically (see `backend/.python-version`).
 | `make test` | pytest and vitest |
 | `make lint` | ruff and ESLint |
 | `make typecheck` | mypy --strict and `tsc --noEmit` |
+| `make e2e` | Build the frontend and run the Playwright end-to-end tests (Chromium; desktop 1440×900 and phone 375×812) against the real backend on `:8766` and `:8767`. First run `cd frontend && npx playwright install chromium`. Run one spec with `cd frontend && npx playwright test e2e/recipes.spec.ts --project=phone` (build first: the config never builds). The HTML report of a failed run is in `frontend/playwright-report/` |
 | `make check-version` | Verify every file that holds the version agrees with `VERSION` (pyproject, `__init__.py`, `package.json`, `package-lock.json`, `uv.lock`, this README) |
-| `make check` | All gates above |
+| `make check` | All gates above except `make e2e` (that one needs a browser and a build; CI runs it) |
 
 Open http://localhost:5173 after `make dev`. Configuration of the backend is via
 `COCIBOARD_*` environment variables:
@@ -108,14 +109,15 @@ Open http://localhost:5173 after `make dev`. Configuration of the backend is via
 
 | Event | What runs |
 | --- | --- |
-| Pull request, push to a branch other than `main`, manual run | `ci.yml`: job `check` runs `make check` on Python 3.12 and Node 22 with locked dependencies; job `image` builds the amd64 image and runs `scripts/smoke-test.sh` on it |
-| Push to `main`, a `vX.Y.Z` tag, manual run of the publish workflow | `docker-publish.yml`: `ci.yml` first (both jobs), then (tags only) a check that the tag equals `v` + `VERSION`, then the multi-arch push to ghcr.io |
+| Pull request, push to a branch other than `main`, manual run | `ci.yml`: job `check` runs `make check` on Python 3.12 and Node 22 with locked dependencies; job `e2e` builds the frontend and runs the Playwright suite in Chromium; job `image` builds the amd64 image and runs `scripts/smoke-test.sh` on it |
+| Push to `main`, a `vX.Y.Z` tag, manual run of the publish workflow | `docker-publish.yml`: `ci.yml` first (all three jobs), then (tags only) a check that the tag equals `v` + `VERSION`, then the multi-arch push to ghcr.io |
 
 The smoke test starts the container with a throwaway volume and requires `/api/health`
 to report the version in `VERSION` and `/` to return 200. Run it locally against a built
 image with `scripts/smoke-test.sh <image> [port]` (set `CONTAINER_ENGINE=podman` to use
-podman). The image is only published when the checks and the smoke test pass. Design:
-[ADR-0021](docs/adr/0021-ci-before-publish.md).
+podman). The image is only published when the checks, the end-to-end tests and the smoke
+test pass. Designs: [ADR-0021](docs/adr/0021-ci-before-publish.md) and
+[ADR-0028](docs/adr/0028-end-to-end-tests.md).
 
 ### Dependency updates
 
@@ -726,7 +728,7 @@ Makefile
 Dockerfile              production image (frontend build + backend)
 docker-compose.yml      deployment; settings in .env (see .env.example)
 docker-compose.ghcr.yml deployment from the prebuilt image on ghcr.io
-.github/workflows/      ci.yml (make check), docker-publish.yml (check, smoke test, push to ghcr.io)
+.github/workflows/      ci.yml (make check, e2e, image smoke test), docker-publish.yml (check, smoke test, push to ghcr.io)
 .github/dependabot.yml  weekly grouped dependency updates
 scripts/check-version.sh  backs make check-version
 docker/entrypoint.sh    fixes /data ownership, drops to PUID:PGID
@@ -755,6 +757,8 @@ frontend/
   src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS
+  e2e/                  Playwright end-to-end specs, fixtures and known test data (make e2e)
+  playwright.config.ts  E2E projects (desktop, phone), servers and timings
   src/App.tsx           app shell
 docs/
   ROADMAP.md

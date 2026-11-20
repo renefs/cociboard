@@ -169,7 +169,7 @@ describe("the language switcher", () => {
     expect(screen.getAllByText("Lentejas estofadas").length).toBeGreaterThan(0);
     // Plural-aware usage badge and a variety issue translated from its params.
     expect((await screen.findAllByText("Planificada 2 veces esta semana")).length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: /Puntuación de variedad: 75 sobre 100/ }));
+    await user.click(screen.getByRole("button", { name: /^75 Variedad: / }));
     expect(
       screen.getByText("Lentejas estofadas se repite 2 veces esta semana."),
     ).toBeInTheDocument();

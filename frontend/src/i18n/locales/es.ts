@@ -79,10 +79,18 @@ const es = {
     slotName: { lunch: "comida del {{dayLower}}", dinner: "cena del {{dayLower}}" },
     slotHint: { lunch: "No es para la comida", dinner: "No es para la cena" },
     varietyWarning: "Aviso de variedad: {{messages}}",
+    // The accessible name of a slot starts with the text shown in it, in the same order (name,
+    // "Archivada" mark, note), so the note variants put the note before the position (WCAG 2.5.3).
     slotRecipeArchived:
-      "{{name}} (receta archivada), {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+      "{{name}}, archivada, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
     slotSpecial:
       "{{name}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+    slotRecipeNote:
+      "{{name}}, {{note}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+    slotRecipeArchivedNote:
+      "{{name}}, archivada, {{note}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
+    slotSpecialNote:
+      "{{name}}, {{note}}, {{where}}. Intro para ver las acciones, Espacio para coger y mover.",
     slotNote: "Nota: {{note}}.",
     archivedMark: "Archivada",
     specialsLabel: "O planifica otra cosa",
@@ -523,7 +531,8 @@ const es = {
     heading: "Variedad",
     notEnoughData: "Faltan datos",
     notEnoughDataYet: "Variedad: aún faltan datos",
-    scoreLabel: "Puntuación de variedad: {{score}} sobre 100. {{summary}}",
+    // Starts with the visible text ("90", "Variedad", the summary), as WCAG 2.5.3 asks.
+    scoreLabel: "{{score}} {{title}}: {{summary}} (puntuación sobre 100)",
     noIssues: "Sin avisos",
     warnings_one: "{{count}} aviso",
     warnings_other: "{{count}} avisos",

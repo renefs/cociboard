@@ -1,7 +1,8 @@
 # Builds the production image for amd64 and arm64 and pushes it to the GitHub Container
 # Registry (ghcr.io/<owner>/cociboard). The package inherits the repository's visibility,
 # so it stays private while the repository is private (ADR-0011). The image is only pushed
-# after ci.yml passes: `make check` and a container smoke test of the amd64 image (ADR-0021).
+# after ci.yml passes: `make check`, the Playwright end-to-end tests (ADR-0028) and a container
+# smoke test of the amd64 image (ADR-0021).
 name: Publish Docker image
 
 on:

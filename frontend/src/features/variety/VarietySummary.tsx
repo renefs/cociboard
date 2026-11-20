@@ -30,20 +30,20 @@ export function VarietySummary({ variety, highlightedId, onHighlight }: VarietyS
         aria-label={
           variety.score === null
             ? t("variety.notEnoughDataYet")
-            : t("variety.scoreLabel", { score: variety.score, summary })
+            : t("variety.scoreLabel", { score: variety.score, title: t("variety.heading"), summary })
         }
         onClick={() => setOpen((value) => !value)}
       >
+        {/* The literal spaces separate the words for text extraction (WCAG 2.5.3 checks); the
+            flex layout ignores them. */}
         <span className="variety-score" aria-hidden="true">
           {variety.score ?? "–"}
-        </span>
+        </span>{" "}
         <span className="variety-text" aria-hidden="true">
-          <span className="variety-title">{t("variety.heading")}</span>
+          <span className="variety-title">{t("variety.heading")}</span>{" "}
           <span className="variety-summary">{summary}</span>
-        </span>
-        <span className="variety-chevron" aria-hidden="true">
-          {open ? "▴" : "▾"}
-        </span>
+        </span>{" "}
+        <span className="variety-chevron" aria-hidden="true" />
       </button>
 
       <div id={panelId} className="variety-panel" hidden={!open}>

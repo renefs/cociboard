@@ -49,18 +49,18 @@ describe("VarietySummary", () => {
     const { rerender } = render(
       <VarietySummary variety={base} highlightedId={null} onHighlight={vi.fn()} />,
     );
-    const badge = screen.getByRole("button", { name: /Variety score 100 out of 100. No issues/ });
+    const badge = screen.getByRole("button", { name: /^100 Variety: No issues \(score out of 100\)/ });
     expect(badge).toHaveClass("variety-badge--good");
     expect(badge).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText(/Nice and varied/)).not.toBeVisible();
     rerender(<VarietySummary variety={withIssues} highlightedId={null} onHighlight={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /Variety score 55/ })).toHaveClass("variety-badge--poor");
+    expect(screen.getByRole("button", { name: /^55 Variety/ })).toHaveClass("variety-badge--poor");
   });
 
   it("lists issues with severity text and protein counts when expanded", async () => {
     const user = userEvent.setup();
     setup(withIssues);
-    await user.click(screen.getByRole("button", { name: /Variety score 55/ }));
+    await user.click(screen.getByRole("button", { name: /^55 Variety/ }));
     expect(screen.getByText(/Warning:/)).toBeInTheDocument();
     expect(screen.getByText(/Tip:/)).toBeInTheDocument();
     expect(screen.getByText(/Meat is the main protein in 5 meals/)).toBeVisible();
@@ -71,7 +71,7 @@ describe("VarietySummary", () => {
   it("toggles the highlight of an issue's slots; plan-wide tips are not clickable", async () => {
     const user = userEvent.setup();
     const { onHighlight } = setup(withIssues);
-    await user.click(screen.getByRole("button", { name: /Variety score 55/ }));
+    await user.click(screen.getByRole("button", { name: /^55 Variety/ }));
     await user.click(screen.getByRole("button", { name: /Meat is the main protein/ }));
     expect(onHighlight).toHaveBeenCalledWith(issueId(withIssues.issues[0]!));
     expect(screen.queryByRole("button", { name: /Only 1 fish/ })).not.toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("VarietySummary", () => {
     const user = userEvent.setup();
     const id = issueId(withIssues.issues[0]!);
     const { onHighlight } = setup(withIssues, id);
-    await user.click(screen.getByRole("button", { name: /Variety score 55/ }));
+    await user.click(screen.getByRole("button", { name: /^55 Variety/ }));
     const issue = screen.getByRole("button", { name: /Meat is the main protein/ });
     expect(issue).toHaveAttribute("aria-pressed", "true");
     await user.click(issue);

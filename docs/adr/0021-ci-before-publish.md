@@ -69,3 +69,9 @@ passed the checks. Changes:
   readable than in a dedicated job.
 - **Smoke test with `docker compose`:** heavier than a single `docker run`, and compose
   needs an env file; the container check is the part that matters.
+
+## Update (ADR-0028)
+The called workflow gained an `e2e` job (Playwright, Chromium). `publish` still `needs: check`,
+and `check` is the job that calls `ci.yml`, so it succeeds only when every job of the called
+workflow does: the E2E tests are part of the gate for publishing, next to `make check` and the
+container smoke test.

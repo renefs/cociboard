@@ -167,14 +167,14 @@ function FilledSlot({ day, slot, meal, selecting, disabled, onActivate, onRemove
   });
   const name = mealName(meal, t);
   const where = describeSlot({ day, slot }, t, locale);
-  const base =
-    meal.kind === "special"
-      ? t("planner.slotSpecial", { name, where })
-      : t(meal.recipe.archived ? "planner.slotRecipeArchived" : "planner.slotRecipe", {
-          name,
-          where,
-        });
-  const label = meal.note ? `${base} ${t("planner.slotNote", { note: meal.note })}` : base;
+  // The name, the "Archived" mark and the note are all visible inside the button, so the
+  // accessible name contains them in that order (WCAG 2.5.3, Label in Name).
+  const note = meal.note ?? "";
+  let key: "slotSpecial" | "slotRecipe" | "slotRecipeArchived" | "slotSpecialNote" | "slotRecipeNote" | "slotRecipeArchivedNote";
+  if (meal.kind === "special") key = note ? "slotSpecialNote" : "slotSpecial";
+  else if (meal.recipe.archived) key = note ? "slotRecipeArchivedNote" : "slotRecipeArchived";
+  else key = note ? "slotRecipeNote" : "slotRecipe";
+  const label = t(`planner.${key}`, { name, note, where });
 
   return (
     <div
@@ -199,6 +199,9 @@ function FilledSlot({ day, slot, meal, selecting, disabled, onActivate, onRemove
             <span aria-hidden="true">{SPECIAL_META[meal.special].icon}</span> {name}
           </span>
         )}
+        {/* The spaces between the parts of the button are ignored by the flex layout; they keep
+            the words apart when the visible text is extracted (WCAG 2.5.3 checks). */}
+        {meal.note && " "}
         {meal.note && (
           <span className="slot-note" title={meal.note} aria-hidden="true">
             {meal.note}
@@ -226,11 +229,13 @@ function RecipeBody({ recipe }: { recipe: Recipe }) {
     <>
       <span className="slot-name" lang={RECIPE_LANG} title={recipe.name}>
         {recipe.name}
-      </span>
+      </span>{" "}
       {recipe.archived && (
-        <span className="slot-archived" aria-hidden="true">
-          {t("planner.archivedMark")}
-        </span>
+        <>
+          <span className="slot-archived" aria-hidden="true">
+            {t("planner.archivedMark")}
+          </span>{" "}
+        </>
       )}
       <span className="slot-icons">
         <MetaIcon meta={meal} />

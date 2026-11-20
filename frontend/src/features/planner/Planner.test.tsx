@@ -467,7 +467,7 @@ describe("Planner variety", () => {
   it("shows the score badge and expands to the issues", async () => {
     const user = userEvent.setup();
     await renderPlanner();
-    const badge = screen.getByRole("button", { name: /Variety score 75 out of 100. 1 warning/ });
+    const badge = screen.getByRole("button", { name: /^75 Variety: 1 warning/ });
     expect(badge).toHaveAttribute("aria-expanded", "false");
     await user.click(badge);
     expect(badge).toHaveAttribute("aria-expanded", "true");
@@ -482,7 +482,7 @@ describe("Planner variety", () => {
     expect(within(monday).getByText(/Variety warning: Lentejas estofadas is planned 2 times/)).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Wednesday lunch" })).not.toHaveClass("slot--warning");
 
-    await user.click(screen.getByRole("button", { name: /Variety score/ }));
+    await user.click(screen.getByRole("button", { name: /^\d+ Variety/ }));
     const issue = within(screen.getByRole("region", { name: "Variety" })).getByRole("button", {
       name: /Lentejas estofadas is planned 2 times/,
     });
@@ -620,7 +620,7 @@ describe("Planner special meals and notes", () => {
     );
     await renderPlanner();
 
-    await user.click(screen.getByRole("button", { name: /^Lentejas estofadas, Monday lunch/ }));
+    await user.click(screen.getByRole("button", { name: /^Lentejas estofadas, .*Monday lunch/ }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Replace" }));
     await user.click(await screen.findByRole("button", { name: /Leftovers/ }));
 
@@ -636,7 +636,7 @@ describe("Planner special meals and notes", () => {
 
     const slot = screen.getByRole("group", { name: "Tuesday dinner" });
     expect(within(slot).getByText("Ana's birthday")).toHaveClass("slot-note");
-    await user.click(within(slot).getByRole("button", { name: /^Free, Tuesday dinner.*Note: Ana's birthday\./ }));
+    await user.click(within(slot).getByRole("button", { name: /^Free, Ana's birthday, Tuesday dinner\./ }));
     const dialog = await screen.findByRole("dialog", { name: "Free" });
     expect(within(dialog).queryByRole("button", { name: "View details" })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Edit note" })).toBeInTheDocument();
@@ -676,7 +676,7 @@ describe("Planner special meals and notes", () => {
     );
     await renderPlanner();
 
-    await user.click(screen.getByRole("button", { name: /^Eating out, Wednesday lunch/ }));
+    await user.click(screen.getByRole("button", { name: /^Eating out, .*Wednesday lunch/ }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Edit note" }));
     let form = await screen.findByRole("dialog", { name: "Edit note" });
     const input = within(form).getByRole("textbox", { name: /Note/ });
@@ -687,7 +687,7 @@ describe("Planner special meals and notes", () => {
     expect(client.setSlotNote).toHaveBeenLastCalledWith(WEEK, 2, "lunch", "Sushi");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /^Eating out, Wednesday lunch/ }));
+    await user.click(screen.getByRole("button", { name: /^Eating out, .*Wednesday lunch/ }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Edit note" }));
     form = await screen.findByRole("dialog", { name: "Edit note" });
     await user.click(within(form).getByRole("button", { name: "Remove note" }));
