@@ -1,15 +1,22 @@
 """Persistence operations for recipes."""
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
 from cociboard.domain import MealSlot, MealType, RecipeProperty, fits_slot, fold_text
+from cociboard.history import RecipeHistory, planned_meals, summarize_by_recipe, summarize_dates
 from cociboard.models import MealAssignment, Recipe
-from cociboard.schemas import RecipeCreate, RecipeUpdate
+from cociboard.schemas import (
+    PlannedMealRead,
+    RecipeCreate,
+    RecipeHistoryRead,
+    RecipeRead,
+    RecipeUpdate,
+)
 
 
 class RecipeNotFoundError(Exception):
@@ -54,8 +61,11 @@ def matches(
     slot: MealSlot | None,
     query: str | None,
     properties: Sequence[RecipeProperty],
+    favourite: bool = False,
 ) -> bool:
     """Whether ``recipe`` satisfies all given filters (properties are AND-ed)."""
+    if favourite and not recipe.favourite:
+        return False
     if slot is not None and not fits_slot(recipe.meal_type, slot):
         return False
     if properties and not {p.value for p in properties} <= set(recipe.properties):
@@ -74,8 +84,9 @@ def list_recipes(
     query: str | None = None,
     properties: Sequence[RecipeProperty] = (),
     archived: bool = False,
+    favourite: bool = False,
 ) -> list[Recipe]:
-    """Return recipes ordered by name, filtered by slot, text and properties.
+    """Return recipes ordered by name, filtered by slot, text, properties and favourite.
 
     Archived recipes are left out unless ``archived`` is true, which returns only them.
     """
@@ -83,7 +94,8 @@ def list_recipes(
     return [
         r
         for r in recipes
-        if (r.archived_at is not None) == archived and matches(r, slot, query, properties)
+        if (r.archived_at is not None) == archived
+        and matches(r, slot, query, properties, favourite)
     ]
 
 
@@ -120,6 +132,7 @@ def create_recipe(session: Session, data: RecipeCreate) -> Recipe:
         servings=data.servings,
         steps=list(data.steps),
         source_url=data.source_url,
+        favourite=data.favourite,
     )
     return _commit(session, recipe)
 
@@ -192,3 +205,55 @@ def delete_recipe(session: Session, recipe_id: int) -> None:
 def count_recipes(session: Session) -> int:
     """Return the number of stored recipes."""
     return session.exec(select(func.count()).select_from(Recipe)).one()
+
+
+def _history_by_recipe(session: Session, today: date) -> dict[int, RecipeHistory]:
+    """History of every planned recipe, from one query over the meal assignments."""
+    statement = select(
+        col(MealAssignment.recipe_id), col(MealAssignment.week_start), col(MealAssignment.day)
+    ).where(col(MealAssignment.recipe_id).is_not(None))
+    rows = [(r, w, d) for r, w, d in session.exec(statement) if r is not None]
+    return summarize_by_recipe(rows, today)
+
+
+def to_reads(session: Session, recipes: Sequence[Recipe], today: date) -> list[RecipeRead]:
+    """Recipes as API objects with their history relative to ``today``."""
+    history = _history_by_recipe(session, today)
+    reads = []
+    for recipe in recipes:
+        stats = history.get(recipe.id or 0, RecipeHistory())
+        reads.append(
+            RecipeRead.model_validate(recipe).model_copy(
+                update={
+                    "last_planned_on": stats.last_planned_on,
+                    "next_planned_on": stats.next_planned_on,
+                    "times_planned": stats.times_planned,
+                }
+            )
+        )
+    return reads
+
+
+def recipe_history(session: Session, recipe_id: int, today: date, limit: int) -> RecipeHistoryRead:
+    """Totals and the ``limit`` most recent planned meals of a recipe (past and upcoming)."""
+    get_recipe(session, recipe_id)
+    statement = select(
+        col(MealAssignment.week_start), col(MealAssignment.day), col(MealAssignment.slot)
+    ).where(col(MealAssignment.recipe_id) == recipe_id)
+    meals = planned_meals(list(session.exec(statement)))
+    stats = summarize_dates([m.date for m in meals], today)
+    return RecipeHistoryRead(
+        times_planned=stats.times_planned,
+        last_planned_on=stats.last_planned_on,
+        next_planned_on=stats.next_planned_on,
+        meals=[
+            PlannedMealRead(
+                date=m.date,
+                week_start=m.week_start,
+                day=m.day,
+                slot=m.slot,
+                upcoming=m.date > today,
+            )
+            for m in meals[:limit]
+        ],
+    )

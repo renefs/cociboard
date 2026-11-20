@@ -15,6 +15,10 @@ export function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
     source_url: null,
     created_at: "2026-01-01T00:00:00Z",
     archived: false,
+    favourite: false,
+    last_planned_on: null,
+    next_planned_on: null,
+    times_planned: 0,
     ...overrides,
   };
 }

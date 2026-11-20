@@ -1,6 +1,7 @@
 """``/api/recipes`` endpoints."""
 
 import asyncio
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -10,15 +11,18 @@ from cociboard import repository
 from cociboard.config import Settings, get_settings
 from cociboard.db import get_session
 from cociboard.domain import MealSlot, RecipeProperty
+from cociboard.history import HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT
 from cociboard.recipe_import.errors import HTTP_STATUS, ImportFailure
 from cociboard.recipe_import.fetch import ImportLimiter, PageFetcher, fetch_page
 from cociboard.recipe_import.parse import parse_recipe
+from cociboard.routers.weeks import get_today
 from cociboard.schemas import (
     ConflictSlot,
     DuplicateNameDetail,
     MealTypeConflictDetail,
     RecipeCreate,
     RecipeDraft,
+    RecipeHistoryRead,
     RecipeImportRequest,
     RecipeRead,
     RecipeUpdate,
@@ -28,6 +32,7 @@ from cociboard.schemas import (
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
+TodayDep = Annotated[date, Depends(get_today)]
 
 
 def _not_found(recipe_id: int) -> HTTPException:
@@ -91,6 +96,7 @@ async def import_recipe(
 @router.get("", response_model=list[RecipeRead])
 def list_recipes(
     session: SessionDep,
+    today: TodayDep,
     slot: Annotated[MealSlot | None, Query(description="Only recipes that fit this slot")] = None,
     q: Annotated[str | None, Query(description="Search in name and ingredients")] = None,
     properties: Annotated[
@@ -100,10 +106,11 @@ def list_recipes(
     archived: Annotated[
         bool, Query(description="true returns only archived recipes; default hides them")
     ] = False,
+    favourite: Annotated[bool, Query(description="true returns only favourites")] = False,
 ) -> list[RecipeRead]:
-    """List recipes, optionally filtered. Archived recipes are hidden unless asked for."""
-    recipes = repository.list_recipes(session, slot, q, properties or [], archived)
-    return [RecipeRead.model_validate(r) for r in recipes]
+    """List recipes with their history, optionally filtered. Archived ones are hidden by default."""
+    recipes = repository.list_recipes(session, slot, q, properties or [], archived, favourite)
+    return repository.to_reads(session, recipes, today)
 
 
 @router.get("/{recipe_id}/usage", response_model=RecipeUsage)
@@ -115,20 +122,41 @@ def recipe_usage(recipe_id: int, session: SessionDep) -> RecipeUsage:
         raise _not_found(recipe_id) from None
 
 
-@router.get("/{recipe_id}", response_model=RecipeRead)
-def get_recipe(recipe_id: int, session: SessionDep) -> RecipeRead:
-    """Return one recipe."""
+@router.get("/{recipe_id}/history", response_model=RecipeHistoryRead)
+def recipe_history(
+    recipe_id: int,
+    session: SessionDep,
+    today: TodayDep,
+    limit: Annotated[
+        int, Query(ge=1, le=HISTORY_MAX_LIMIT, description="How many planned meals to return")
+    ] = HISTORY_DEFAULT_LIMIT,
+) -> RecipeHistoryRead:
+    """Totals and the latest planned meals of a recipe, most recent first (upcoming included).
+
+    "Made" means planned on or before the server's today (ADR-0027).
+    """
     try:
-        return RecipeRead.model_validate(repository.get_recipe(session, recipe_id))
+        return repository.recipe_history(session, recipe_id, today, limit)
+    except repository.RecipeNotFoundError:
+        raise _not_found(recipe_id) from None
+
+
+@router.get("/{recipe_id}", response_model=RecipeRead)
+def get_recipe(recipe_id: int, session: SessionDep, today: TodayDep) -> RecipeRead:
+    """Return one recipe, with its history."""
+    try:
+        recipe = repository.get_recipe(session, recipe_id)
+        return repository.to_reads(session, [recipe], today)[0]
     except repository.RecipeNotFoundError:
         raise _not_found(recipe_id) from None
 
 
 @router.post("", response_model=RecipeRead, status_code=status.HTTP_201_CREATED)
-def create_recipe(data: RecipeCreate, session: SessionDep) -> RecipeRead:
+def create_recipe(data: RecipeCreate, session: SessionDep, today: TodayDep) -> RecipeRead:
     """Create a recipe."""
     try:
-        return RecipeRead.model_validate(repository.create_recipe(session, data))
+        recipe = repository.create_recipe(session, data)
+        return repository.to_reads(session, [recipe], today)[0]
     except repository.DuplicateRecipeNameError as exc:
         raise _duplicate(exc) from None
 
@@ -138,6 +166,7 @@ def update_recipe(
     recipe_id: int,
     data: RecipeUpdate,
     session: SessionDep,
+    today: TodayDep,
     force: Annotated[
         bool, Query(description="Remove planned meals that no longer fit a new meal type")
     ] = False,
@@ -149,9 +178,8 @@ def update_recipe(
     change would leave the recipe in slots it no longer fits, unless ``force=true``.
     """
     try:
-        return RecipeRead.model_validate(
-            repository.update_recipe(session, recipe_id, data, force=force)
-        )
+        recipe = repository.update_recipe(session, recipe_id, data, force=force)
+        return repository.to_reads(session, [recipe], today)[0]
     except repository.MealTypeConflictError as exc:
         detail = MealTypeConflictDetail(
             message=f"{len(exc.conflicts)} planned meals no longer fit the new meal type",

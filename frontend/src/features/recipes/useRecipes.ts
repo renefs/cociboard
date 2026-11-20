@@ -10,6 +10,7 @@ export function useRecipes(filters: RecipeFilters, enabled = true) {
       filters.q ?? "",
       [...(filters.properties ?? [])],
       filters.archived ?? false,
+      filters.favourite ?? false,
     ],
     enabled,
     queryFn: ({ signal }) => listRecipes(filters, signal),

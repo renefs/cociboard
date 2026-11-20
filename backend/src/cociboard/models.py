@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime
 
+import sqlalchemy as sa
 from sqlalchemy import JSON, CheckConstraint, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
@@ -36,6 +37,8 @@ class Recipe(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
     # Set when the recipe is archived: hidden from the catalogue and suggestions, kept in plans.
     archived_at: datetime | None = Field(default=None)
+    # A user shortcut (ADR-0027): filters the catalogue, never influences suggestions.
+    favourite: bool = Field(default=False, sa_column_kwargs={"server_default": sa.false()})
 
 
 class MealAssignment(SQLModel, table=True):

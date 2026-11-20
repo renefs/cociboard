@@ -185,3 +185,29 @@ describe("usePlanActions notes and special meals", () => {
     await waitFor(() => expect(note).toHaveBeenCalledWith(WEEK, 0, "lunch", "From Sunday"));
   });
 });
+
+describe("usePlanActions recipe history", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(client, "getWeek").mockResolvedValue(makePlan());
+  });
+
+  it("refreshes the recipe lists and histories once the last change has settled", async () => {
+    const first = deferred();
+    const second = deferred();
+    vi.spyOn(client, "assignSlot").mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const { queryClient, actions } = setup();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    act(() => {
+      actions.current.assign(slotA, soup);
+      actions.current.assign({ day: 1, slot: "lunch" }, stew);
+    });
+    await act(async () => first.resolve(makePlan()));
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["recipes"] }); // one still in flight
+
+    await act(async () => second.resolve(makePlan()));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["recipes"] }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["recipe-history"] });
+  });
+});

@@ -9,6 +9,7 @@ import { RecipeDetailsModal } from "./RecipeDetailsModal";
 vi.mock("../../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof client>()),
   deleteRecipe: vi.fn(),
+  getRecipeHistory: vi.fn(),
   getRecipeUsage: vi.fn(),
   updateRecipe: vi.fn(),
 }));
@@ -26,6 +27,13 @@ const onNotify = vi.fn();
 beforeEach(() => {
   onClose.mockReset();
   onNotify.mockReset();
+  vi.mocked(client.getRecipeHistory).mockReset();
+  vi.mocked(client.getRecipeHistory).mockResolvedValue({
+    times_planned: 0,
+    last_planned_on: null,
+    next_planned_on: null,
+    meals: [],
+  });
 });
 
 function renderModal(shown = recipe) {
@@ -196,5 +204,66 @@ describe("RecipeDetailsModal", () => {
     expect(await screen.findByRole("dialog", { name: "Lentejas ricas" })).toBeInTheDocument();
     expect(onNotify).toHaveBeenCalledWith("info", "Saved Lentejas ricas.");
     expect(invalidate).toHaveBeenCalled();
+  });
+});
+
+describe("RecipeDetailsModal history and favourite", () => {
+  it("shows the totals, the next meal and the planned meals with upcoming ones marked", async () => {
+    vi.mocked(client.getRecipeHistory).mockResolvedValue({
+      times_planned: 7,
+      last_planned_on: "2026-11-17",
+      next_planned_on: "2026-11-26",
+      meals: [
+        { date: "2026-11-26", week_start: "2026-11-23", day: 3, slot: "lunch", upcoming: true },
+        { date: "2026-11-17", week_start: "2026-11-16", day: 1, slot: "dinner", upcoming: false },
+      ],
+    });
+    renderModal();
+
+    expect(await screen.findByText("Planned 7 times · Next: Thu 26 Nov · Lunch")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Planned meals" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items.map((li) => li.textContent)).toEqual(["Thu 26 Nov · LunchUpcoming", "Tue 17 Nov · Dinner"]);
+    expect(client.getRecipeHistory).toHaveBeenCalledWith(7, expect.anything());
+  });
+
+  it("says so when the recipe was never planned", async () => {
+    renderModal();
+    expect(await screen.findByText("Never planned")).toBeInTheDocument();
+    expect(screen.getByText("Not planned in any week yet.")).toBeInTheDocument();
+  });
+
+  it("shows an error with retry when the history can't be loaded", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.getRecipeHistory).mockRejectedValueOnce(new Error("down"));
+    renderModal();
+    expect(await screen.findByText(/Can't load the history/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Not planned in any week yet.")).toBeInTheDocument();
+  });
+
+  it("toggles the favourite from the modal and puts it back when saving fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.updateRecipe).mockRejectedValue(new Error("down"));
+    renderModal();
+
+    await user.click(screen.getByRole("button", { name: "Add Fabada asturiana to favourites" }));
+
+    expect(client.updateRecipe).toHaveBeenCalledWith(7, { favourite: true });
+    await waitFor(() =>
+      expect(onNotify).toHaveBeenCalledWith("error", expect.stringContaining("Couldn't update the favourites")),
+    );
+    expect(screen.getByRole("button", { name: "Add Fabada asturiana to favourites" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("starts with the recipe's favourite state", () => {
+    renderModal(makeRecipe({ id: 7, name: "Fabada asturiana", favourite: true }));
+    expect(screen.getByRole("button", { name: "Remove Fabada asturiana from favourites" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });

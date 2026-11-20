@@ -12,6 +12,7 @@ import type {
   RecipeCreate,
   RecipeDraft,
   RecipeFilters,
+  RecipeHistory,
   RecipeUpdate,
   RecipeUsage,
   RestoreResult,
@@ -104,6 +105,7 @@ export function listRecipes(filters: RecipeFilters = {}, signal?: AbortSignal): 
   const params = new URLSearchParams();
   if (filters.slot) params.set("slot", filters.slot);
   if (filters.archived) params.set("archived", "true");
+  if (filters.favourite) params.set("favourite", "true");
   const q = filters.q?.trim();
   if (q) params.set("q", q);
   for (const property of filters.properties ?? []) params.append("property", property);
@@ -145,6 +147,10 @@ export function updateRecipe(id: number, changes: RecipeUpdate, force = false): 
 
 export function getRecipeUsage(id: number, signal?: AbortSignal): Promise<RecipeUsage> {
   return request<RecipeUsage>(`/recipes/${id}/usage`, { signal: signal ?? null });
+}
+
+export function getRecipeHistory(id: number, signal?: AbortSignal): Promise<RecipeHistory> {
+  return request<RecipeHistory>(`/recipes/${id}/history`, { signal: signal ?? null });
 }
 
 export function deleteRecipe(id: number): Promise<void> {

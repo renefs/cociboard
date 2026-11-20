@@ -121,8 +121,7 @@ CHANGELOG entry.
 
 
 ## Planned
-Later releases (v0.15.0–v0.23.x) are described in `CHANGELOG.md`. Next, in order:
-- Favourites and history.
+Later releases (v0.15.0–v0.24.x) are described in `CHANGELOG.md`. Next, in order:
 - End-to-end tests with Playwright in CI.
 - Offline edits that survive closing the app.
 - Seed recipes with steps and servings.

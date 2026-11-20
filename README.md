@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.23.0** (household preferences).
+Current version: **0.24.0** (favourites and history).
 
 ## Stack
 
@@ -32,7 +32,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md),
 [ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md),
 [ADR-0023](docs/adr/0023-pantry-staples.md),
-[ADR-0026](docs/adr/0026-household-preferences.md).
+[ADR-0026](docs/adr/0026-household-preferences.md),
+[ADR-0027](docs/adr/0027-favourites-and-history.md).
 
 ## Architecture
 
@@ -323,16 +324,24 @@ requests whose `Origin` header is not the app's own origin get `403` `detail: { 
 | `GET /api/auth/status` | `{ enabled, authenticated, exposed }`. Always public. `authenticated` is `true` when no password is set; `exposed` is `true` only when no password is set and the client has a public IP address. Re-issues the session cookie when it is more than a day old |
 | `POST /api/auth/login` | Body `{ password }` (max 1024 characters). `204` and the `cociboard_session` cookie on success; `401` `detail: { code: "invalid_password" }`; `429` `detail: { code: "too_many_attempts", retry_after }` plus a `Retry-After` header; `404` `detail: { code: "auth_disabled" }` when no password is set |
 | `POST /api/auth/logout` | `204`; deletes the session cookie |
-| `GET /api/recipes` | List recipes, ordered by name. Archived recipes are left out unless `archived=true`, which returns only them. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
+| `GET /api/recipes` | List recipes, ordered by name. Archived recipes are left out unless `archived=true`, which returns only them. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties), `favourite=true` (only favourites; combines with the others). Every recipe carries its history (see below) |
 | `POST /api/recipes/import` | Body `{ "url" }`. Reads the schema.org `Recipe` of a public web page and answers `200` with a draft `{ name, description, servings, prep_minutes, ingredients, steps, source_url, warnings }`; **nothing is saved**. `warnings` are codes: `name_truncated`, `steps_truncated`, `ingredients_truncated`, `servings_unknown`, `time_unknown`, `no_ingredients`, `no_steps`, `name_exists`. Errors are `{ detail: { code } }`: `422` `invalid_url`, `blocked_address`, `no_recipe_found`; `502` `fetch_failed` (network error or the site's non-2xx answer, with `status` when there is one); `504` `timeout`; `413` `too_large`; `415` `not_html`; `429` `busy`; `404` `import_disabled` ([ADR-0024](docs/adr/0024-recipe-import.md)) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
 | `POST /api/recipes` | Create (`201`; `409` duplicate name, with `detail: { code: "duplicate_name", message, archived }`; `422` invalid, including a `servings` outside 1-50, a `source_url` that is not an `http://` or `https://` link with a host, or steps over the limits) |
-| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). Sending `null` clears the optional fields `description`, `prep_minutes`, `servings` and `source_url`; `steps: []` clears the steps (`steps` cannot be `null`). `archived: true\|false` archives or restores the recipe without touching planned meals ([ADR-0014](docs/adr/0014-archive-and-backups.md)). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
+| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). Sending `null` clears the optional fields `description`, `prep_minutes`, `servings` and `source_url`; `steps: []` clears the steps (`steps` cannot be `null`). `archived: true\|false` archives or restores the recipe without touching planned meals ([ADR-0014](docs/adr/0014-archive-and-backups.md)). `favourite: true\|false` stars or unstars it (never `null`; no meal-type check; works on archived recipes too, [ADR-0027](docs/adr/0027-favourites-and-history.md)). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
 | `GET /api/recipes/{id}/usage` | `{ count }`: planned slots, across all weeks, that use the recipe (`404`) |
+| `GET /api/recipes/{id}/history` | `{ times_planned, last_planned_on, next_planned_on, meals: [{ date, week_start, day, slot, upcoming }] }`: the planned meals of the recipe, most recent first, past and upcoming (`?limit=` 1-50, default 10; the totals ignore the limit; `404` if missing) ([ADR-0027](docs/adr/0027-favourites-and-history.md)) |
 | `DELETE /api/recipes/{id}` | Delete permanently, including its planned meals in every week (`204`; `404`). Prefer archiving |
 
 Recipes also carry `archived` (read-only except through `PATCH`). Archived recipes disappear from
 the catalogue, suggestions and slot candidates but stay in the weeks where they are planned.
+
+Recipes carry `favourite` (a boolean, `false` by default; `POST` accepts it) and a history derived
+from the plan, relative to the server's date: `last_planned_on` (the latest meal on or before
+today, or `null`), `next_planned_on` (the earliest meal after today, or `null`) and
+`times_planned` (meals on or before today; special meals are not recipes and are ignored). The
+history fields are filled by the `/api/recipes` endpoints; recipes embedded in week plans and
+slot candidates carry `null`, `null` and `0`. Favourites never influence suggestions.
 
 A recipe has `name` (1-80 chars, unique), optional `description`, `meal_type`
 (`lunch`, `dinner`, `both`), `protein` (`meat`, `poultry`, `fish`, `seafood`, `eggs`,
@@ -422,9 +431,9 @@ recipe by hand (`PUT /api/weeks/{week_start}/days/{day}/{slot}`) is never blocke
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 5): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras, the pantry (`pantry: [{ name }]`) and the household settings (`settings`, same shape as above). Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
+| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 6): recipes (with `archived`, `favourite`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras, the pantry (`pantry: [{ name }]`) and the household settings (`settings`, same shape as above). Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
 | `GET /api/backup/status` | State of the automatic database copies: `{ enabled, interval_hours, kept, last_backup_at, copies, last_error, custom_dir }`. `last_backup_at` is `null` until the first copy; `last_error` is `null` or `{ at, code }` with `code` one of `disk_full`, `permission_denied`, `unknown`. Behind the login when a password is set. No host paths are exposed ([ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md)) |
-| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras, pantry }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1 to 5 are accepted; a file without a `pantry` list restores an empty pantry, and one without `settings` resets the household settings to the defaults), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
+| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras, pantry }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1 to 6 are accepted; recipes of versions before 6 restore as not favourite; a file without a `pantry` list restores an empty pantry, and one without `settings` resets the household settings to the defaults), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
 
@@ -483,8 +492,14 @@ never changes the score: it is a hint, not a fault.
 - **Import from a link** (top of the new-recipe form): paste the address of a recipe page and
   the form is filled in; see [Importing a recipe from a link](#importing-a-recipe-from-a-link).
 - Click a recipe name (or choose **View details** on a planned meal) to see everything, including
-  servings, the steps and a link to the original recipe, then
-  **Edit**, **Archive** or **Delete**.
+  servings, the steps, a link to the original recipe and its **History** (how often it was
+  planned, the next time, and the latest meals), then **Edit**, **Archive** or **Delete**.
+- **Favourites**: the star on a recipe card (or in its details) marks a favourite. The
+  **Favourites** chip above the list shows only those, together with the other filters. A star
+  is only a shortcut: Suggest does not prefer favourites ([ADR-0027](docs/adr/0027-favourites-and-history.md)).
+- Each card says when the recipe was last made ("Last made 3 weeks ago", "Never planned"; a
+  meal counts as made on or before today), and the sort **Not made lately** puts recipes never
+  planned first, then the ones planned longest ago.
 - **Archive** hides a recipe from the catalogue and from suggestions but keeps it in the weeks
   where it is planned (marked "Archived"; it still counts for variety). Find archived recipes
   under **Archived (N)** below the catalogue and bring them back with **Restore**. Archived
@@ -628,10 +643,10 @@ Ingredients you always have at home. The pantry is shared by all weeks.
 
 The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
 
-- **Download backup** saves one JSON file (format version 5) with all recipes (archived ones
-  too), weekly plans (special meals and notes included), shopping lists, the pantry and the
+- **Download backup** saves one JSON file (format version 6) with all recipes (archived ones
+  too, favourites included), weekly plans (special meals and notes included), shopping lists, the pantry and the
   household preferences. Files
-  written by earlier versions (format versions 1 to 4; those before 4 have no pantry, and those before 5 no household preferences, which then go back to the defaults) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
+  written by earlier versions (format versions 1 to 5; those before 4 have no pantry, those before 5 no household preferences, which then go back to the defaults, and those before 6 no favourites) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
   installation.
 - **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
   shopping items, export date) and asks for confirmation. Restoring **replaces everything**

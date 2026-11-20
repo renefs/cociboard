@@ -61,6 +61,7 @@ def export_backup(session: Session) -> BackupDocument:
                 steps=list(r.steps),
                 source_url=r.source_url,
                 archived=r.archived_at is not None,
+                favourite=r.favourite,
                 created_at=r.created_at,
             )
             for r in recipes
@@ -124,6 +125,7 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
                 steps=list(item.steps),
                 source_url=item.source_url,
                 created_at=item.created_at,
+                favourite=item.favourite,
                 # The archive moment is not part of the format; "now" keeps it set.
                 archived_at=datetime.now(UTC) if item.archived else None,
             )

@@ -170,6 +170,9 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
         invalidateFollowingWeeks(queryClient, weekStart);
         // The shopping list is derived from the plan.
         void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
+        // Recipe history (last planned, times planned, the details list) is derived from the plan.
+        void queryClient.invalidateQueries({ queryKey: ["recipes"] });
+        void queryClient.invalidateQueries({ queryKey: ["recipe-history"] });
       }
     },
   });

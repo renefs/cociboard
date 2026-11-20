@@ -413,3 +413,21 @@ def test_household_settings_table_is_added_at_0007(tmp_path: Path) -> None:
     assert _count(engine, "recipe") == 2  # existing data is untouched
     _alembic(engine, "downgrade", "0006_pantry")
     assert "household_settings" not in inspect(engine).get_table_names()
+
+
+def test_existing_recipes_are_not_favourites_at_0008(tmp_path: Path) -> None:
+    engine = _at_0003_with_data(tmp_path / "v023.db")
+    _alembic(engine, "upgrade", "0007_household_settings")
+    assert "favourite" not in {c["name"] for c in inspect(engine).get_columns("recipe")}
+
+    run_migrations(engine)
+
+    assert _version(engine) == _head()
+    assert _diff(engine) == []
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT favourite FROM recipe ORDER BY id")).all()
+    assert [tuple(r) for r in rows] == [(0,), (0,)]
+    with Session(engine) as session:
+        assert [r.favourite for r in session.exec(select(Recipe)).all()] == [False, False]
+    _alembic(engine, "downgrade", "0007_household_settings")
+    assert "favourite" not in {c["name"] for c in inspect(engine).get_columns("recipe")}

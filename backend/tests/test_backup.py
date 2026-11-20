@@ -84,7 +84,7 @@ def test_export_shape_and_header(client: TestClient) -> None:
     )
     doc = response.json()
     assert doc["format"] == "cociboard-backup"
-    assert doc["format_version"] == 5
+    assert doc["format_version"] == 6
     assert doc["app_version"] == __version__
     assert doc["exported_at"]
     assert [r["name"] for r in doc["recipes"]] == ["Alpha", "Beta", "Gamma"]
@@ -102,6 +102,7 @@ def test_export_shape_and_header(client: TestClient) -> None:
         "steps",
         "source_url",
         "archived",
+        "favourite",
         "created_at",
     }
     assert [r["archived"] for r in doc["recipes"]] == [False, False, True]
@@ -214,9 +215,9 @@ def test_rejects_non_documents(client: TestClient) -> None:
 def test_rejects_wrong_format_and_versions(client: TestClient) -> None:
     doc = valid_doc(client)
     assert code_of(restore(client, {**doc, "format": "other"}))["code"] == "wrong_format"
-    unsupported = code_of(restore(client, {**doc, "format_version": 6}))
+    unsupported = code_of(restore(client, {**doc, "format_version": 7}))
     assert unsupported["code"] == "unsupported_version"
-    assert unsupported["params"] == {"version": 6}
+    assert unsupported["params"] == {"version": 7}
     assert code_of(restore(client, {**doc, "format_version": "1"}))["code"] == "invalid_document"
 
 
@@ -359,7 +360,7 @@ def special_populate(client: TestClient) -> None:
 def test_v3_round_trip_keeps_specials_and_notes(client: TestClient) -> None:
     special_populate(client)
     before = export(client)
-    assert before["format_version"] == 5
+    assert before["format_version"] == 6
     kinds = {
         (m["day"], m["slot"]): (m["recipe_ref"], m["special"], m["note"]) for m in before["meals"]
     }
@@ -386,7 +387,7 @@ def test_v1_backup_still_restores(client: TestClient) -> None:
     result = restore(client, v1)
     assert result.status_code == 200, result.text
     assert result.json()["meals"] == 3
-    assert normalised(export(client)) == normalised({**doc, "format_version": 5})
+    assert normalised(export(client)) == normalised({**doc, "format_version": 6})
 
 
 def test_note_is_trimmed_and_validated(client: TestClient) -> None:
@@ -541,3 +542,31 @@ def test_out_of_range_settings_are_an_invalid_document(client: TestClient) -> No
     doc = valid_doc(client)
     doc["settings"] = {**SETTINGS, "max_meals_per_protein": 0}
     assert code_of(restore(client, doc))["code"] == "invalid_document"
+
+
+def test_v6_round_trip_keeps_favourites(client: TestClient) -> None:
+    a = make(client, "Alpha")
+    make(client, "Beta")
+    client.patch(f"/api/recipes/{a}", json={"favourite": True})
+    before = export(client)
+    assert [(r["name"], r["favourite"]) for r in before["recipes"]] == [
+        ("Alpha", True),
+        ("Beta", False),
+    ]
+
+    assert restore(client, before).status_code == 200
+    after = client.get("/api/recipes").json()
+    assert [(r["name"], r["favourite"]) for r in after] == [("Alpha", True), ("Beta", False)]
+    assert normalised(export(client)) == normalised(before)
+
+
+@pytest.mark.parametrize("version", [1, 2, 3, 4, 5])
+def test_older_backups_restore_without_favourites(client: TestClient, version: int) -> None:
+    populate(client)
+    doc = export(client)
+    old = copy.deepcopy(doc)
+    old["format_version"] = version
+    for recipe in old["recipes"]:
+        del recipe["favourite"]
+    assert restore(client, old).status_code == 200
+    assert [r["favourite"] for r in client.get("/api/recipes").json()] == [False, False]

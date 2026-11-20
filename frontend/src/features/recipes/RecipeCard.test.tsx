@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeRecipe } from "../../test/fixtures";
 import { RecipeCard } from "./RecipeCard";
 
@@ -90,5 +90,81 @@ describe("RecipeCard compact density", () => {
   it("has no expander for a short ingredient list", () => {
     render(<RecipeCard recipe={makeRecipe({ ingredients: ["Huevos", "Patatas"] })} density="compact" />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("RecipeCard favourites and history", () => {
+  it("has a star button that reports the change and has an accessible name per state", async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    const { rerender } = render(<RecipeCard recipe={makeRecipe()} onToggleFavourite={onToggle} />);
+    const star = screen.getByRole("button", { name: "Add Fabada asturiana to favourites" });
+    expect(star).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(star);
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), true);
+
+    rerender(<RecipeCard recipe={makeRecipe({ favourite: true })} onToggleFavourite={onToggle} />);
+    const pressed = screen.getByRole("button", { name: "Remove Fabada asturiana from favourites" });
+    expect(pressed).toHaveAttribute("aria-pressed", "true");
+    await user.click(pressed);
+    expect(onToggle).toHaveBeenLastCalledWith(expect.objectContaining({ id: 1 }), false);
+  });
+
+  it("works in both densities", () => {
+    for (const density of ["comfortable", "compact"] as const) {
+      const { unmount } = render(<RecipeCard recipe={makeRecipe()} density={density} onToggleFavourite={vi.fn()} />);
+      expect(screen.getAllByRole("button", { name: /to favourites/ })).toHaveLength(1);
+      unmount();
+    }
+  });
+
+  it("keeps a press on the star away from the drag listeners of the card", () => {
+    const onPointerDown = vi.fn();
+    const onTouchStart = vi.fn();
+    const onClick = vi.fn();
+    render(
+      <div onPointerDown={onPointerDown} onTouchStart={onTouchStart} onClick={onClick}>
+        <RecipeCard recipe={makeRecipe()} onToggleFavourite={vi.fn()} />
+      </div>,
+    );
+    const star = screen.getByRole("button", { name: /to favourites/ });
+
+    fireEvent.pointerDown(star);
+    fireEvent.touchStart(star);
+    fireEvent.click(star);
+
+    expect(onPointerDown).not.toHaveBeenCalled();
+    expect(onTouchStart).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("shows a plain labelled star, not a button, for a favourite without a toggle", () => {
+    render(<RecipeCard recipe={makeRecipe({ favourite: true })} density="compact" />);
+    expect(screen.getByRole("img", { name: "Favourite" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /favourites/ })).not.toBeInTheDocument();
+  });
+
+  it("shows nothing for a non-favourite without a toggle", () => {
+    render(<RecipeCard recipe={makeRecipe()} density="compact" />);
+    expect(screen.queryByRole("img", { name: "Favourite" })).not.toBeInTheDocument();
+  });
+
+  it("shows when the recipe was last made, only when asked to", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 20, 12));
+    try {
+      const recipe = makeRecipe({ last_planned_on: "2026-10-30" });
+      const { rerender } = render(<RecipeCard recipe={recipe} density="compact" />);
+      expect(screen.queryByText(/Last made/)).not.toBeInTheDocument();
+
+      rerender(<RecipeCard recipe={recipe} density="compact" showHistory />);
+      expect(screen.getByText("Last made 3 weeks ago")).toBeInTheDocument();
+
+      rerender(<RecipeCard recipe={makeRecipe()} showHistory />);
+      expect(screen.getByText("Never planned")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
