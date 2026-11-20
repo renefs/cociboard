@@ -9,6 +9,7 @@ import {
 import { Legend } from "./Legend";
 import type { Recipe } from "../../api/types";
 import { sortByVariety } from "../variety/varietyLogic";
+import { sortByNotMadeLately } from "./historyLogic";
 import { RecipeCard, type CardDensity } from "./RecipeCard";
 import { RecipeDetailsModal, type Notify } from "./RecipeDetailsModal";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
@@ -17,6 +18,7 @@ import { RecipeListSkeleton } from "./RecipeListSkeleton";
 import { ArchivedRow } from "./ArchivedRow";
 import { PROPERTY_META } from "./recipeMeta";
 import { useRecipes } from "./useRecipes";
+import { useToggleFavourite } from "./useRecipeMutations";
 
 type MealFilter = MealSlot | "all";
 
@@ -36,7 +38,11 @@ function useDebounced<T>(value: T, delay: number): T {
 interface RecipePanelProps {
   density?: CardDensity;
   /** Custom card rendering (the planner adds drag handles and an "Add" button). */
-  renderCard?: (recipe: Recipe, open: (recipe: Recipe) => void) => ReactNode;
+  renderCard?: (
+    recipe: Recipe,
+    open: (recipe: Recipe) => void,
+    toggleFavourite: (recipe: Pick<Recipe, "id" | "name">, favourite: boolean) => void,
+  ) => ReactNode;
   /** Receives confirmations and errors (the planner shows them as toasts). */
   onNotify?: Notify;
   /**
@@ -47,7 +53,7 @@ interface RecipePanelProps {
   proteinCounts?: Partial<Record<Protein, number>>;
 }
 
-type SortMode = "name" | "variety";
+type SortMode = "name" | "variety" | "lately";
 
 export function RecipePanel({
   density = "comfortable",
@@ -61,6 +67,7 @@ export function RecipePanel({
   const [meal, setMeal] = useState<MealFilter>("all");
   const [properties, setProperties] = useState<RecipeProperty[]>([]);
   const [sort, setSort] = useState<SortMode>("name");
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
   // A link shared from another app (Android share sheet) opens the form and starts the import.
   const sharedLink = useSharedLink();
   const [dialog, setDialog] = useState<
@@ -68,25 +75,34 @@ export function RecipePanel({
   >(() => (sharedLink ? { kind: "new", importUrl: sharedLink } : { kind: "none" }));
   const q = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
 
-  const filters = { slot: meal === "all" ? undefined : meal, q, properties };
+  const filters = {
+    slot: meal === "all" ? undefined : meal,
+    q,
+    properties,
+    favourite: favouritesOnly,
+  };
   const { data, isPending, isError, refetch } = useRecipes(filters);
   // The count ignores the filters; the list below the toggle follows them.
   const archivedCount = useRecipes({ archived: true }).data?.length ?? 0;
   const [showArchived, setShowArchived] = useState(false);
-  const archivedList = useRecipes({ ...filters, archived: true }, showArchived);
+  const archivedList = useRecipes({ ...filters, favourite: false, archived: true }, showArchived);
 
-  const recipes = useMemo(
-    () =>
-      data && usage && sort === "variety" ? sortByVariety(data, usage, proteinCounts ?? {}) : data,
-    [data, usage, proteinCounts, sort],
-  );
+  const recipes = useMemo(() => {
+    if (!data) return data;
+    if (sort === "lately") return sortByNotMadeLately(data);
+    return usage && sort === "variety" ? sortByVariety(data, usage, proteinCounts ?? {}) : data;
+  }, [data, usage, proteinCounts, sort]);
 
-  const filtersActive = search.trim() !== "" || meal !== "all" || properties.length > 0;
+  // Archived recipes follow the other filters but not the favourites one: they are a separate list.
+  const otherFiltersActive = search.trim() !== "" || meal !== "all" || properties.length > 0;
+  const filtersActive = otherFiltersActive || favouritesOnly;
   const clearFilters = () => {
     setSearch("");
     setMeal("all");
     setProperties([]);
+    setFavouritesOnly(false);
   };
+  const toggleFavourite = useToggleFavourite((message) => onNotify?.("error", message));
   const openDetails = (recipe: Recipe) => setDialog({ kind: "details", recipe });
   const closeDialog = () => setDialog({ kind: "none" });
 
@@ -131,16 +147,16 @@ export function RecipePanel({
           ))}
         </div>
 
-        {usage && (
-          <div className="chip-group" role="group" aria-label={t("recipes.sort")}>
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={sort === "name"}
-              onClick={() => setSort("name")}
-            >
-              {t("recipes.sortName")}
-            </button>
+        <div className="chip-group" role="group" aria-label={t("recipes.sort")}>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={sort === "name"}
+            onClick={() => setSort("name")}
+          >
+            {t("recipes.sortName")}
+          </button>
+          {usage && (
             <button
               type="button"
               className="chip"
@@ -150,8 +166,28 @@ export function RecipePanel({
             >
               {t("recipes.sortVariety")}
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={sort === "lately"}
+            onClick={() => setSort("lately")}
+            title={t("recipes.sortLatelyTitle")}
+          >
+            {t("recipes.sortLately")}
+          </button>
+        </div>
+
+        <div className="chip-group">
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={favouritesOnly}
+            onClick={() => setFavouritesOnly((value) => !value)}
+          >
+            <span aria-hidden="true">{favouritesOnly ? "★" : "☆"}</span> {t("recipes.filterFavourites")}
+          </button>
+        </div>
 
         <details className="property-filter">
           <summary>
@@ -201,7 +237,9 @@ export function RecipePanel({
         )}
         {recipes && recipes.length === 0 && filtersActive && (
           <div className="state-box">
-            <p>{t("recipes.noMatches")}</p>
+            <p>
+              {favouritesOnly && !otherFiltersActive ? t("recipes.noFavourites") : t("recipes.noMatches")}
+            </p>
             <button type="button" className="btn" onClick={clearFilters}>
               {t("recipes.clearFilters")}
             </button>
@@ -217,7 +255,7 @@ export function RecipePanel({
         )}
         {recipes?.map((recipe) =>
           renderCard ? (
-            <div key={recipe.id}>{renderCard(recipe, openDetails)}</div>
+            <div key={recipe.id}>{renderCard(recipe, openDetails, toggleFavourite)}</div>
           ) : (
             <RecipeCard
               key={recipe.id}
@@ -225,6 +263,8 @@ export function RecipePanel({
               density={density}
               usageCount={usage?.get(recipe.id) ?? 0}
               onOpen={openDetails}
+              onToggleFavourite={toggleFavourite}
+              showHistory
             />
           ),
         )}

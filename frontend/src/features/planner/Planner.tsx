@@ -402,12 +402,13 @@ export function Planner({ now: nowProp }: PlannerProps) {
             {...(usage ? { usage } : {})}
             proteinCounts={plan?.variety.protein_counts ?? {}}
             onNotify={(kind, text) => notify(kind, text)}
-            renderCard={(recipe, open) => (
+            renderCard={(recipe, open, toggleFavourite) => (
               <DraggableRecipeCard
                 recipe={recipe}
                 selected={selecting?.id === recipe.id}
                 onAdd={toggleSelect}
                 onOpen={open}
+                onToggleFavourite={toggleFavourite}
                 usageCount={usage?.get(recipe.id) ?? 0}
               />
             )}

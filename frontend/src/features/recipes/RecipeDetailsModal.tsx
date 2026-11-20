@@ -1,13 +1,23 @@
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
+import { useLocale } from "../../i18n/useLocale";
 import { ConfirmDialog } from "../planner/ConfirmDialog";
 import { Modal } from "../planner/Modal";
+import { FavouriteToggle } from "./RecipeCard";
+import { formatWeekdayDate } from "../planner/weekMath";
+import { nextMeal, whenText } from "./historyLogic";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
 import { SERVINGS_ICON } from "./recipeMeta";
 import { sourceHost } from "./recipeFormLogic";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
-import { useDeleteRecipe, useRecipeUsage, useUpdateRecipe } from "./useRecipeMutations";
+import {
+  useDeleteRecipe,
+  useRecipeHistory,
+  useRecipeUsage,
+  useToggleFavourite,
+  useUpdateRecipe,
+} from "./useRecipeMutations";
 
 export type Notify = (kind: "error" | "info", text: string) => void;
 
@@ -30,6 +40,12 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
   const [recipe, setRecipe] = useState(initial);
   const [mode, setMode] = useState<Mode>("view");
   const update = useUpdateRecipe();
+  // The recipe above is a snapshot; the star follows the toggle at once and goes back on failure.
+  const [favourite, setFavourite] = useState(initial.favourite);
+  const toggleFavourite = useToggleFavourite((message, input) => {
+    setFavourite(!input.favourite);
+    onNotify?.("error", message);
+  });
 
   const setArchived = (archived: boolean) =>
     update.mutate(
@@ -60,6 +76,7 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
         onClose={() => setMode("view")}
         onSaved={(info) => {
           setRecipe(info.recipe);
+          setFavourite(info.recipe.favourite);
           setMode("view");
           onNotify?.("info", savedMessage(info, t));
         }}
@@ -127,6 +144,18 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
           )}
         </dl>
 
+        <p className="details-favourite">
+          <FavouriteToggle
+            recipe={recipe}
+            favourite={favourite}
+            onToggle={(target, value) => {
+              setFavourite(value);
+              toggleFavourite(target, value);
+            }}
+          />
+          <span aria-hidden="true">{t("recipes.favourite.is")}</span>
+        </p>
+
         {recipe.description && <p className="details-description">{recipe.description}</p>}
 
         <h3 className="details-heading">{t("recipes.ingredients")}</h3>
@@ -154,6 +183,8 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
             </a>
           </p>
         )}
+
+        <HistorySection recipeId={recipe.id} />
 
         {recipe.properties.length > 0 && (
           <>
@@ -187,6 +218,56 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
         </button>
       </div>
     </Modal>
+  );
+}
+
+/** When the recipe was planned: totals and the latest meals, past and upcoming. */
+function HistorySection({ recipeId }: { recipeId: number }) {
+  const { t } = useTranslation();
+  const locale = useLocale();
+  const history = useRecipeHistory(recipeId);
+  const data = history.data;
+  const next = data ? nextMeal(data.meals, data.next_planned_on) : null;
+  return (
+    <>
+      <h3 className="details-heading">{t("recipes.history.heading")}</h3>
+      {history.isPending && <p className="status-message">{t("recipes.history.loading")}</p>}
+      {history.isError && (
+        <p className="status-message" role="alert">
+          {t("recipes.history.error")}{" "}
+          <button type="button" className="link-button" onClick={() => void history.refetch()}>
+            {t("common.retry")}
+          </button>
+        </p>
+      )}
+      {data && (
+        <>
+          <p className="details-history-totals">
+            {data.times_planned > 0 ? t("recipes.history.planned", { count: data.times_planned }) : t("recipes.history.never")}
+            {data.next_planned_on !== null && (
+              <>
+                {" · "}
+                {t("recipes.history.next", {
+                  when: next ? whenText(next.date, next.slot, t, locale) : formatWeekdayDate(data.next_planned_on, locale),
+                })}
+              </>
+            )}
+          </p>
+          {data.meals.length === 0 ? (
+            <p className="status-message">{t("recipes.history.empty")}</p>
+          ) : (
+            <ul className="details-history" aria-label={t("recipes.history.list")}>
+              {data.meals.map((meal) => (
+                <li key={`${meal.date}-${meal.slot}`}>
+                  <span>{whenText(meal.date, meal.slot, t, locale)}</span>
+                  {meal.upcoming && <span className="badge badge--small" style={{ "--badge-color": "var(--color-primary)" } as CSSProperties}>{t("recipes.history.upcoming")}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </>
   );
 }
 

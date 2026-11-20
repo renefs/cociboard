@@ -69,6 +69,16 @@ export interface Recipe {
   created_at: string;
   /** Hidden from the catalogue and suggestions, but still shown in the plans that use it. */
   archived: boolean;
+  /** A shortcut for the user; it never influences suggestions (ADR-0027). */
+  favourite: boolean;
+  /**
+   * History, relative to the server's today (a meal counts as made on or before it). Filled by
+   * the `/api/recipes` endpoints; recipes embedded in week plans and candidates carry the
+   * defaults (null, null, 0).
+   */
+  last_planned_on: string | null;
+  next_planned_on: string | null;
+  times_planned: number;
 }
 
 export interface RecipeCreate {
@@ -85,6 +95,8 @@ export interface RecipeCreate {
   steps?: string[];
   /** http(s) URL of at most 500 characters; `null` clears it on update. */
   source_url?: string | null;
+  /** Defaults to false on create. */
+  favourite?: boolean;
 }
 
 /** Warning codes of an imported draft (`warnings` of `POST /api/recipes/import`). */
@@ -122,12 +134,36 @@ export type ImportErrorCode =
   | "busy"
   | "import_disabled";
 
-/** `archived` archives or restores the recipe without touching planned meals. */
+/**
+ * `archived` archives or restores the recipe without touching planned meals. `favourite`
+ * changes only the flag (no meal-type conflict check; works on archived recipes too).
+ */
 export type RecipeUpdate = Partial<RecipeCreate> & { archived?: boolean };
 
 /** Response of `GET /api/recipes/{id}/usage`. */
 export interface RecipeUsage {
   count: number;
+}
+
+/** One planned meal of a recipe in `GET /api/recipes/{id}/history`. */
+export interface PlannedMeal {
+  /** ISO date of the meal (week_start + day) */
+  date: string;
+  /** ISO date of the Monday that starts the week */
+  week_start: string;
+  day: number;
+  slot: MealSlot;
+  /** After the server's today; today's meals count as made. */
+  upcoming: boolean;
+}
+
+/** Response of `GET /api/recipes/{id}/history`. */
+export interface RecipeHistory {
+  times_planned: number;
+  last_planned_on: string | null;
+  next_planned_on: string | null;
+  /** Most recent first, upcoming ones included, capped by `limit` (default 10, max 50). */
+  meals: PlannedMeal[];
 }
 
 /** A planned slot affected by a recipe edit. */
@@ -160,6 +196,8 @@ export interface RecipeArchivedDetail {
 }
 
 export interface RecipeFilters {
+  /** true lists only favourites. */
+  favourite?: boolean | undefined;
   /** true lists only archived recipes; the default hides them. */
   archived?: boolean | undefined;
   slot?: MealSlot | undefined;

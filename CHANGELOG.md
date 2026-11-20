@@ -5,6 +5,35 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-11-20
+
+Favourites and history ([ADR-0027](docs/adr/0027-favourites-and-history.md)). Schema change
+(migration `0008_recipe_favourite`) and backup format version 6.
+
+### Added
+- **Favourites**: a star on every recipe card and in the recipe details marks a favourite
+  (`aria-pressed`, a 44px target, an accessible name per state). The star is optimistic, sent
+  one request at a time, paused offline and rolled back with a message when saving fails. A
+  press on the star never starts a drag or selects the card.
+- A **Favourites** filter chip in the recipe panel, combined with search, meal type and
+  properties, with its own empty message.
+- Favourites show as a small star in the slot picker. Suggest ignores them.
+- **History** derived from the plan, relative to the server's date (a meal counts as made on
+  or before today): each card says "Last made 3 weeks ago" or "Never planned", the recipe
+  details have a **History** section (planned N times, the next meal, the latest meals with
+  upcoming ones marked), and the new sort **Not made lately** lists recipes never planned
+  first, then the ones planned longest ago.
+- `Recipe.favourite` (`false` by default), accepted by `POST` and `PATCH` (never `null`), and
+  `GET /api/recipes?favourite=true`.
+- `last_planned_on`, `next_planned_on` and `times_planned` on recipes of `/api/recipes`
+  (computed with one query for the list), and `GET /api/recipes/{id}/history?limit=`
+  (default 10, at most 50).
+- Backup format version 6 includes `favourite`; backups of versions 1 to 5 restore with no
+  favourites.
+
+### Changed
+- Plan changes refresh the recipe lists and histories once the last change has settled.
+
 ## [0.23.0] - 2026-11-20
 
 Household preferences ([ADR-0026](docs/adr/0026-household-preferences.md)). Schema change

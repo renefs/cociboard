@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
@@ -34,7 +34,7 @@ describe("RecipePanel", () => {
     expect(await screen.findByRole("heading", { name: "Lentejas estofadas" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Tortilla de patatas" })).toBeInTheDocument();
     expect(screen.getByText("Legend")).toBeInTheDocument();
-    expect(lastFilters()).toEqual({ slot: undefined, q: "", properties: [] });
+    expect(lastFilters()).toEqual({ slot: undefined, q: "", properties: [], favourite: false });
   });
 
   it("filters by meal type through the slot parameter", async () => {
@@ -211,5 +211,106 @@ describe("RecipePanel announcements", () => {
 
     await user.click(within(screen.getByRole("group", { name: "Meal type" })).getByRole("button", { name: "Dinner" }));
     await waitFor(() => expect(screen.getByTestId("recipe-results-count")).toHaveTextContent("1 recipe"));
+  });
+});
+
+describe("RecipePanel favourites", () => {
+  const starred = makeRecipe({ id: 2, name: "Tortilla de patatas", meal_type: "dinner", favourite: true });
+
+  it("filters to favourites through the favourite parameter and explains an empty result", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.listRecipes).mockImplementation((filters) =>
+      Promise.resolve(filters?.archived ? [] : filters?.favourite ? [] : [lunch, starred]),
+    );
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    const chip = screen.getByRole("button", { name: "Favourites" });
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(chip);
+
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByText(/No favourites yet/)).toBeInTheDocument();
+    expect(lastFilters()?.favourite).toBe(true);
+
+    await user.type(screen.getByRole("searchbox"), "zzz");
+    expect(await screen.findByText("No recipes match your search or filters.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByRole("button", { name: "Favourites" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("combines the favourites filter with the meal-type filter", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    await user.click(screen.getByRole("button", { name: "Favourites" }));
+    await user.click(within(screen.getByRole("group", { name: "Meal type" })).getByRole("button", { name: "Dinner" }));
+    await waitFor(() => expect(lastFilters()).toMatchObject({ slot: "dinner", favourite: true }));
+  });
+
+  it("stars a recipe at once, sends one PATCH and rolls back with a toast when it fails", async () => {
+    const user = userEvent.setup();
+    const onNotify = vi.fn();
+    let fail!: (reason: Error) => void;
+    vi.mocked(client.updateRecipe).mockReturnValue(
+      new Promise<Recipe>((_, reject) => {
+        fail = reject;
+      }),
+    );
+    renderWithQuery(<RecipePanel onNotify={onNotify} />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+
+    await user.click(screen.getByRole("button", { name: "Add Lentejas estofadas to favourites" }));
+
+    const pressed = await screen.findByRole("button", { name: "Remove Lentejas estofadas from favourites" });
+    expect(pressed).toHaveAttribute("aria-pressed", "true"); // before any response
+    expect(client.updateRecipe).toHaveBeenCalledWith(1, { favourite: true });
+
+    await act(async () => fail(new Error("offline")));
+    expect(await screen.findByRole("button", { name: "Add Lentejas estofadas to favourites" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(onNotify).toHaveBeenCalledWith("error", "Couldn't update the favourites. Lentejas estofadas was put back as it was.");
+  });
+
+  it("sends the toggles one at a time", async () => {
+    const user = userEvent.setup();
+    const finishers: ((recipe: Recipe) => void)[] = [];
+    vi.mocked(client.updateRecipe).mockImplementation(
+      () => new Promise<Recipe>((resolve) => finishers.push(resolve)),
+    );
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+
+    await user.click(screen.getByRole("button", { name: "Add Lentejas estofadas to favourites" }));
+    await user.click(screen.getByRole("button", { name: "Add Tortilla de patatas to favourites" }));
+
+    await waitFor(() => expect(client.updateRecipe).toHaveBeenCalledTimes(1));
+    await act(async () => finishers[0]?.(lunch));
+    await waitFor(() => expect(client.updateRecipe).toHaveBeenCalledTimes(2));
+    expect(client.updateRecipe).toHaveBeenLastCalledWith(2, { favourite: true });
+  });
+});
+
+describe("RecipePanel history", () => {
+  it("offers 'Not made lately' and sorts never-planned first, then the oldest", async () => {
+    const user = userEvent.setup();
+    const recent = makeRecipe({ id: 1, name: "Arroz", last_planned_on: "2026-11-18" });
+    const old = makeRecipe({ id: 2, name: "Bocata", last_planned_on: "2026-09-01" });
+    const never = makeRecipe({ id: 3, name: "Zarzuela" });
+    vi.mocked(client.listRecipes).mockImplementation((filters) =>
+      Promise.resolve(filters?.archived ? [] : [recent, old, never]),
+    );
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Arroz" });
+    const order = () => screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(order()).toEqual(["Arroz", "Bocata", "Zarzuela"]);
+
+    await user.click(screen.getByRole("button", { name: "Not made lately" }));
+
+    expect(order()).toEqual(["Zarzuela", "Bocata", "Arroz"]);
+    expect(screen.getByRole("button", { name: "Not made lately" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Never planned")).toBeInTheDocument();
   });
 });

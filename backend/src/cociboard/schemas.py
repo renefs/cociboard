@@ -92,6 +92,7 @@ class RecipeCreate(BaseModel):
     servings: int | None = Field(default=None, ge=SERVINGS_MIN, le=SERVINGS_MAX)
     steps: list[str] = Field(default_factory=list)
     source_url: str | None = None
+    favourite: bool = False
 
     @field_validator("ingredients")
     @classmethod
@@ -120,7 +121,16 @@ class RecipeCreate(BaseModel):
 
 
 _REQUIRED_ON_UPDATE = frozenset(
-    {"name", "meal_type", "protein", "ingredients", "properties", "steps", "archived"}
+    {
+        "name",
+        "meal_type",
+        "protein",
+        "ingredients",
+        "properties",
+        "steps",
+        "archived",
+        "favourite",
+    }
 )
 
 
@@ -139,6 +149,7 @@ class RecipeUpdate(BaseModel):
     steps: list[str] | None = None
     source_url: str | None = None
     archived: bool | None = None
+    favourite: bool | None = None
 
     @field_validator("steps")
     @classmethod
@@ -195,12 +206,37 @@ class RecipeRead(BaseModel):
     source_url: str | None
     created_at: datetime
     archived_at: datetime | None = Field(default=None, exclude=True)
+    favourite: bool = False
+    # History fields (ADR-0027) are filled by the ``/api/recipes`` endpoints only; recipes
+    # embedded in week plans and slot candidates carry the defaults.
+    last_planned_on: date | None = None
+    next_planned_on: date | None = None
+    times_planned: int = 0
 
     @computed_field  # type: ignore[prop-decorator]  # pydantic documents this pattern
     @property
     def archived(self) -> bool:
         """Whether the recipe is archived (hidden from the catalogue, kept in plans)."""
         return self.archived_at is not None
+
+
+class PlannedMealRead(BaseModel):
+    """One planned meal of a recipe, in ``GET /api/recipes/{id}/history``."""
+
+    week_start: date
+    day: int
+    slot: MealSlot
+    upcoming: bool  # after the server's today; today's meals count as made
+    date: date  # last: a field named ``date`` shadows the type for the annotations after it
+
+
+class RecipeHistoryRead(BaseModel):
+    """Response of ``GET /api/recipes/{id}/history``: totals and the latest planned meals."""
+
+    times_planned: int
+    last_planned_on: date | None
+    next_planned_on: date | None
+    meals: list[PlannedMealRead]  # most recent first, upcoming ones included, capped by limit
 
 
 class RecipeImportRequest(BaseModel):

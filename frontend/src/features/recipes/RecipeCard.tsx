@@ -1,6 +1,7 @@
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
+import { lastMadeText } from "./historyLogic";
 import { MetaIcon } from "./MetaIcon";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META, SERVINGS_ICON } from "./recipeMeta";
 
@@ -20,6 +21,52 @@ function ServingsFact({ servings }: { servings: number | null }) {
   );
 }
 
+interface FavouriteToggleProps {
+  recipe: Pick<Recipe, "id" | "name" | "favourite">;
+  favourite?: boolean;
+  onToggle: (recipe: Pick<Recipe, "id" | "name">, favourite: boolean) => void;
+}
+
+/** A star button: filled when the recipe is a favourite. At least 44x44px, also with a mouse. */
+export function FavouriteToggle({ recipe, favourite = recipe.favourite, onToggle }: FavouriteToggleProps) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      className="favourite-toggle"
+      aria-pressed={favourite}
+      aria-label={t(favourite ? "recipes.favourite.remove" : "recipes.favourite.add", { name: recipe.name })}
+      // The card is draggable: a press on the star must not reach its drag listeners (a held
+      // press on a touch screen would start a drag), and the click must not select the card.
+      onPointerDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle(recipe, !favourite);
+      }}
+    >
+      <span aria-hidden="true">{favourite ? "★" : "☆"}</span>
+    </button>
+  );
+}
+
+/** A small, non-interactive star for favourites (slot picker rows). */
+export function FavouriteMark() {
+  const { t } = useTranslation();
+  const label = t("recipes.favourite.is");
+  return (
+    <span className="favourite-mark" role="img" aria-label={label} title={label}>
+      ★
+    </span>
+  );
+}
+
+/** "Last made 3 weeks ago" / "Never planned". */
+function HistoryFact({ recipe }: { recipe: Pick<Recipe, "last_planned_on"> }) {
+  const { t } = useTranslation();
+  return <span className="fact fact--history">{lastMadeText(recipe, new Date(), t)}</span>;
+}
+
 export type CardDensity = "comfortable" | "compact";
 
 interface RecipeCardProps {
@@ -33,6 +80,18 @@ interface RecipeCardProps {
   extra?: ReactNode;
   /** When given, the title becomes a button that opens the recipe details. */
   onOpen?: ((recipe: Recipe) => void) | undefined;
+  /**
+   * When given, the card has a star button. Without it a favourite shows a small star that
+   * is not a button (slot picker).
+   */
+  onToggleFavourite?: ((recipe: Pick<Recipe, "id" | "name">, favourite: boolean) => void) | undefined;
+  /** Show "Last made ..." in the facts row (the catalogue does; the slot picker doesn't). */
+  showHistory?: boolean;
+}
+
+function FavouriteControl({ recipe, onToggleFavourite }: Pick<RecipeCardProps, "recipe" | "onToggleFavourite">) {
+  if (onToggleFavourite) return <FavouriteToggle recipe={recipe} onToggle={onToggleFavourite} />;
+  return recipe.favourite ? <FavouriteMark /> : null;
 }
 
 function CardTitle({ recipe, onOpen }: Pick<RecipeCardProps, "recipe" | "onOpen">) {
@@ -74,7 +133,15 @@ export function RecipeCard({ recipe, density = "comfortable", ...rest }: RecipeC
   );
 }
 
-function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<RecipeCardProps, "density">) {
+function ComfortableCard({
+  recipe,
+  actions,
+  usageCount = 0,
+  extra,
+  onOpen,
+  onToggleFavourite,
+  showHistory = false,
+}: Omit<RecipeCardProps, "density">) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -95,6 +162,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
         >
           <span aria-hidden="true">{mealType.icon}</span> {t(mealType.labelKey)}
         </span>
+        <FavouriteControl recipe={recipe} onToggleFavourite={onToggleFavourite} />
         {actions}
       </header>
 
@@ -111,6 +179,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
           {t(protein.labelKey)}
         </span>
         <UsageBadge count={usageCount} />
+        {showHistory && <HistoryFact recipe={recipe} />}
       </p>
 
       <ul className="ingredients" id={listId} aria-label={t("recipes.ingredients")}>
@@ -145,7 +214,15 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
 }
 
 /** Dense variant used while planning: name, icons and a one-line ingredient summary. */
-function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<RecipeCardProps, "density">) {
+function CompactCard({
+  recipe,
+  actions,
+  usageCount = 0,
+  extra,
+  onOpen,
+  onToggleFavourite,
+  showHistory = false,
+}: Omit<RecipeCardProps, "density">) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const summaryId = useId();
@@ -158,6 +235,7 @@ function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<Re
     <article className="recipe-card recipe-card--compact" aria-label={recipe.name}>
       <header className="recipe-card-header">
         <CardTitle recipe={recipe} onOpen={onOpen} />
+        <FavouriteControl recipe={recipe} onToggleFavourite={onToggleFavourite} />
         {actions}
       </header>
 
@@ -181,6 +259,7 @@ function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<Re
           {t(protein.labelKey)}
         </span>
         <UsageBadge count={usageCount} />
+        {showHistory && <HistoryFact recipe={recipe} />}
         {recipe.properties.length > 0 && (
           <ul className="property-icons property-icons--small" aria-label={t("recipes.properties")}>
             {recipe.properties.map((property) => (

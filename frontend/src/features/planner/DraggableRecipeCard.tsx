@@ -13,6 +13,8 @@ interface DraggableRecipeCardProps {
   usageCount?: number;
   /** Opens the recipe details. */
   onOpen?: (recipe: Recipe) => void;
+  /** Stars or unstars the recipe. */
+  onToggleFavourite?: (recipe: Pick<Recipe, "id" | "name">, favourite: boolean) => void;
 }
 
 /** A compact recipe card for the panel: draggable, with an "Add" button for tap-to-place. */
@@ -22,6 +24,7 @@ export function DraggableRecipeCard({
   onAdd,
   usageCount = 0,
   onOpen,
+  onToggleFavourite,
 }: DraggableRecipeCardProps) {
   const { t } = useTranslation();
   const source: DragSource = { kind: "recipe", recipe };
@@ -41,6 +44,8 @@ export function DraggableRecipeCard({
         density="compact"
         usageCount={usageCount}
         onOpen={onOpen}
+        onToggleFavourite={onToggleFavourite}
+        showHistory
         actions={
           <span className="card-actions">
             <button

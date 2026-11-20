@@ -1,4 +1,4 @@
-"""Backup document format (v5; v1 to v4 are still accepted): schema and pure validation.
+"""Backup document format (v6; v1 to v5 are still accepted): schema and pure validation.
 
 Persistence is in ``backup_repo``.
 
@@ -26,11 +26,12 @@ from cociboard.schemas import ExtraName, HouseholdSettings, RecipeCreate
 from cociboard.shopping import ingredient_key
 
 BACKUP_FORMAT: Final = "cociboard-backup"
-SUPPORTED_FORMAT_VERSION = 5  # the version written by export
+SUPPORTED_FORMAT_VERSION = 6  # the version written by export
 READABLE_FORMAT_VERSIONS = frozenset(
-    {1, 2, 3, 4, 5}
+    {1, 2, 3, 4, 5, 6}
 )  # v1 meals have a recipe_ref; v1/v2 recipes lack the v3 fields; v1-v3 have no pantry;
-# v1-v4 have no household settings (restoring them resets the settings to the defaults)
+# v1-v4 have no household settings (restoring them resets the settings to the defaults);
+# v1-v5 have no favourites (they restore as false)
 MAX_BACKUP_BYTES = 10 * 1024 * 1024
 
 
@@ -49,7 +50,10 @@ def _aware_utc(value: datetime) -> datetime:
 
 
 class BackupRecipe(RecipeCreate):
-    """A recipe of the backup: the usual recipe rules plus its archive state and timestamp."""
+    """A recipe of the backup: the usual recipe rules plus its archive state and timestamp.
+
+    ``favourite`` comes from ``RecipeCreate`` and defaults to false, which is what v1-v5 restore as.
+    """
 
     ref: int
     archived: bool = False
