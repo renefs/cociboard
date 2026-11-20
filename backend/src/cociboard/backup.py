@@ -1,4 +1,4 @@
-"""Backup document format (v3; v1 and v2 are still accepted): schema and pure validation.
+"""Backup document format (v4; v1 to v3 are still accepted): schema and pure validation.
 
 Persistence is in ``backup_repo``.
 
@@ -22,12 +22,13 @@ from cociboard.domain import (
     is_week_start,
 )
 from cociboard.schemas import ExtraName, RecipeCreate
+from cociboard.shopping import ingredient_key
 
 BACKUP_FORMAT: Final = "cociboard-backup"
-SUPPORTED_FORMAT_VERSION = 3  # the version written by export
+SUPPORTED_FORMAT_VERSION = 4  # the version written by export
 READABLE_FORMAT_VERSIONS = frozenset(
-    {1, 2, 3}
-)  # v1 meals have a recipe_ref; v1/v2 recipes lack the v3 fields
+    {1, 2, 3, 4}
+)  # v1 meals have a recipe_ref; v1/v2 recipes lack the v3 fields; v1-v3 have no pantry
 MAX_BACKUP_BYTES = 10 * 1024 * 1024
 
 
@@ -98,6 +99,12 @@ class BackupShoppingExtra(BaseModel):
         return _aware_utc(value)
 
 
+class BackupPantryItem(BaseModel):
+    """A pantry staple; the key is derived from the name on restore."""
+
+    name: ExtraName
+
+
 class BackupDocument(BaseModel):
     """The whole backup file."""
 
@@ -111,6 +118,7 @@ class BackupDocument(BaseModel):
     meals: list[BackupMeal]
     shopping_checks: list[BackupShoppingCheck]
     shopping_extras: list[BackupShoppingExtra]
+    pantry: list[BackupPantryItem] = []  # absent before v4
 
 
 class RestoreResult(BaseModel):
@@ -120,6 +128,7 @@ class RestoreResult(BaseModel):
     meals: int
     shopping_checks: int
     shopping_extras: int
+    pantry: int
 
 
 def _location(error: ValidationError) -> str:
@@ -173,6 +182,14 @@ def _check_semantics(doc: BackupDocument) -> None:
     for week in weeks:
         if not is_week_start(week):
             raise BackupValidationError("invalid_week", week_start=week.isoformat())
+    staple_keys: set[str] = set()
+    for staple in doc.pantry:
+        staple_key = ingredient_key(staple.name)
+        if not staple_key:
+            raise BackupValidationError("invalid_pantry_item", name=staple.name)
+        if staple_key in staple_keys:
+            raise BackupValidationError("duplicate_pantry_item", name=staple.name)
+        staple_keys.add(staple_key)
     check_keys = Counter((c.week_start, c.item_key) for c in doc.shopping_checks)
     for (week, item_key), count in check_keys.items():
         if count > 1:
@@ -187,7 +204,8 @@ def parse_backup(data: object) -> BackupDocument:
     Codes: ``invalid_document``, ``wrong_format``, ``unsupported_version``,
     ``duplicate_recipe_ref``, ``duplicate_recipe_name``, ``invalid_week``, ``invalid_day``,
     ``unknown_recipe_ref``, ``meal_does_not_fit``, ``meal_needs_recipe_or_special``,
-    ``note_too_long``, ``duplicate_slot``, ``duplicate_shopping_check``.
+    ``note_too_long``, ``duplicate_slot``, ``duplicate_shopping_check``,
+    ``invalid_pantry_item``, ``duplicate_pantry_item``.
     """
     if not isinstance(data, dict):
         raise BackupValidationError("invalid_document")

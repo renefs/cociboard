@@ -5,6 +5,8 @@ import type {
   HealthResponse,
   LoginBody,
   MealSlot,
+  Pantry,
+  PantryItem,
   Recipe,
   RecipeCreate,
   RecipeFilters,
@@ -268,6 +270,23 @@ export function updateShoppingExtra(
 
 export function deleteShoppingExtra(weekStart: string, id: number): Promise<ShoppingList> {
   return request<ShoppingList>(`${shoppingPath(weekStart)}/extras/${id}`, { method: "DELETE" });
+}
+
+export function getPantry(signal?: AbortSignal): Promise<Pantry> {
+  return request<Pantry>("/pantry", { signal: signal ?? null });
+}
+
+/** Add a staple by name. Adding a name whose key already exists returns that item. */
+export function addToPantry(name: string): Promise<PantryItem> {
+  return request<PantryItem>("/pantry", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function removeFromPantry(id: number): Promise<void> {
+  return request<void>(`/pantry/${id}`, { method: "DELETE" });
 }
 
 /** A downloaded backup: the JSON text and the file name suggested by the server. */

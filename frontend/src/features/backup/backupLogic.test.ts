@@ -49,7 +49,7 @@ describe("checkBackup", () => {
     expect(checkBackup(null)).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup([valid])).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup({ ...valid, format: "other" })).toEqual({ ok: false, reason: "wrongFormat" });
-    expect(checkBackup({ ...valid, format_version: 4 })).toEqual({ ok: false, reason: "unsupportedVersion" });
+    expect(checkBackup({ ...valid, format_version: 5 })).toEqual({ ok: false, reason: "unsupportedVersion" });
     expect(checkBackup({ ...valid, meals: undefined })).toEqual({ ok: false, reason: "incomplete" });
     expect(checkBackup({ ...valid, recipes: {} })).toEqual({ ok: false, reason: "incomplete" });
   });

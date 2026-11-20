@@ -49,6 +49,7 @@ def populate(client: TestClient) -> None:
     client.patch(f"/api/recipes/{c}", json={"archived": True})
     client.put(f"/api/weeks/{MONDAY}/shopping-list/checks", json={"key": "tomate", "checked": True})
     client.post(f"/api/weeks/{MONDAY}/shopping-list/extras", json={"name": "Milk"})
+    client.post("/api/pantry", json={"name": "Sal"})
 
 
 def export(client: TestClient) -> dict[str, Any]:
@@ -83,7 +84,7 @@ def test_export_shape_and_header(client: TestClient) -> None:
     )
     doc = response.json()
     assert doc["format"] == "cociboard-backup"
-    assert doc["format_version"] == 3
+    assert doc["format_version"] == 4
     assert doc["app_version"] == __version__
     assert doc["exported_at"]
     assert [r["name"] for r in doc["recipes"]] == ["Alpha", "Beta", "Gamma"]
@@ -146,6 +147,7 @@ def test_round_trip_into_empty_database(client: TestClient) -> None:
             "meals": 3,
             "shopping_checks": 1,
             "shopping_extras": 1,
+            "pantry": 1,
         }
         again = export(target)
         assert normalised(again) == normalised(original)
@@ -178,12 +180,14 @@ def test_restore_empty_backup_clears_everything(client: TestClient) -> None:
         "meals": [],
         "shopping_checks": [],
         "shopping_extras": [],
+        "pantry": [],
     }
     assert restore(client, empty).json() == {
         "recipes": 0,
         "meals": 0,
         "shopping_checks": 0,
         "shopping_extras": 0,
+        "pantry": 0,
     }
     assert client.get("/api/recipes").json() == []
 
@@ -210,9 +214,9 @@ def test_rejects_non_documents(client: TestClient) -> None:
 def test_rejects_wrong_format_and_versions(client: TestClient) -> None:
     doc = valid_doc(client)
     assert code_of(restore(client, {**doc, "format": "other"}))["code"] == "wrong_format"
-    unsupported = code_of(restore(client, {**doc, "format_version": 4}))
+    unsupported = code_of(restore(client, {**doc, "format_version": 5}))
     assert unsupported["code"] == "unsupported_version"
-    assert unsupported["params"] == {"version": 4}
+    assert unsupported["params"] == {"version": 5}
     assert code_of(restore(client, {**doc, "format_version": "1"}))["code"] == "invalid_document"
 
 
@@ -248,6 +252,9 @@ def mutate(doc: dict[str, Any], change: Any) -> dict[str, Any]:
         ),
         (lambda d: d["shopping_extras"][0].update(name=""), "invalid_document"),
         (lambda d: d.pop("meals"), "invalid_document"),
+        (lambda d: d["pantry"].append({"name": "sal"}), "duplicate_pantry_item"),
+        (lambda d: d["pantry"].append({"name": ""}), "invalid_document"),
+        (lambda d: d["pantry"].append({"name": "\u0301"}), "invalid_pantry_item"),
     ],
 )
 def test_validation_errors_and_untouched_data(client: TestClient, change: Any, code: str) -> None:
@@ -352,7 +359,7 @@ def special_populate(client: TestClient) -> None:
 def test_v3_round_trip_keeps_specials_and_notes(client: TestClient) -> None:
     special_populate(client)
     before = export(client)
-    assert before["format_version"] == 3
+    assert before["format_version"] == 4
     kinds = {
         (m["day"], m["slot"]): (m["recipe_ref"], m["special"], m["note"]) for m in before["meals"]
     }
@@ -379,7 +386,7 @@ def test_v1_backup_still_restores(client: TestClient) -> None:
     result = restore(client, v1)
     assert result.status_code == 200, result.text
     assert result.json()["meals"] == 3
-    assert normalised(export(client)) == normalised({**doc, "format_version": 3})
+    assert normalised(export(client)) == normalised({**doc, "format_version": 4})
 
 
 def test_note_is_trimmed_and_validated(client: TestClient) -> None:
@@ -443,3 +450,29 @@ def test_v2_backup_without_new_fields_is_restored_with_defaults(client: TestClie
     assert restore(client, doc).status_code == 200
     recipe = export(client)["recipes"][0]
     assert (recipe["servings"], recipe["steps"], recipe["source_url"]) == (None, [], None)
+
+
+def test_v4_round_trip_keeps_the_pantry(client: TestClient) -> None:
+    populate(client)
+    client.post("/api/pantry", json={"name": "Aceite de oliva"})
+    doc = export(client)
+    assert doc["pantry"] == [{"name": "Aceite de oliva"}, {"name": "Sal"}]
+    client.post("/api/pantry", json={"name": "Ajo"})
+    assert restore(client, doc).status_code == 200
+    assert [i["name"] for i in client.get("/api/pantry").json()["items"]] == [
+        "Aceite de oliva",
+        "Sal",
+    ]
+    shopping = client.get(f"/api/weeks/{MONDAY}/shopping-list").json()["items"]
+    assert {i["key"]: i["in_pantry"] for i in shopping} == {"sal": True, "tomate": False}
+
+
+def test_v3_backup_restores_with_an_empty_pantry(client: TestClient) -> None:
+    populate(client)
+    doc = export(client)
+    doc["format_version"] = 3
+    del doc["pantry"]
+    result = restore(client, doc)
+    assert result.status_code == 200, result.text
+    assert result.json()["pantry"] == 0
+    assert client.get("/api/pantry").json()["items"] == []

@@ -114,6 +114,7 @@ def test_v09_database_is_stamped_and_upgraded(tmp_path: Path) -> None:
     engine = _engine(db)
     SQLModel.metadata.create_all(engine)
     with engine.begin() as conn:
+        conn.execute(text("DROP TABLE pantryitem"))  # v0.9.0 had no pantry
         conn.execute(
             text(
                 "INSERT INTO shoppingextra (week_start, name, checked, created_at) "
@@ -381,3 +382,18 @@ def test_existing_recipes_get_empty_steps_at_0005(tmp_path: Path) -> None:
     assert [tuple(r) for r in rows] == [("[]", None, None), ("[]", None, None)]
     with Session(engine) as session:
         assert [r.steps for r in session.exec(select(Recipe)).all()] == [[], []]
+
+
+def test_pantry_table_is_added_at_0006(tmp_path: Path) -> None:
+    engine = _at_0003_with_data(tmp_path / "v019.db")
+    _alembic(engine, "upgrade", "0005_recipe_steps_servings_source")
+    assert "pantryitem" not in inspect(engine).get_table_names()
+
+    run_migrations(engine)
+
+    assert _version(engine) == _head()
+    assert _diff(engine) == []
+    assert _count(engine, "pantryitem") == 0
+    assert _count(engine, "recipe") == 2  # existing data is untouched
+    _alembic(engine, "downgrade", "0005_recipe_steps_servings_source")
+    assert "pantryitem" not in inspect(engine).get_table_names()

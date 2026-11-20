@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-11-20
+
+Pantry staples in the shopping list ([ADR-0023](docs/adr/0023-pantry-staples.md)).
+
+### Added
+- A global pantry of staples (oil, salt, garlic...). Shopping items whose ingredient matches a
+  pantry item exactly (case, accents and spacing folded) leave **To buy** and **In the basket**
+  for a collapsed **In the pantry** section; they are ignored by the progress and by Copy/Share,
+  which end with an "Also check at home" line. **Always at home** and **Need to buy** move an
+  item, with an announcement and sensible focus.
+- **Manage pantry** panel in the shopping list: add any ingredient by name, remove staples, and
+  one-tap suggestions (the ingredients used by the most active recipes).
+- `GET /api/pantry`, `POST /api/pantry` (idempotent) and `DELETE /api/pantry/{id}`; shopping items
+  carry `in_pantry`. Migration `0006_pantry` adds the `pantryitem` table.
+- Backup format **v4** adds `pantry: [{ name }]`; versions 1 to 3 still restore (empty pantry).
+  `POST /api/backup/restore` also answers the number of `pantry` items.
+- Pantry changes are optimistic across the pantry and every cached shopping list, are sent one
+  at a time, pause offline and count in the offline banner. English and Spanish texts.
+
 ## [0.19.0] - 2026-11-20
 
 Automatic database backups and enforced foreign keys

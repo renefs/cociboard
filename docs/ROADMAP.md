@@ -85,7 +85,7 @@ CHANGELOG entry.
   dialog with the recipes that use each one (ADR-0012).
 - Ticking items off (shared across devices), manual extra items, uncheck all, copy and
   share as plain text.
-- Ideas for later: a "from today" filter, pantry staples, categories/aisles.
+- Ideas for later: a "from today" filter, categories/aisles.
 
 ### v0.10.0 — Schema migrations (done)
 - Alembic migrations inside the package, run automatically on start (ADR-0013):

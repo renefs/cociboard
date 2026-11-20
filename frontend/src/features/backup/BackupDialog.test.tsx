@@ -82,7 +82,7 @@ describe("BackupDialog download", () => {
 describe("BackupDialog restore", () => {
   it("summarises the file, asks for confirmation and then posts it", async () => {
     const user = userEvent.setup();
-    vi.mocked(client.restoreBackup).mockResolvedValue({ recipes: 2, meals: 1, shopping_checks: 0, shopping_extras: 0 });
+    vi.mocked(client.restoreBackup).mockResolvedValue({ recipes: 2, meals: 1, shopping_checks: 0, shopping_extras: 0, pantry: 0 });
     const { queryClient } = renderDialog();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
 
@@ -93,7 +93,7 @@ describe("BackupDialog restore", () => {
 
     await user.click(within(status).getByRole("button", { name: "Restore…" }));
     const confirm = await screen.findByRole("dialog", { name: "Replace all your data?" });
-    expect(confirm).toHaveTextContent("This replaces all your recipes, plans and shopping lists");
+    expect(confirm).toHaveTextContent("This replaces all your recipes, plans, shopping lists and pantry");
     expect(confirm).toHaveTextContent("A copy of the current data is kept on the server.");
     expect(client.restoreBackup).not.toHaveBeenCalled();
 
@@ -142,7 +142,7 @@ describe("BackupDialog restore", () => {
   it("offers a retry after a network error", async () => {
     const user = userEvent.setup();
     vi.mocked(client.restoreBackup).mockRejectedValueOnce(new TypeError("offline"));
-    vi.mocked(client.restoreBackup).mockResolvedValueOnce({ recipes: 2, meals: 1, shopping_checks: 0, shopping_extras: 0 });
+    vi.mocked(client.restoreBackup).mockResolvedValueOnce({ recipes: 2, meals: 1, shopping_checks: 0, shopping_extras: 0, pantry: 0 });
     renderDialog();
     await choose(user, fileOf(JSON.stringify(backup)));
     await user.click(await screen.findByRole("button", { name: "Restore…" }));

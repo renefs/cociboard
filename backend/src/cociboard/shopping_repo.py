@@ -5,7 +5,7 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
-from cociboard import repository
+from cociboard import pantry_repo, repository
 from cociboard.domain import MealSlot, is_week_start
 from cociboard.models import MealAssignment, ShoppingCheck, ShoppingExtra
 from cociboard.planner import InvalidWeekError
@@ -57,11 +57,13 @@ def get_shopping_list(session: Session, week_start: date) -> ShoppingListRead:
             select(ShoppingCheck.item_key).where(col(ShoppingCheck.week_start) == week_start)
         ).all()
     )
+    pantry = pantry_repo.pantry_keys(session)
     items = [
         ShoppingItemRead(
             key=item.key,
             name=item.name,
             checked=item.key in checked,
+            in_pantry=item.key in pantry,
             meals=[
                 ShoppingMealRead(
                     day=m.day, slot=m.slot, recipe_id=m.recipe_id, recipe_name=m.recipe_name

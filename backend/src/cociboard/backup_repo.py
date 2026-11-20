@@ -10,6 +10,7 @@ from cociboard.backup import (
     SUPPORTED_FORMAT_VERSION,
     BackupDocument,
     BackupMeal,
+    BackupPantryItem,
     BackupRecipe,
     BackupShoppingCheck,
     BackupShoppingExtra,
@@ -17,7 +18,8 @@ from cociboard.backup import (
 )
 from cociboard.dbfiles import RESTORE_LABEL, backup_sqlite, engine_of
 from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty, SpecialMeal
-from cociboard.models import MealAssignment, Recipe, ShoppingCheck, ShoppingExtra
+from cociboard.models import MealAssignment, PantryItem, Recipe, ShoppingCheck, ShoppingExtra
+from cociboard.shopping import ingredient_key
 
 
 def export_backup(session: Session) -> BackupDocument:
@@ -32,6 +34,7 @@ def export_backup(session: Session) -> BackupDocument:
         select(ShoppingCheck).order_by(col(ShoppingCheck.week_start), col(ShoppingCheck.item_key))
     ).all()
     extras = session.exec(select(ShoppingExtra).order_by(col(ShoppingExtra.id))).all()
+    pantry = session.exec(select(PantryItem).order_by(col(PantryItem.key))).all()
     return BackupDocument(
         format=BACKUP_FORMAT,
         format_version=SUPPORTED_FORMAT_VERSION,
@@ -75,6 +78,7 @@ def export_backup(session: Session) -> BackupDocument:
             )
             for e in extras
         ],
+        pantry=[BackupPantryItem(name=p.name) for p in pantry],
     )
 
 
@@ -88,7 +92,7 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
     backup_sqlite(engine_of(session), RESTORE_LABEL)
     try:
         # Foreign keys are enforced: children first when deleting, parents first when inserting.
-        for table in (MealAssignment, ShoppingCheck, ShoppingExtra, Recipe):
+        for table in (MealAssignment, ShoppingCheck, ShoppingExtra, PantryItem, Recipe):
             session.exec(delete(table))
         new_ids: dict[int, int] = {}
         for item in doc.recipes:
@@ -133,6 +137,10 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
                     created_at=extra.created_at,
                 )
             )
+        for staple in doc.pantry:
+            session.add(
+                PantryItem(key=ingredient_key(staple.name), name=" ".join(staple.name.split()))
+            )
         session.commit()
     except BaseException:
         session.rollback()
@@ -142,4 +150,5 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
         meals=len(doc.meals),
         shopping_checks=len(doc.shopping_checks),
         shopping_extras=len(doc.shopping_extras),
+        pantry=len(doc.pantry),
     )

@@ -392,6 +392,7 @@ class ShoppingItemRead(BaseModel):
     key: str
     name: str
     checked: bool
+    in_pantry: bool = False  # its key matches a pantry item (extras are never pantry items)
     meals: list[ShoppingMealRead]
 
 
@@ -441,6 +442,37 @@ class ShoppingExtraUpdate(BaseModel):
             if getattr(self, key) is None:
                 raise ValueError(f"{key} cannot be null")
         return self
+
+
+class PantryCreate(BaseModel):
+    """Body of ``POST /api/pantry``."""
+
+    name: ExtraName
+
+
+class PantryItemRead(BaseModel):
+    """A pantry staple."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    key: str
+    name: str
+
+
+class PantrySuggestionRead(BaseModel):
+    """An ingredient used by many active recipes, offered as a staple."""
+
+    key: str
+    name: str
+    recipe_count: int
+
+
+class PantryRead(BaseModel):
+    """Response of ``GET /api/pantry``: items sorted by key plus suggestions."""
+
+    items: list[PantryItemRead]
+    suggestions: list[PantrySuggestionRead]
 
 
 BackupErrorCode = Literal["disk_full", "permission_denied", "unknown"]

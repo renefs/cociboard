@@ -104,6 +104,8 @@ const SERVER_CODES = [
   "note_too_long",
   "duplicate_slot",
   "duplicate_shopping_check",
+  "invalid_pantry_item",
+  "duplicate_pantry_item",
 ] as const;
 
 function backupDetail(error: ApiError): BackupErrorDetail | null {
