@@ -3,6 +3,7 @@
 import unicodedata
 from datetime import date, timedelta
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 
 class MealType(StrEnum):
@@ -29,6 +30,11 @@ class SpecialMeal(StrEnum):
 
 
 NOTE_MAX_LENGTH = 120
+SERVINGS_MIN = 1
+SERVINGS_MAX = 50
+STEP_MAX_LENGTH = 1000
+STEPS_MAX_COUNT = 50
+SOURCE_URL_MAX_LENGTH = 500
 
 
 class Protein(StrEnum):
@@ -124,3 +130,39 @@ def is_valid_day_index(day: int) -> bool:
 def date_of(week_start: date, day: int) -> date:
     """Return the calendar date of day index ``day`` in the week starting ``week_start``."""
     return week_start + timedelta(days=day)
+
+
+def clean_steps(values: list[str]) -> list[str]:
+    """Trim steps and drop empty ones. Raises ``ValueError`` above the count or length limits."""
+    cleaned = [step.strip() for step in values]
+    cleaned = [step for step in cleaned if step]
+    if len(cleaned) > STEPS_MAX_COUNT:
+        raise ValueError(f"at most {STEPS_MAX_COUNT} steps are allowed")
+    if any(len(step) > STEP_MAX_LENGTH for step in cleaned):
+        raise ValueError(f"each step must be at most {STEP_MAX_LENGTH} characters")
+    return cleaned
+
+
+def clean_source_url(value: str | None) -> str | None:
+    """Trim a source link; empty becomes ``None``.
+
+    Only absolute ``http://`` and ``https://`` URLs with a host are accepted (never
+    ``javascript:``, ``data:`` or relative links). Raises ``ValueError`` otherwise.
+    """
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > SOURCE_URL_MAX_LENGTH:
+        raise ValueError(f"source_url must be at most {SOURCE_URL_MAX_LENGTH} characters")
+    if any(ch.isspace() or ord(ch) < 32 for ch in cleaned):
+        raise ValueError("source_url must not contain spaces")
+    try:
+        parts = urlsplit(cleaned)
+        host = parts.hostname
+    except ValueError:
+        raise ValueError("source_url must be a valid http:// or https:// link") from None
+    if parts.scheme.lower() not in ("http", "https") or not host:
+        raise ValueError("source_url must be an http:// or https:// link with a host")
+    return cleaned

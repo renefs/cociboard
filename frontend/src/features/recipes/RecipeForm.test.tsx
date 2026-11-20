@@ -55,6 +55,53 @@ describe("RecipeForm validation", () => {
   });
 });
 
+describe("RecipeForm servings, steps and source link", () => {
+  it("sends servings, steps in order and the source link", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.createRecipe).mockResolvedValue(makeRecipe({ id: 9 }));
+    renderForm();
+    await user.type(name(), "Cocido");
+    await user.type(ingredient(1), "Garbanzos");
+    await user.type(screen.getByRole("textbox", { name: "Servings" }), "6");
+    await user.click(screen.getByRole("button", { name: /Add step/ }));
+    await user.type(screen.getByRole("textbox", { name: "Step 1" }), "Boil");
+    await user.click(screen.getByRole("button", { name: /Add step/ }));
+    await user.type(screen.getByRole("textbox", { name: "Step 2" }), "Soak");
+    await user.click(screen.getByRole("button", { name: "Move step 2 up" }));
+    await user.type(screen.getByRole("textbox", { name: "Source link" }), "https://example.com/cocido");
+    await user.click(screen.getByRole("button", { name: "Create recipe" }));
+
+    expect(client.createRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        servings: 6,
+        steps: ["Soak", "Boil"],
+        source_url: "https://example.com/cocido",
+      }),
+    );
+  });
+
+  it("blocks bad servings and unsafe links with inline errors", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.type(name(), "Cocido");
+    await user.type(ingredient(1), "Garbanzos");
+    await user.type(screen.getByRole("textbox", { name: "Servings" }), "99");
+    await user.type(screen.getByRole("textbox", { name: "Source link" }), "javascript:alert(1)");
+    await user.click(screen.getByRole("button", { name: "Create recipe" }));
+    expect(screen.getByText("Servings must be between 1 and 50.")).toBeInTheDocument();
+    expect(screen.getByText("Enter a full link starting with http:// or https://.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Servings" })).toHaveFocus();
+    expect(client.createRecipe).not.toHaveBeenCalled();
+  });
+
+  it("loads existing steps, servings and link when editing", () => {
+    renderForm(makeRecipe({ servings: 4, steps: ["One", "Two"], source_url: "https://example.com/r" }));
+    expect(screen.getByRole("textbox", { name: "Servings" })).toHaveValue("4");
+    expect(screen.getByRole("textbox", { name: "Step 2" })).toHaveValue("Two");
+    expect(screen.getByRole("textbox", { name: "Source link" })).toHaveValue("https://example.com/r");
+  });
+});
+
 describe("RecipeForm create and edit", () => {
   it("creates a recipe with every field and disables submit while saving", async () => {
     const user = userEvent.setup();
@@ -74,6 +121,9 @@ describe("RecipeForm create and edit", () => {
     await user.click(screen.getByRole("button", { name: "Create recipe" }));
 
     expect(client.createRecipe).toHaveBeenCalledWith({
+      servings: null,
+      steps: [],
+      source_url: null,
       name: "Gazpacho",
       description: "Cold soup",
       meal_type: "dinner",

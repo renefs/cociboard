@@ -127,8 +127,11 @@ function sendInOrder(weekStart: string, change: Change): Promise<WeekPlan> {
 export interface PlanActions {
   /** Place a recipe. A note already on the slot is kept (the API stores the note it is sent). */
   assign: (to: SlotRef, recipe: Recipe) => void;
-  /** Set the slot to eating out, leftovers or free. A note already on the slot is kept. */
-  assignSpecial: (to: SlotRef, special: SpecialMeal) => void;
+  /**
+   * Set the slot to eating out, leftovers or free, in one request. The note already on the
+   * slot is kept unless `note` is given (`null` clears it).
+   */
+  assignSpecial: (to: SlotRef, special: SpecialMeal, note?: string | null) => void;
   /** Set (or clear with `null`) the note of a filled slot. */
   setNote: (at: SlotRef, note: string | null) => void;
   clear: (from: SlotRef) => void;
@@ -178,7 +181,8 @@ export function usePlanActions(weekStart: string, onError: (message: string) => 
   };
   return {
     assign: (to, recipe) => mutate({ type: "assign", to, recipe, note: noteAt(to) }),
-    assignSpecial: (to, special) => mutate({ type: "special", to, special, note: noteAt(to) }),
+    assignSpecial: (to, special, note) =>
+      mutate({ type: "special", to, special, note: note === undefined ? noteAt(to) : note }),
     setNote: (at, note) => mutate({ type: "note", at, note }),
     clear: (from) => mutate({ type: "clear", from }),
     move: (from, to) => mutate({ type: "move", from, to }),

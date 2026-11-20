@@ -1,6 +1,13 @@
 import pytest
 
-from cociboard.domain import MealSlot, MealType, fits_slot, fold_text
+from cociboard.domain import (
+    MealSlot,
+    MealType,
+    clean_source_url,
+    clean_steps,
+    fits_slot,
+    fold_text,
+)
 
 
 @pytest.mark.parametrize(
@@ -43,3 +50,56 @@ def test_week_start_for_returns_monday() -> None:
 )
 def test_fold_text(text: str, expected: str) -> None:
     assert fold_text(text) == expected
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://example.com",
+        "https://example.com/a/b?x=1#frag",
+        "  https://example.com  ",
+        "HTTPS://Example.COM",
+    ],
+)
+def test_clean_source_url_accepts_http_and_https(url: str) -> None:
+    assert clean_source_url(url) == url.strip()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "javascript:alert(1)",
+        "data:text/html,<script>1</script>",
+        "ftp://example.com/x",
+        "/relative/path",
+        "example.com/recipe",
+        "https://",
+        "http:///nohost",
+        "mailto:a@b.c",
+        "https://exa mple.com",
+        "https://example.com/" + "a" * 500,
+        "https://[::1",
+    ],
+)
+def test_clean_source_url_rejects_unsafe_or_malformed(url: str) -> None:
+    with pytest.raises(ValueError):
+        clean_source_url(url)
+
+
+def test_clean_source_url_blank_is_none() -> None:
+    assert clean_source_url(None) is None
+    assert clean_source_url("   ") is None
+
+
+def test_clean_steps_trims_and_drops_empty() -> None:
+    assert clean_steps(["  Chop ", "", "   ", "Cook"]) == ["Chop", "Cook"]
+
+
+def test_clean_steps_limits() -> None:
+    assert len(clean_steps(["x"] * 50)) == 50
+    with pytest.raises(ValueError):
+        clean_steps(["x"] * 51)
+    assert clean_steps(["x" * 1000]) == ["x" * 1000]
+    with pytest.raises(ValueError):
+        clean_steps(["x" * 1001])
+    assert len(clean_steps(["x", ""] * 50)) == 50  # empty steps do not count

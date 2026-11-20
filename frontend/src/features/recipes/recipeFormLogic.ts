@@ -12,8 +12,42 @@ import type {
   RecipeCreate,
   RecipeProperty,
 } from "../../api/types";
+import {
+  SERVINGS_MAX,
+  SERVINGS_MIN,
+  SOURCE_URL_MAX_LENGTH,
+  STEPS_MAX_COUNT,
+  STEP_MAX_LENGTH,
+} from "../../api/types";
 
 export const NAME_MAX = 80;
+
+/**
+ * Whether `value` is an absolute http(s) URL with a host and no whitespace. Mirrors
+ * `clean_source_url` in domain.py; also guards rendering, so a stored `javascript:` link
+ * never becomes an anchor.
+ */
+export function isSafeSourceUrl(value: string): boolean {
+  const url = value.trim();
+  if (url === "" || url.length > SOURCE_URL_MAX_LENGTH || /\s/.test(url)) return false;
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname !== "";
+  } catch {
+    return false;
+  }
+}
+
+/** The host of a safe source URL without a leading "www.", or null for an unsafe one. */
+export function sourceHost(value: string): string | null {
+  if (!isSafeSourceUrl(value)) return null;
+  return new URL(value.trim()).hostname.replace(/^www\./, "");
+}
+
+/** The steps that will be saved: trimmed, empty ones dropped. */
+export function cleanSteps(rows: readonly string[]): string[] {
+  return rows.map((row) => row.trim()).filter((row) => row !== "");
+}
 
 /** Editable state of the recipe form. Numbers and ingredients stay strings while typing. */
 export interface RecipeFormValues {
@@ -24,6 +58,9 @@ export interface RecipeFormValues {
   description: string;
   ingredients: string[];
   properties: RecipeProperty[];
+  servings: string;
+  sourceUrl: string;
+  steps: string[];
 }
 
 export type FormField =
@@ -33,7 +70,10 @@ export type FormField =
   | "prepMinutes"
   | "description"
   | "ingredients"
-  | "properties";
+  | "properties"
+  | "servings"
+  | "sourceUrl"
+  | "steps";
 
 export type FormErrors = Partial<Record<FormField, string>>;
 
@@ -46,6 +86,9 @@ export function emptyValues(): RecipeFormValues {
     description: "",
     ingredients: [""],
     properties: [],
+    servings: "",
+    sourceUrl: "",
+    steps: [],
   };
 }
 
@@ -58,6 +101,9 @@ export function valuesFromRecipe(recipe: Recipe): RecipeFormValues {
     description: recipe.description ?? "",
     ingredients: recipe.ingredients.length > 0 ? [...recipe.ingredients] : [""],
     properties: [...recipe.properties],
+    servings: recipe.servings === null ? "" : String(recipe.servings),
+    sourceUrl: recipe.source_url ?? "",
+    steps: [...recipe.steps],
   };
 }
 
@@ -93,12 +139,34 @@ export function validateValues(values: RecipeFormValues, t: TFunction): FormErro
   if (cleanIngredients(values.ingredients).length === 0) {
     errors.ingredients = t("recipeForm.errors.ingredientsRequired");
   }
+
+  const servings = values.servings.trim();
+  if (servings !== "" && !/^\d+$/.test(servings)) errors.servings = t("recipeForm.errors.servingsFormat");
+  else if (servings !== "" && (Number(servings) < SERVINGS_MIN || Number(servings) > SERVINGS_MAX)) {
+    errors.servings = t("recipeForm.errors.servingsRange", { min: SERVINGS_MIN, max: SERVINGS_MAX });
+  }
+
+  const source = values.sourceUrl.trim();
+  if (source.length > SOURCE_URL_MAX_LENGTH) {
+    errors.sourceUrl = t("recipeForm.errors.sourceUrlTooLong", { max: SOURCE_URL_MAX_LENGTH });
+  } else if (source !== "" && !isSafeSourceUrl(source)) {
+    errors.sourceUrl = t("recipeForm.errors.sourceUrlInvalid");
+  }
+
+  const steps = cleanSteps(values.steps);
+  if (steps.length > STEPS_MAX_COUNT) {
+    errors.steps = t("recipeForm.errors.stepsTooMany", { max: STEPS_MAX_COUNT });
+  } else if (steps.some((step) => step.length > STEP_MAX_LENGTH)) {
+    errors.steps = t("recipeForm.errors.stepTooLong", { max: STEP_MAX_LENGTH });
+  }
   return errors;
 }
 
 /** Build the API body. Call only with values that passed `validateValues`. */
 export function toPayload(values: RecipeFormValues): RecipeCreate {
   const minutes = values.prepMinutes.trim();
+  const servings = values.servings.trim();
+  const source = values.sourceUrl.trim();
   return {
     name: values.name.trim(),
     description: values.description.trim() || null,
@@ -107,6 +175,9 @@ export function toPayload(values: RecipeFormValues): RecipeCreate {
     prep_minutes: minutes === "" ? null : Number(minutes),
     ingredients: cleanIngredients(values.ingredients),
     properties: values.properties,
+    servings: servings === "" ? null : Number(servings),
+    steps: cleanSteps(values.steps),
+    source_url: source === "" ? null : source,
   };
 }
 
@@ -118,6 +189,9 @@ const FIELD_BY_API_KEY: Record<string, FormField> = {
   description: "description",
   ingredients: "ingredients",
   properties: "properties",
+  servings: "servings",
+  steps: "steps",
+  source_url: "sourceUrl",
 };
 
 /**
@@ -156,6 +230,12 @@ function fieldMessage(field: FormField, type: string, t: TFunction): string {
         : t("recipeForm.errors.minutesMin");
     case "ingredients":
       return t("recipeForm.errors.ingredientsRequired");
+    case "servings":
+      return t("recipeForm.errors.servingsRange", { min: SERVINGS_MIN, max: SERVINGS_MAX });
+    case "sourceUrl":
+      return t("recipeForm.errors.sourceUrlInvalid");
+    case "steps":
+      return t("recipeForm.errors.stepTooLong", { max: STEP_MAX_LENGTH });
     default:
       return t("recipeForm.errors.invalidValue");
   }

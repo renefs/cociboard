@@ -4,6 +4,8 @@ import type { Recipe } from "../../api/types";
 import { ConfirmDialog } from "../planner/ConfirmDialog";
 import { Modal } from "../planner/Modal";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
+import { SERVINGS_ICON } from "./recipeMeta";
+import { sourceHost } from "./recipeFormLogic";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
 import { useDeleteRecipe, useRecipeUsage, useUpdateRecipe } from "./useRecipeMutations";
 
@@ -81,6 +83,9 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
     );
   }
 
+  // Only http(s) links become anchors, whatever is stored.
+  const host = recipe.source_url === null ? null : sourceHost(recipe.source_url);
+  const sourceLink = host !== null && recipe.source_url !== null ? { host, href: recipe.source_url.trim() } : null;
   const meal = MEAL_TYPE_META[recipe.meal_type];
   const protein = PROTEIN_META[recipe.protein];
   return (
@@ -112,6 +117,14 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
               </dd>
             </div>
           )}
+          {recipe.servings !== null && (
+            <div>
+              <dt>{t("recipes.servingsLabel")}</dt>
+              <dd>
+                <span aria-hidden="true">{SERVINGS_ICON}</span> {t("recipes.serves", { count: recipe.servings })}
+              </dd>
+            </div>
+          )}
         </dl>
 
         {recipe.description && <p className="details-description">{recipe.description}</p>}
@@ -122,6 +135,25 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
             <li key={index}>{ingredient}</li>
           ))}
         </ul>
+
+        {recipe.steps.length > 0 && (
+          <>
+            <h3 className="details-heading">{t("recipes.steps")}</h3>
+            <ol className="details-steps" aria-label={t("recipes.steps")}>
+              {recipe.steps.map((step, index) => (
+                <li key={index}>{step}</li>
+              ))}
+            </ol>
+          </>
+        )}
+
+        {sourceLink && (
+          <p className="details-source">
+            <a href={sourceLink.href} target="_blank" rel="noopener noreferrer">
+              {t("recipes.viewSource", { host: sourceLink.host })}
+            </a>
+          </p>
+        )}
 
         {recipe.properties.length > 0 && (
           <>

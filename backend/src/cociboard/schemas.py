@@ -16,6 +16,8 @@ from pydantic import (
 
 from cociboard.domain import (
     NOTE_MAX_LENGTH,
+    SERVINGS_MAX,
+    SERVINGS_MIN,
     CandidateReason,
     IssueKind,
     IssueSeverity,
@@ -24,6 +26,8 @@ from cociboard.domain import (
     Protein,
     RecipeProperty,
     SpecialMeal,
+    clean_source_url,
+    clean_steps,
 )
 
 
@@ -59,6 +63,10 @@ def _clean_ingredients(values: list[str]) -> list[str]:
     return cleaned
 
 
+def _clean_steps_optional(values: list[str] | None) -> list[str] | None:
+    return None if values is None else clean_steps(values)
+
+
 def _dedupe(values: list[RecipeProperty]) -> list[RecipeProperty]:
     return list(dict.fromkeys(values))
 
@@ -73,11 +81,24 @@ class RecipeCreate(BaseModel):
     prep_minutes: int | None = Field(default=None, gt=0)
     ingredients: list[str] = Field(min_length=1)
     properties: list[RecipeProperty] = Field(default_factory=list)
+    servings: int | None = Field(default=None, ge=SERVINGS_MIN, le=SERVINGS_MAX)
+    steps: list[str] = Field(default_factory=list)
+    source_url: str | None = None
 
     @field_validator("ingredients")
     @classmethod
     def _ingredients(cls, value: list[str]) -> list[str]:
         return _clean_ingredients(value)
+
+    @field_validator("steps")
+    @classmethod
+    def _steps(cls, value: list[str]) -> list[str]:
+        return clean_steps(value)
+
+    @field_validator("source_url")
+    @classmethod
+    def _source_url(cls, value: str | None) -> str | None:
+        return clean_source_url(value)
 
     @field_validator("properties")
     @classmethod
@@ -91,7 +112,7 @@ class RecipeCreate(BaseModel):
 
 
 _REQUIRED_ON_UPDATE = frozenset(
-    {"name", "meal_type", "protein", "ingredients", "properties", "archived"}
+    {"name", "meal_type", "protein", "ingredients", "properties", "steps", "archived"}
 )
 
 
@@ -105,7 +126,21 @@ class RecipeUpdate(BaseModel):
     prep_minutes: int | None = Field(default=None, gt=0)
     ingredients: list[str] | None = Field(default=None, min_length=1)
     properties: list[RecipeProperty] | None = None
+    # ``null`` clears the optional fields (description, prep_minutes, servings, source_url).
+    servings: int | None = Field(default=None, ge=SERVINGS_MIN, le=SERVINGS_MAX)
+    steps: list[str] | None = None
+    source_url: str | None = None
     archived: bool | None = None
+
+    @field_validator("steps")
+    @classmethod
+    def _steps(cls, value: list[str] | None) -> list[str] | None:
+        return _clean_steps_optional(value)
+
+    @field_validator("source_url")
+    @classmethod
+    def _source_url(cls, value: str | None) -> str | None:
+        return clean_source_url(value)
 
     @field_validator("ingredients")
     @classmethod
@@ -147,6 +182,9 @@ class RecipeRead(BaseModel):
     prep_minutes: int | None
     ingredients: list[str]
     properties: list[RecipeProperty]
+    servings: int | None
+    steps: list[str]
+    source_url: str | None
     created_at: datetime
     archived_at: datetime | None = Field(default=None, exclude=True)
 

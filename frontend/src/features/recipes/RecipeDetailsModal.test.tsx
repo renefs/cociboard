@@ -53,6 +53,50 @@ describe("RecipeDetailsModal", () => {
     expect(within(properties).getByText("Quick (30 min or less)")).toBeInTheDocument();
   });
 
+  it("shows servings, numbered steps and a safe source link", () => {
+    renderModal(
+      makeRecipe({
+        name: "Cocido",
+        servings: 4,
+        steps: ["Soak the chickpeas", "Boil for two hours"],
+        source_url: "https://www.example.com/cocido?x=1",
+      }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Cocido" });
+    expect(within(dialog).getByText("Serves 4")).toBeInTheDocument();
+    const steps = within(dialog).getByRole("list", { name: "Steps" });
+    expect(steps.tagName).toBe("OL");
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Soak the chickpeas",
+      "Boil for two hours",
+    ]);
+    const link = within(dialog).getByRole("link", { name: "View original recipe (example.com)" });
+    expect(link).toHaveAttribute("href", "https://www.example.com/cocido?x=1");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("uses the singular for one serving", () => {
+    renderModal(makeRecipe({ servings: 1 }));
+    expect(screen.getByText("Serves 1")).toBeInTheDocument();
+  });
+
+  it("shows no steps, servings or link section for a plain recipe", () => {
+    renderModal(makeRecipe());
+    expect(screen.queryByRole("list", { name: "Steps" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Steps")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Serves/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("never renders an unsafe stored link as an anchor", () => {
+    for (const bad of ["javascript:alert(1)", "data:text/html,hi", "/relative"]) {
+      const { unmount } = renderModal(makeRecipe({ source_url: bad }));
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("explains the impact and recommends archiving when the recipe is planned", async () => {
     const user = userEvent.setup();
     vi.mocked(client.getRecipeUsage).mockResolvedValue({ count: 3 });

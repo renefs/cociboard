@@ -14,6 +14,23 @@ describe("RecipeCard", () => {
     expect(screen.getByText("Legumes")).toBeInTheDocument();
   });
 
+  it("shows servings in the meta row with an accessible label, in both densities", () => {
+    for (const density of ["comfortable", "compact"] as const) {
+      const { unmount } = render(<RecipeCard recipe={makeRecipe({ servings: 4 })} density={density} />);
+      const fact = screen.getByRole("img", { name: "Serves 4" });
+      expect(fact).toHaveTextContent("4");
+      unmount();
+    }
+    render(<RecipeCard recipe={makeRecipe({ servings: 1 })} />);
+    expect(screen.getByRole("img", { name: "Serves 1" })).toBeInTheDocument();
+  });
+
+  it("shows no servings indicator, and never the steps, on the card", () => {
+    render(<RecipeCard recipe={makeRecipe({ steps: ["Secret step"] })} />);
+    expect(screen.queryByRole("img", { name: /Serves/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Secret step")).not.toBeInTheDocument();
+  });
+
   it("renders property icons with accessible labels", () => {
     render(<RecipeCard recipe={makeRecipe()} />);
     const properties = screen.getByRole("list", { name: "Properties" });

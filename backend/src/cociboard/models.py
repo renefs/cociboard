@@ -13,7 +13,7 @@ def _utcnow() -> datetime:
 
 
 class Recipe(SQLModel, table=True):
-    """A recipe row. ``ingredients`` and ``properties`` are stored as JSON lists."""
+    """A recipe row. ``ingredients``, ``properties`` and ``steps`` are stored as JSON lists."""
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(max_length=80, unique=True, index=True)
@@ -23,6 +23,9 @@ class Recipe(SQLModel, table=True):
     prep_minutes: int | None = Field(default=None)
     ingredients: list[str] = Field(sa_column=Column(JSON, nullable=False))
     properties: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    servings: int | None = Field(default=None)
+    steps: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    source_url: str | None = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=_utcnow)
     # Set when the recipe is archived: hidden from the catalogue and suggestions, kept in plans.
     archived_at: datetime | None = Field(default=None)

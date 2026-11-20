@@ -112,6 +112,9 @@ def create_recipe(session: Session, data: RecipeCreate) -> Recipe:
         prep_minutes=data.prep_minutes,
         ingredients=list(data.ingredients),
         properties=[p.value for p in data.properties],
+        servings=data.servings,
+        steps=list(data.steps),
+        source_url=data.source_url,
     )
     return _commit(session, recipe)
 

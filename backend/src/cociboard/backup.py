@@ -1,4 +1,4 @@
-"""Backup document format (v2; v1 is still accepted): schema and pure validation.
+"""Backup document format (v3; v1 and v2 are still accepted): schema and pure validation.
 
 Persistence is in ``backup_repo``.
 
@@ -24,8 +24,10 @@ from cociboard.domain import (
 from cociboard.schemas import ExtraName, RecipeCreate
 
 BACKUP_FORMAT: Final = "cociboard-backup"
-SUPPORTED_FORMAT_VERSION = 2  # the version written by export
-READABLE_FORMAT_VERSIONS = frozenset({1, 2})  # v1 meals always have a recipe_ref
+SUPPORTED_FORMAT_VERSION = 3  # the version written by export
+READABLE_FORMAT_VERSIONS = frozenset(
+    {1, 2, 3}
+)  # v1 meals have a recipe_ref; v1/v2 recipes lack the v3 fields
 MAX_BACKUP_BYTES = 10 * 1024 * 1024
 
 

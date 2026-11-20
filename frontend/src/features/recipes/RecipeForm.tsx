@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   MEAL_TYPES,
+  SERVINGS_MAX,
+  SERVINGS_MIN,
   PROTEINS,
   RECIPE_PROPERTIES,
   type MealTypeConflictDetail,
@@ -12,6 +14,7 @@ import {
 import { ApiError } from "../../api/client";
 import { useLocale } from "../../i18n/useLocale";
 import { IngredientsEditor } from "./IngredientsEditor";
+import { StepsEditor } from "./StepsEditor";
 import {
   NAME_MAX,
   asMealTypeConflict,
@@ -54,7 +57,16 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<MealTypeConflictDetail | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const ids = { name: useId(), minutes: useId(), description: useId(), ingredients: useId(), protein: useId() };
+  const ids = {
+    name: useId(),
+    minutes: useId(),
+    description: useId(),
+    ingredients: useId(),
+    protein: useId(),
+    servings: useId(),
+    steps: useId(),
+    source: useId(),
+  };
 
   const create = useCreateRecipe();
   const update = useUpdateRecipe();
@@ -71,7 +83,10 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
     const selector: Partial<Record<FormField, string>> = {
       name: `[id="${ids.name}"]`,
       prepMinutes: `[id="${ids.minutes}"]`,
+      servings: `[id="${ids.servings}"]`,
+      sourceUrl: `[id="${ids.source}"]`,
       ingredients: ".ingredient-row input",
+      steps: ".step-row textarea",
     };
     const target = selector[field];
     if (target) formRef.current?.querySelector<HTMLElement>(target)?.focus();
@@ -79,7 +94,7 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
 
   const showErrors = (next: FormErrors) => {
     setErrors(next);
-    const first = (["name", "prepMinutes", "ingredients"] as const).find((field) => next[field]);
+    const first = (["name", "prepMinutes", "servings", "ingredients", "steps", "sourceUrl"] as const).find((field) => next[field]);
     if (first) focusField(first);
   };
 
@@ -149,6 +164,9 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
   const nameErrorId = `${ids.name}-error`;
   const minutesErrorId = `${ids.minutes}-error`;
   const ingredientsErrorId = `${ids.ingredients}-error`;
+  const servingsErrorId = `${ids.servings}-error`;
+  const stepsErrorId = `${ids.steps}-error`;
+  const sourceErrorId = `${ids.source}-error`;
 
   return (
     <form className="recipe-form" ref={formRef} onSubmit={onSubmit} noValidate>
@@ -233,6 +251,22 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
           </div>
         </div>
 
+        <div className="field field--narrow">
+          <label htmlFor={ids.servings}>{t("recipeForm.servings")}</label>
+          <input
+            id={ids.servings}
+            type="text"
+            inputMode="numeric"
+            value={values.servings}
+            placeholder={t("recipeForm.servingsPlaceholder", { min: SERVINGS_MIN, max: SERVINGS_MAX })}
+            autoComplete="off"
+            aria-invalid={errors.servings ? true : undefined}
+            aria-describedby={errors.servings ? servingsErrorId : undefined}
+            onChange={(event) => set("servings", event.target.value)}
+          />
+          <FieldError id={servingsErrorId} message={errors.servings} />
+        </div>
+
         <div className="field">
           <label htmlFor={ids.description}>{t("recipeForm.description")}</label>
           <textarea
@@ -257,6 +291,34 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
           />
           <FieldError id={ingredientsErrorId} message={errors.ingredients} />
         </fieldset>
+
+        <fieldset className="field" aria-describedby={errors.steps ? stepsErrorId : undefined}>
+          <legend>{t("recipeForm.steps")}</legend>
+          <p className="field-hint">{t("recipeForm.stepsHint")}</p>
+          <StepsEditor
+            rows={values.steps}
+            onChange={(rows) => set("steps", rows)}
+            describedBy={errors.steps ? stepsErrorId : undefined}
+            invalid={Boolean(errors.steps)}
+          />
+          <FieldError id={stepsErrorId} message={errors.steps} />
+        </fieldset>
+
+        <div className="field">
+          <label htmlFor={ids.source}>{t("recipeForm.sourceUrl")}</label>
+          <input
+            id={ids.source}
+            type="url"
+            inputMode="url"
+            value={values.sourceUrl}
+            placeholder={t("recipeForm.sourceUrlPlaceholder")}
+            autoComplete="off"
+            aria-invalid={errors.sourceUrl ? true : undefined}
+            aria-describedby={errors.sourceUrl ? sourceErrorId : undefined}
+            onChange={(event) => set("sourceUrl", event.target.value)}
+          />
+          <FieldError id={sourceErrorId} message={errors.sourceUrl} />
+        </div>
 
         <fieldset className="field">
           <legend>{t("recipeForm.properties")}</legend>

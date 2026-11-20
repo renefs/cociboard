@@ -48,6 +48,9 @@ def export_backup(session: Session) -> BackupDocument:
                 prep_minutes=r.prep_minutes,
                 ingredients=list(r.ingredients),
                 properties=[RecipeProperty(p) for p in r.properties],
+                servings=r.servings,
+                steps=list(r.steps),
+                source_url=r.source_url,
                 archived=r.archived_at is not None,
                 created_at=r.created_at,
             )
@@ -102,6 +105,9 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
                 prep_minutes=item.prep_minutes,
                 ingredients=list(item.ingredients),
                 properties=[p.value for p in item.properties],
+                servings=item.servings,
+                steps=list(item.steps),
+                source_url=item.source_url,
                 created_at=item.created_at,
                 # The archive moment is not part of the format; "now" keeps it set.
                 archived_at=datetime.now(UTC) if item.archived else None,

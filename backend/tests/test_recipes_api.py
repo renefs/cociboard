@@ -1,5 +1,6 @@
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 PAYLOAD: dict[str, Any] = {
@@ -158,3 +159,63 @@ def test_filters(client: TestClient) -> None:
     assert names("?q=nothing") == []
     assert client.get("/api/recipes?slot=brunch").status_code == 422
     assert client.get("/api/recipes?property=tasty").status_code == 422
+
+
+def test_new_fields_default_to_empty(client: TestClient) -> None:
+    created = make(client)
+    assert (created["servings"], created["steps"], created["source_url"]) == (None, [], None)
+
+
+def test_create_with_servings_steps_and_source(client: TestClient) -> None:
+    created = make(
+        client,
+        servings=4,
+        steps=["  Chop ", "", "Cook"],
+        source_url=" https://example.com/gazpacho ",
+    )
+    assert created["servings"] == 4
+    assert created["steps"] == ["Chop", "Cook"]
+    assert created["source_url"] == "https://example.com/gazpacho"
+    assert client.get(f"/api/recipes/{created['id']}").json() == created
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("servings", 0),
+        ("servings", 51),
+        ("source_url", "javascript:alert(1)"),
+        ("source_url", "/relative"),
+        ("source_url", "data:text/plain,hi"),
+        ("steps", ["x"] * 51),
+        ("steps", ["x" * 1001]),
+    ],
+)
+def test_invalid_new_fields_are_422_with_field_error(
+    client: TestClient, field: str, value: Any
+) -> None:
+    response = client.post("/api/recipes", json={**PAYLOAD, field: value})
+    assert response.status_code == 422
+    assert field in response.json()["detail"][0]["loc"]
+
+
+def test_patch_sets_and_clears_new_fields(client: TestClient) -> None:
+    created = make(client, servings=2, steps=["a"], source_url="https://example.com")
+    url = f"/api/recipes/{created['id']}"
+    patched = client.patch(url, json={"servings": 6, "steps": [" b ", "c"]}).json()
+    assert (patched["servings"], patched["steps"]) == (6, ["b", "c"])
+    assert patched["source_url"] == "https://example.com"  # untouched
+    cleared = client.patch(url, json={"servings": None, "source_url": None, "steps": []}).json()
+    assert (cleared["servings"], cleared["source_url"], cleared["steps"]) == (None, None, [])
+
+
+def test_patch_rejects_null_steps_and_bad_url(client: TestClient) -> None:
+    created = make(client)
+    url = f"/api/recipes/{created['id']}"
+    assert client.patch(url, json={"steps": None}).status_code == 422
+    assert client.patch(url, json={"source_url": "javascript:x"}).status_code == 422
+
+
+def test_search_ignores_steps(client: TestClient) -> None:
+    make(client, steps=["Marinate overnight"])
+    assert client.get("/api/recipes", params={"q": "marinate"}).json() == []

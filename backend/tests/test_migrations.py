@@ -12,10 +12,11 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel
+from sqlmodel import Session, SQLModel, select
 
 from cociboard import models  # noqa: F401  (registers tables on the metadata)
 from cociboard.migrate import MigrationError, run_migrations
+from cociboard.models import Recipe
 
 V08_SCHEMA = """
 CREATE TABLE recipe (
@@ -362,3 +363,21 @@ def test_downgrade_from_0004_drops_specials_and_restores_not_null(tmp_path: Path
     run_migrations(engine)
     assert _version(engine) == _head()
     assert _diff(engine) == []
+
+
+def test_existing_recipes_get_empty_steps_at_0005(tmp_path: Path) -> None:
+    engine = _at_0003_with_data(tmp_path / "v016.db")
+    _alembic(engine, "upgrade", "0004_slot_special_and_note")
+    assert "steps" not in {c["name"] for c in inspect(engine).get_columns("recipe")}
+
+    run_migrations(engine)
+
+    assert _version(engine) == _head()
+    assert _diff(engine) == []
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT steps, servings, source_url FROM recipe ORDER BY id")
+        ).all()
+    assert [tuple(r) for r in rows] == [("[]", None, None), ("[]", None, None)]
+    with Session(engine) as session:
+        assert [r.steps for r in session.exec(select(Recipe)).all()] == [[], []]
