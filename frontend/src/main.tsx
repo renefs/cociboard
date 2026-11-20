@@ -13,6 +13,8 @@ import "./styles/planner.css";
 import "./styles/recipes.css";
 import "./styles/shopping.css";
 import "./styles/pwa.css";
+import "./styles/share.css";
+import "./styles/print.css";
 
 // Queries "offlineFirst" still ask the network layer (the service worker answers from its
 // cache when offline); mutations keep the default mode and pause until the connection returns.

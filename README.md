@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.21.0** (import a recipe from a link).
+Current version: **0.22.0** (print and share).
 
 ## Stack
 
@@ -541,6 +541,13 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
   (the shopping list of the week you are browsing, inline). **Add** on a recipe takes you to
   the Week tab to pick a slot. The tab is kept in the address as `?view=today|week|recipes|shopping`.
   On desktop everything stays on one screen.
+- **Share** (planner toolbar) opens a small menu: **Print the menu** (a clean A4 table of the
+  week, black on white, through the browser's print dialog, so "Save as PDF" works too),
+  **Share the menu** (the system share sheet; **Copy the menu** where there is none, and a box
+  with the text to select when the clipboard is not available, as on plain-http LAN access) and
+  **Add to calendar (.ics)** (one event per planned meal, lunch 14:00 and dinner 21:00 in your
+  own time zone; importing a later file updates the events instead of duplicating them). The
+  items are disabled while the week has no meals ([ADR-0025](docs/adr/0025-print-and-share.md)).
 - **Keyboard:** Tab to a recipe's drag handle or an assigned recipe, Space to pick it up,
   arrow keys to jump between slots, Space to drop, Esc to cancel. Enter on an assigned
   recipe opens its actions; Enter on an empty slot opens the picker.
@@ -555,8 +562,10 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
 - Tick a line to move it from **To buy** to **In the basket**; untick it to bring it back.
   Ticks are saved on the server, so everyone using the same Cociboard sees them.
 - **Add an item** adds your own line ("milk", "bread") to the week; remove it with ×.
-- **Copy** puts what is still to buy on the clipboard as a plain "- item" list; **Share**
-  (where the browser supports it) opens the share sheet; **Uncheck all** starts over.
+- **Copy** puts what is still to buy on the clipboard as a plain "- item" list (the button
+  reads **Share** and opens the share sheet where the browser supports it; without a clipboard
+  it shows the text to select); **Print** gives a checklist with an empty box per item, then the
+  bought and pantry items in small print; **Uncheck all** starts over.
 - The list follows the plan and recipe edits; ticks of ingredients that are no longer needed
   are kept and come back if the ingredient does.
 - Staples such as oil or salt can be kept off the list, see [Pantry](#pantry).
@@ -684,6 +693,7 @@ frontend/
   src/api/              typed API client and types mirroring backend schemas
   src/features/recipes/ recipe panel, cards, form, details and delete dialogs, mutations, legend, icon metadata
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, phone tab bar and Today view, pure logic
+  src/features/share/ share menu, print views, share-or-copy, .ics export, pure text builders
   src/features/variety/ variety summary and presentation helpers
   src/features/shopping/ shopping list (dialog and inline view), pantry panel, hooks with optimistic updates, pure logic
   src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks

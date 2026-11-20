@@ -55,6 +55,20 @@ const todayView = () => within(document.querySelector<HTMLElement>('[data-view="
 const tab = (name: string) => within(tabBar()).getByRole("button", { name: new RegExp(name) });
 
 describe("Planner on a phone", () => {
+  it.each([false, true])("offers the Share menu in the week toolbar (narrow: %s)", async (narrow) => {
+    stubMatchMedia({ narrow });
+    const user = userEvent.setup();
+    renderWithQuery(<Planner now={NOW} />);
+    if (narrow) await user.click(tab("Week"));
+    // The button is disabled until the week has loaded.
+    await waitFor(() => expect(screen.getByRole("button", { name: /Share/ })).toBeEnabled());
+    const trigger = screen.getByRole("button", { name: /Share/ });
+    expect(within(screen.getByRole("group", { name: "Week actions" })).getByRole("button", { name: /Share/ })).toBe(trigger);
+    await user.click(trigger);
+    expect(screen.getByRole("button", { name: "Print the menu" })).toBeDisabled();
+    expect(screen.getByText(/Plan at least one meal/)).toBeInTheDocument();
+  });
+
   it("has no tab bar on desktop and shows everything", async () => {
     stubMatchMedia({ narrow: false });
     renderWithQuery(<Planner now={NOW} />);

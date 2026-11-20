@@ -1,0 +1,143 @@
+/* Printing: the print root (see features/share/PrintPortal.tsx) replaces the whole app. */
+
+.print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  html:has(> body > .print-root:not(:empty)),
+  body:has(> .print-root:not(:empty)) {
+    height: auto !important;
+    overflow: visible !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  /* While there is print content, the app, its dialogs and toasts (all children of the body)
+     are not printed. Ctrl+P with no print job still prints the app as it is. */
+  body:has(> .print-root:not(:empty)) > *:not(.print-root) {
+    display: none !important;
+  }
+
+  .print-root:not(:empty) {
+    display: block;
+    font: 11pt/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #000;
+    background: #fff;
+  }
+
+  .print-root *,
+  .print-root *::before,
+  .print-root *::after {
+    color: #000 !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .print-title {
+    margin: 0 0 8mm;
+    font-size: 18pt;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-table th,
+  .print-table td {
+    padding: 3mm 3mm;
+    text-align: left;
+    vertical-align: top;
+    border: 1px solid #000;
+  }
+
+  .print-table thead th {
+    font-size: 10pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .print-table tr {
+    break-inside: avoid;
+  }
+
+  .print-table tbody th {
+    width: 26%;
+    font-weight: 700;
+  }
+
+  .print-date,
+  .print-meal,
+  .print-note {
+    display: block;
+  }
+
+  .print-date {
+    font-size: 9pt;
+    font-weight: 400;
+  }
+
+  .print-note {
+    margin-top: 1mm;
+    font-size: 9pt;
+    font-style: italic;
+  }
+
+  .print-footer {
+    margin: 8mm 0 0;
+    font-size: 9pt;
+  }
+
+  .print-checklist,
+  .print-plainlist {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .print-checklist {
+    columns: 2;
+    column-gap: 12mm;
+    font-size: 12pt;
+  }
+
+  .print-checklist li {
+    display: flex;
+    gap: 3mm;
+    align-items: center;
+    padding: 1.5mm 0;
+    break-inside: avoid;
+  }
+
+  .print-box {
+    flex: none;
+    width: 4mm;
+    height: 4mm;
+    border: 0.4mm solid #000;
+  }
+
+  .print-secondary {
+    margin-top: 8mm;
+    font-size: 9pt;
+  }
+
+  .print-secondary h2 {
+    margin: 0 0 2mm;
+    font-size: 10pt;
+  }
+
+  .print-plainlist {
+    columns: 2;
+    column-gap: 12mm;
+  }
+
+  .print-plainlist li {
+    break-inside: avoid;
+  }
+}
