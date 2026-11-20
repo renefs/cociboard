@@ -9,10 +9,14 @@ import {
   isEmptyList,
   isPendingExtraId,
   progressOf,
-  shoppingListText,
   splitList,
   type ShoppingRow,
 } from "./shoppingLogic";
+import { PrintPortal, usePrintJob } from "../share/PrintPortal";
+import { PrintShopping } from "../share/PrintShopping";
+import { canShareText } from "../share/shareActions";
+import { shoppingAsText } from "../share/shareText";
+import { useShareText } from "../share/useShareText";
 import { PantryPanel } from "./PantryPanel";
 import { usePantry, usePantryActions } from "./usePantry";
 import { useShoppingActions, useShoppingList, type ShoppingActions } from "./useShoppingList";
@@ -99,6 +103,8 @@ function ListBody({ list, actions, announce, onNotify }: ListBodyProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pantryActions = usePantryActions((message) => onNotify("error", message));
   const { data: pantryData } = usePantry();
+  const printJob = usePrintJob();
+  const { share, dialog } = useShareText(onNotify);
 
   /** Move focus to the row next to the one that is leaving its list, or to a section heading. */
   const refocus = (row: ShoppingRow, rows: ShoppingRow[]) => {
@@ -138,30 +144,14 @@ function ListBody({ list, actions, announce, onNotify }: ListBodyProps) {
     announce(t("shopping.announce.removed", { name: row.name }));
   };
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(shoppingListText(list, t, locale));
-      onNotify("info", t("shopping.copied"));
-    } catch {
-      onNotify("error", t("shopping.copyFailed"));
-    }
-  };
+  const shareList = () =>
+    share({
+      title: t("shopping.title", { range: formatWeekRange(list.week_start, locale) }),
+      text: shoppingAsText(list, t, locale),
+      copiedMessage: t("shopping.copied"),
+    });
 
-  const share = async () => {
-    try {
-      await navigator.share({
-        title: t("shopping.open"),
-        text: shoppingListText(list, t, locale),
-      });
-    } catch (error) {
-      // Dismissing the share sheet is not an error.
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
-        onNotify("error", t("shopping.shareFailed"));
-      }
-    }
-  };
-
-  const canShare = typeof navigator.share === "function";
+  const emptyId = useId();
 
   return (
     <>
@@ -177,7 +167,11 @@ function ListBody({ list, actions, announce, onNotify }: ListBodyProps) {
           }}
         />
 
-        {empty && <p className="shopping-muted">{t("shopping.empty")}</p>}
+        {empty && (
+          <p className="shopping-muted" id={emptyId}>
+            {t("shopping.empty")}
+          </p>
+        )}
 
         {!empty && (
           <Section title={t("shopping.toBuy")} count={toBuy.length} focusId="toBuy">
@@ -232,14 +226,24 @@ function ListBody({ list, actions, announce, onNotify }: ListBodyProps) {
       </div>
 
       <div className="form-actions shopping-actions" role="group" aria-label={t("shopping.actions")}>
-        <button type="button" className="btn btn-large" disabled={empty} onClick={() => void copy()}>
-          {t("shopping.copy")}
+        <button
+          type="button"
+          className="btn btn-large"
+          disabled={empty}
+          aria-describedby={empty ? emptyId : undefined}
+          onClick={printJob.print}
+        >
+          {t("shopping.print")}
         </button>
-        {canShare && (
-          <button type="button" className="btn btn-large" disabled={empty} onClick={() => void share()}>
-            {t("shopping.share")}
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn btn-large"
+          disabled={empty}
+          aria-describedby={empty ? emptyId : undefined}
+          onClick={() => void shareList()}
+        >
+          {canShareText() ? t("shopping.share") : t("shopping.copy")}
+        </button>
         {progress.done > 0 && (
           <button
             type="button"
@@ -253,6 +257,12 @@ function ListBody({ list, actions, announce, onNotify }: ListBodyProps) {
           </button>
         )}
       </div>
+      {printJob.job !== null && (
+        <PrintPortal key={printJob.job} onDone={printJob.done}>
+          <PrintShopping list={list} />
+        </PrintPortal>
+      )}
+      {dialog}
     </>
   );
 }

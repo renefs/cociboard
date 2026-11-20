@@ -91,7 +91,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  document.querySelector(".print-root")?.remove();
+});
 
 function renderDialog() {
   return renderWithQuery(<ShoppingListDialog weekStart={WEEK} onClose={onClose} onNotify={onNotify} />);
@@ -158,15 +161,41 @@ describe("ShoppingListDialog", () => {
     expect(writeText).toHaveBeenCalledWith(
       "Shopping list (26 Oct – 1 November 2026)\n\n- Aceite\n- Leche",
     );
-    expect(onNotify).toHaveBeenCalledWith("info", "List copied.");
+    await waitFor(() => expect(onNotify).toHaveBeenCalledWith("info", "Shopping list copied."));
   });
 
-  it("reports a clipboard failure", async () => {
+  it("shows the text to select by hand when the clipboard is unavailable", async () => {
     const user = userEvent.setup();
     renderDialog();
-    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: () => Promise.reject(new Error("no")) } });
+    vi.stubGlobal("navigator", { ...navigator, clipboard: undefined });
     await user.click(await screen.findByRole("button", { name: "Copy" }));
-    expect(onNotify).toHaveBeenCalledWith("error", "Couldn't copy the list.");
+    const area = await screen.findByRole("textbox", { name: "Text to copy" });
+    expect((area as HTMLTextAreaElement).value).toBe("Shopping list (26 Oct – 1 November 2026)\n\n- Aceite\n- Leche");
+    expect(screen.getByText("Select the text and copy it.")).toBeInTheDocument();
+    expect(onNotify).not.toHaveBeenCalled();
+  });
+
+  it("prints the items to buy with empty boxes, then the bought ones", async () => {
+    const user = userEvent.setup();
+    const print = vi.fn();
+    window.print = print;
+    server = makeList({
+      items: [...makeList().items, { key: "sal", name: "Sal", checked: false, in_pantry: true, meals: [] }],
+    });
+    renderDialog();
+    await user.click(await screen.findByRole("button", { name: "Print" }));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const root = document.querySelector<HTMLElement>("body > .print-root");
+    expect(root).toHaveTextContent("Shopping list · 26 Oct – 1 November 2026");
+    const toBuy = root?.querySelectorAll(".print-checklist li");
+    expect(Array.from(toBuy ?? []).map((li) => li.textContent)).toEqual(["Aceite", "Leche"]);
+    expect(root?.querySelectorAll(".print-checklist .print-box[aria-hidden='true']")).toHaveLength(2);
+    expect(root?.querySelector(".print-secondary")).toHaveTextContent("Already bought");
+    expect(root).toHaveTextContent("Huevos");
+    expect(root).toHaveTextContent("In the pantry");
+    expect(root).toHaveTextContent("Sal");
+    window.dispatchEvent(new Event("afterprint"));
+    await waitFor(() => expect(root).toBeEmptyDOMElement());
   });
 
   it("offers Share only when the browser supports it", async () => {
@@ -189,6 +218,7 @@ describe("ShoppingListDialog", () => {
     renderDialog();
     expect(await screen.findByText("Add meals to the week to build the shopping list.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Print" })).toBeDisabled();
   });
 
   it("rolls back and reports when an update fails", async () => {

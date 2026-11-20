@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-11-20
+
+Print and share ([ADR-0025](docs/adr/0025-print-and-share.md)). Frontend only: no API, schema or
+migration changes.
+
+### Added
+- **Share menu** in the planner toolbar (also in the phone's Week tab): **Print the menu**,
+  **Share the menu** (**Copy the menu** where the browser has no share sheet) and **Add to
+  calendar (.ics)**. The items are disabled, with an explanation, while the week has no meals.
+- **Printing** the week menu (a days by lunch/dinner table with the notes and special meals) and
+  the shopping list (a checklist with an empty box per item, then the bought and pantry items in
+  small print). A print stylesheet shows only the printout: black on white, A4 portrait, no
+  backgrounds, days kept together.
+- **Calendar export**: a client-side iCalendar file `cociboard-<week>.ics` with one event per
+  planned meal (lunch 14:00-15:00, dinner 21:00-22:00, floating local times), the note and the
+  ingredients as description and the recipe link as URL. UIDs are stable, so importing a later
+  export updates the events. Touch devices that can share files hand it to the calendar app.
+- **Manual copy dialog**: when neither the share sheet nor the clipboard is available (plain-http
+  access to the server has no clipboard API), the text is shown selected, ready to copy.
+- English and Spanish texts for all of the above.
+
+### Changed
+- The shopping list's **Copy** and **Share** buttons are one button that shares where possible
+  and copies otherwise (**Share** or **Copy** by capability), plus a new **Print** button. A
+  clipboard failure now opens the manual copy dialog instead of an error toast.
+
 ## [0.21.0] - 2026-11-20
 
 Import a recipe from a link ([ADR-0024](docs/adr/0024-recipe-import.md)).

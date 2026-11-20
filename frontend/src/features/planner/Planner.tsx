@@ -19,6 +19,7 @@ import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, SpecialMeal, WeekPlan } from "../../api/types";
 import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
+import { ShareMenu } from "../share/ShareMenu";
 import { ShoppingListDialog, ShoppingListView } from "../shopping/ShoppingListDialog";
 import { VarietySummary } from "../variety/VarietySummary";
 import {
@@ -341,6 +342,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
               >
                 <span aria-hidden="true">🛒 </span>{t("shopping.open")}
               </button>
+              <ShareMenu plan={plan} onNotify={notify} />
             </div>
             {plan && (
               <VarietySummary
