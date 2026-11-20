@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { dismissNotice, useNotices } from "../offline/notices";
 import { useIsOnline, useJustCameBack, usePausedMutationCount, useUnloadWarning } from "./online";
 
 /**
@@ -11,6 +12,7 @@ export function OfflineBanner() {
   const online = useIsOnline();
   const waiting = usePausedMutationCount();
   const justBack = useJustCameBack(online);
+  const notices = useNotices();
   useUnloadWarning(waiting > 0);
 
   const showOffline = !online;
@@ -26,6 +28,14 @@ export function OfflineBanner() {
           {showBack && <p>{t("pwa.backOnline")}</p>}
         </div>
       )}
+      {notices.map((notice) => (
+        <div key={notice.id} className="offline-banner">
+          <p>{notice.text}</p>
+          <button type="button" className="btn" onClick={() => dismissNotice(notice.id)}>
+            {t("pwa.dismiss")}
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,7 @@ import { renderWithQuery } from "../../test/utils";
 import { AuthGate } from "./AuthGate";
 import { ExposureBanner } from "./ExposureBanner";
 import { LogoutButton } from "./LogoutButton";
+import { useAuthStatus } from "./useAuthStatus";
 
 const json = (body: unknown, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(body), { status }));
@@ -77,6 +79,25 @@ describe("AuthGate", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
     renderGate();
     expect(await screen.findByText("the app")).toBeInTheDocument();
+  });
+
+  it("keeps the app mounted while the unreadable status is retried by the app itself (offline)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
+    const mounted = vi.fn();
+    function Probe() {
+      useAuthStatus(); // the app reads the status too; its observer retries the failed read on mount
+      useEffect(() => mounted(), []);
+      return <p>the app</p>;
+    }
+    renderWithQuery(
+      <AuthGate>
+        <Probe />
+      </AuthGate>,
+    );
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(screen.getByText("the app")).toBeInTheDocument();
+    expect(mounted).toHaveBeenCalledTimes(1);
   });
 
   it("drops back to the login screen on an auth_required answer", async () => {

@@ -31,6 +31,10 @@ export async function dragWithMouse(page: Page, from: Locator, to: Locator): Pro
   // The drag chip animates back over the grid after the drop and takes the clicks meant for
   // the slots below it, so the drag ends when it is gone. It has no role: a CSS locator.
   await expect(page.locator(".drag-chip")).toHaveCount(0);
+  // dnd-kit swallows every click for 50 ms after a pointer drag ends (it removes its
+  // document click listener with a timeout), so a test clicking straight after a drop would
+  // lose that click. A person cannot click that fast; wait it out.
+  await page.waitForTimeout(100);
 }
 
 /** The week's variety score as announced by the variety button (e.g. 90), or undefined. */

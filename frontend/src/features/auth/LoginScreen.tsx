@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ApiError, login } from "../../api/client";
 import type { TooManyAttemptsDetail } from "../../api/types";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
+import { notifySignedIn } from "../../offline/authRetry";
 import { AUTH_STATUS_KEY, dropSessionData } from "./session";
 
 type LoginError = { kind: "wrong" } | { kind: "limited"; minutes: number } | { kind: "network" };
@@ -30,6 +31,8 @@ export function LoginScreen() {
     onSuccess: async () => {
       dropSessionData(queryClient);
       await queryClient.invalidateQueries({ queryKey: AUTH_STATUS_KEY });
+      // Changes that waited for the session (see `retryAfterSignIn`) are sent now.
+      notifySignedIn();
     },
   });
 

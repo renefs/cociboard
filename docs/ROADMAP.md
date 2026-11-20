@@ -121,8 +121,7 @@ CHANGELOG entry.
 
 
 ## Planned
-Later releases (v0.15.0–v0.25.x) are described in `CHANGELOG.md`. Next, in order:
-- Offline edits that survive closing the app.
+Later releases (v0.15.0–v0.26.x) are described in `CHANGELOG.md`. Next, in order:
 - Seed recipes with steps and servings.
 
 - Planning and review: Opus.

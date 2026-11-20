@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.25.1** (keyboard pick-up fix).
+Current version: **0.26.0** (offline edits that survive closing the app).
 
 ## Stack
 
@@ -33,7 +33,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md),
 [ADR-0023](docs/adr/0023-pantry-staples.md),
 [ADR-0026](docs/adr/0026-household-preferences.md),
-[ADR-0027](docs/adr/0027-favourites-and-history.md).
+[ADR-0027](docs/adr/0027-favourites-and-history.md),
+[ADR-0029](docs/adr/0029-persisted-offline-edits.md).
 
 ## Architecture
 
@@ -298,10 +299,28 @@ app*). It then opens full screen with its own icon.
   the app behind the HTTPS reverse proxy described under [Security (password)](#security-password).
 - **What works offline:** the app opens, and you can see the last plans, recipes and shopping
   lists you loaded while online. A banner says you are offline.
-- **Edits made offline** (assigning recipes, ticking shopping items) are applied on screen and
-  sent when the connection returns, with the number of waiting changes in the banner. They are
-  kept **only while the page stays open**: closing or reloading it first loses them (the
-  browser asks before leaving). Backups, login and logout always need the server.
+- **Edits made offline** (plan changes, ticking shopping items, pantry, preferences, favourites)
+  are applied on screen and sent when the connection returns, with the number of waiting changes
+  in the banner. They are **kept on the device**: close the app, reload the page or let the phone
+  kill it, and when you open it again the changes are still shown as you left them and still
+  waiting; they are sent, in the order you made them, as soon as the connection is there (the
+  browser still asks before leaving while changes wait, because they only reach the server later).
+  The limits:
+  - Waiting changes are stored in the browser's `localStorage` (a few kilobytes). If the browser
+    blocks storage (some private windows) they wait in memory only, as before.
+  - Changes not touched for **7 days** are discarded when the app starts, and the banner says how
+    many.
+  - With the app open in several tabs only one of them (the one that opened first) stores and
+    sends the waiting changes; the others show what the server has. If that tab closes, another
+    one takes over.
+  - A change the server rejects (for instance a recipe archived in the meantime) is dropped with
+    an error message. If your password session expired, the changes wait and are sent after you
+    sign in again.
+  - Logging out and restoring a backup discard the waiting changes. Backups, login and logout
+    themselves always need the server.
+  - A change that was being sent at the moment the app closed is sent again when it reopens; for
+    every kind of change that is harmless except adding a shopping extra or a pantry staple, which
+    can then appear twice.
 - **Updates:** when a new version is installed, a bar offers **Reload**; nothing changes
   under you until you tap it.
 - Logging out also removes the offline copy of your data from the device.
@@ -311,7 +330,8 @@ app*). It then opens full screen with its own icon.
   iOS has no web share targets, so there you paste the link into the form.
 - Icons are rendered by `uv run --with pillow python frontend/scripts/render_icons.py`.
 
-Reasoning and alternatives: [ADR-0019](docs/adr/0019-pwa-offline.md).
+Reasoning and alternatives: [ADR-0019](docs/adr/0019-pwa-offline.md) and, for the stored waiting
+changes, [ADR-0029](docs/adr/0029-persisted-offline-edits.md).
 
 ## API
 

@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
 import { makeRecipe } from "../../test/fixtures";
 import { RecipeDetailsModal } from "./RecipeDetailsModal";
+import { makeTestQueryClient } from "../../test/utils";
 
 vi.mock("../../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof client>()),
@@ -37,7 +38,7 @@ beforeEach(() => {
 });
 
 function renderModal(shown = recipe) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = makeTestQueryClient();
   const invalidate = vi.spyOn(queryClient, "invalidateQueries");
   const { unmount } = render(
     <QueryClientProvider client={queryClient}>

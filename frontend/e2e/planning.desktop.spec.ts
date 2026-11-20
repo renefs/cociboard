@@ -17,7 +17,8 @@ test.describe("planning the week on a desktop", () => {
     await expect(slot(page, "Monday", "lunch").getByRole("button", { name: /^Lentil stew, Monday lunch/ })).toBeVisible();
     // The selection mode ended and the variety indicator now has a score.
     await expect(page.getByRole("status").filter({ hasText: "Choose a slot" })).toHaveCount(0);
-    expect(await varietyScore(page)).toBeGreaterThan(0);
+    // The score comes from the server: it follows the plan once the change is saved.
+    await expect.poll(() => varietyScore(page)).toBeGreaterThan(0);
   });
 
   test("a real mouse drag from the recipe list to a slot", async ({ page }) => {
@@ -42,8 +43,11 @@ test.describe("planning the week on a desktop", () => {
     const meal = slot(page, "Monday", "lunch").getByRole("button", { name: /^Lentil stew, Monday lunch/ });
     await expect(meal).toBeVisible();
 
+    const moved = page.waitForResponse((response) => response.url().endsWith("/move"));
     await dragWithMouse(page, meal, slot(page, "Thursday", "dinner"));
     await expect(slot(page, "Thursday", "dinner").getByRole("button", { name: /^Lentil stew, Thursday dinner/ })).toBeVisible();
+    // The change shows at once; the next action waits until it is saved, as a person would.
+    await moved;
     await expect(slot(page, "Monday", "lunch").getByRole("button", { name: "Add lunch on Monday" })).toBeVisible();
     await expect(dragAnnouncements(page)).toContainText("Lentil stew was moved to Thursday dinner.");
 
