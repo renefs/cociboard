@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.18.0** (CI runs `make check` and a container smoke test before the image is published).
+Current version: **0.18.1** (CI builds and smoke tests the image on every pull request; Dependabot updates are grouped safely).
 
 ## Stack
 
@@ -14,30 +14,48 @@ Current version: **0.18.0** (CI runs `make check` and a container smoke test bef
 - Frontend: React 18, TypeScript (strict), Vite, TanStack Query, react-i18next, plain CSS with design tokens
 - Quality: ruff, mypy (strict), pytest; ESLint, `tsc --noEmit`, Vitest + Testing Library
 
-Rationale: [ADR-0001](docs/adr/0001-tech-stack.md), [ADR-0003](docs/adr/0003-recipe-data-model.md), [ADR-0004](docs/adr/0004-data-fetching-and-icons.md),
-[ADR-0005](docs/adr/0005-planner-interaction-design.md), [ADR-0006](docs/adr/0006-week-plan-data-model.md),
-[ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md),
+Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
+[ADR-0002](docs/adr/0002-versioning-and-changelog.md),
+[ADR-0003](docs/adr/0003-recipe-data-model.md),
+[ADR-0004](docs/adr/0004-data-fetching-and-icons.md),
+[ADR-0005](docs/adr/0005-planner-interaction-design.md),
+[ADR-0006](docs/adr/0006-week-plan-data-model.md),
+[ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md),
+[ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md),
 [ADR-0009](docs/adr/0009-internationalisation.md), [ADR-0010](docs/adr/0010-docker-deployment.md),
-[ADR-0011](docs/adr/0011-container-registry-image.md), [ADR-0021](docs/adr/0021-ci-before-publish.md).
+[ADR-0011](docs/adr/0011-container-registry-image.md), [ADR-0012](docs/adr/0012-shopping-list.md),
+[ADR-0013](docs/adr/0013-schema-migrations.md), [ADR-0014](docs/adr/0014-archive-and-backups.md),
+[ADR-0015](docs/adr/0015-planning-across-weeks.md),
+[ADR-0016](docs/adr/0016-special-slots-and-notes.md),
+[ADR-0017](docs/adr/0017-mobile-navigation.md),
+[ADR-0018](docs/adr/0018-optional-household-password.md), [ADR-0019](docs/adr/0019-pwa-offline.md),
+[ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
   subgraph Browser["Frontend (React + TypeScript + Vite)"]
-    App[App shell] --> Planner[features/planner<br/>week grid, drag and drop, picker, toolbar]
+    App[App shell<br/>tabs, Today view] --> Planner[features/planner<br/>week grid, drag and drop, picker]
     App --> Recipes[features/recipes<br/>panel, cards, form, details]
+    App --> Shopping[features/shopping<br/>shopping list]
+    App --> Backup[features/backup<br/>export, import]
+    App --> Auth[features/auth<br/>login]
     Planner --> Variety[features/variety<br/>summary]
     Planner --> Query[TanStack Query cache]
     Recipes --> Query
+    Shopping --> Query
     Query --> Client[api/client.ts + types.ts]
+    PWA[pwa/ + sw/<br/>service worker, offline reading] -.-> Client
   end
-  Client -- "HTTP /api (Vite proxy in dev)" --> Routers
+  Client -- "HTTP /api (Vite proxy in dev)" --> Mw[Auth middleware<br/>optional household password]
   subgraph Server["Backend (FastAPI)"]
-    Routers[routers/recipes, routers/weeks] --> Repo[repository.py<br/>planner.py]
+    Mw --> Routers[routers: recipes, weeks,<br/>shopping, backup, auth]
+    Routers --> Repo[repository.py<br/>planner.py]
     Routers --> Rules[domain.py, variety.py, suggest.py<br/>pure business rules]
     Repo --> Rules
     Repo --> Models[models.py SQLModel]
+    Mig[migrate.py + Alembic<br/>run on startup] --> DB
   end
   Models --> DB[(SQLite file)]
 ```
@@ -49,7 +67,7 @@ unit-tested without the web layer.
 
 ## Setup
 
-Requirements: `uv`, Node.js 20+ and npm, `make`.
+Requirements: `uv`, Node.js 22+ and npm, `make`.
 
 ```sh
 make install
@@ -86,11 +104,24 @@ Open http://localhost:5173 after `make dev`. Configuration of the backend is via
 
 | Event | What runs |
 | --- | --- |
-| Pull request, push to a branch other than `main`, manual run | `ci.yml`: `make check` on Python 3.12 and Node 22 with locked dependencies |
-| Push to `main`, a `vX.Y.Z` tag, manual run of the publish workflow | `docker-publish.yml`: `ci.yml` first, then (tags only) a check that the tag equals `v` + `VERSION`, a smoke test of the amd64 container (`/api/health` reports the version, `/` returns 200), then the multi-arch push to ghcr.io |
+| Pull request, push to a branch other than `main`, manual run | `ci.yml`: job `check` runs `make check` on Python 3.12 and Node 22 with locked dependencies; job `image` builds the amd64 image and runs `scripts/smoke-test.sh` on it |
+| Push to `main`, a `vX.Y.Z` tag, manual run of the publish workflow | `docker-publish.yml`: `ci.yml` first (both jobs), then (tags only) a check that the tag equals `v` + `VERSION`, then the multi-arch push to ghcr.io |
 
-The image is only published when the checks and the smoke test pass. Design:
+The smoke test starts the container with a throwaway volume and requires `/api/health`
+to report the version in `VERSION` and `/` to return 200. Run it locally against a built
+image with `scripts/smoke-test.sh <image> [port]` (set `CONTAINER_ENGINE=podman` to use
+podman). The image is only published when the checks and the smoke test pass. Design:
 [ADR-0021](docs/adr/0021-ci-before-publish.md).
+
+### Dependency updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly pull requests for GitHub Actions, npm,
+uv and the Docker base images. Minor and patch updates of npm and uv come grouped in one
+pull request each; every major update is its own pull request, so one breaking change does
+not block the rest. Because CI builds and smoke tests the image on pull requests, a base
+image bump that breaks the app fails before merging. Python base images stay below 3.14
+(the backend declares `requires-python = ">=3.12,<3.14"`) and Node major versions are
+bumped by hand, following the LTS line; patch and minor updates of both are still proposed.
 
 ## Deployment (Docker Compose)
 

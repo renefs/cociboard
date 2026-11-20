@@ -1,9 +1,13 @@
+# Weekly dependency updates. Minor and patch updates arrive grouped in one PR per ecosystem;
+# every major update is its own PR, so one breaking change never blocks the safe ones.
+# CI builds and smoke tests the image on each PR (ADR-0021).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
     groups:
       actions:
         patterns: ["*"]
@@ -12,19 +16,32 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
     groups:
-      npm:
+      npm-minor-patch:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: uv
     directory: /backend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
     groups:
-      python:
+      python-minor-patch:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # backend/pyproject.toml has requires-python = ">=3.12,<3.14"; raise this together
+      # with that bound.
+      - dependency-name: python
+        versions: [">=3.14"]
+      # Node majors are bumped by hand, following the LTS line.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]

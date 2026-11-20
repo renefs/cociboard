@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-11-20
+
+Safe dependency updates ([ADR-0021](docs/adr/0021-ci-before-publish.md), amendment).
+
+### Changed
+- `ci.yml` has a new `image` job that builds the amd64 image and smoke tests it on pull
+  requests and branch pushes, so Dockerfile and base image changes are tested before merge.
+  The smoke test is now `scripts/smoke-test.sh` (`CONTAINER_ENGINE=podman` supported), and
+  the publish workflow relies on the CI call instead of building the image twice.
+- Dependabot: npm and uv minor and patch updates are grouped, each major is its own pull
+  request; Python base images `>=3.14` and Node major updates are ignored.
+- README: architecture diagram covers the shopping, backup and auth features, the auth
+  middleware, migrations and the service worker; the ADR list is complete; Node 22+ is
+  stated as the requirement; new "Dependency updates" section.
+
 ## [0.18.0] - 2026-11-20
 
 CI that gates the image ([ADR-0021](docs/adr/0021-ci-before-publish.md)).
