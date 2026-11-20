@@ -33,8 +33,8 @@ Run from the repository root:
 | `make lint` | ruff check + ruff format --check, ESLint |
 | `make typecheck` | mypy --strict, `tsc --noEmit` |
 | `make test` | pytest, vitest run |
-| `make check-version` | Verify the version matches in every file that holds it |
-| `make check` | All of the above. **Must pass before any commit.** |
+| `make check-version` | Verify the version matches in every file that holds it (incl. both lock files and the README line) |
+| `make check` | All of the above. **Must pass before any commit.** CI (`.github/workflows/ci.yml`) runs it on every PR and branch push, and the image is only published after it and a container smoke test pass |
 
 Single tests: `cd backend && uv run pytest tests/test_weeks_api.py -k move` or
 `cd frontend && npx vitest run src/features/planner/dragLogic.test.ts`.
@@ -110,7 +110,8 @@ To fix formatting: `cd backend && uv run ruff format .`.
 - SemVer. The version is in `VERSION`, `backend/pyproject.toml`,
   `backend/src/cociboard/__init__.py`, `frontend/package.json`,
   `frontend/package-lock.json`, `backend/uv.lock` and the README's "Current version"
-  line. Bump all of them together, then run `make check-version`.
+  line. Bump all of them together, then run `make check-version` (it checks every one of
+  them, and a release tag must equal `v` + `VERSION` or the publish workflow fails).
 - macOS: `sed -i` needs an empty suffix argument (`sed -i '' ...`).
 - Each milestone or fix:
   1. bump the version (minor for features, patch for fixes);

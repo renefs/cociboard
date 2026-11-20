@@ -1,10 +1,12 @@
 # Cociboard
 
+[![CI](https://github.com/renefs/cociboard/actions/workflows/ci.yml/badge.svg)](https://github.com/renefs/cociboard/actions/workflows/ci.yml)
+
 A web app for planning varied weekly menus from a personal recipe list. A weekly grid
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.17.0** (richer recipes: steps, servings, source link and leftovers).
+Current version: **0.18.0** (CI runs `make check` and a container smoke test before the image is published).
 
 ## Stack
 
@@ -16,7 +18,7 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md), [ADR-0003](docs/adr/0003-rec
 [ADR-0005](docs/adr/0005-planner-interaction-design.md), [ADR-0006](docs/adr/0006-week-plan-data-model.md),
 [ADR-0007](docs/adr/0007-variety-rules-and-suggestions.md), [ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md),
 [ADR-0009](docs/adr/0009-internationalisation.md), [ADR-0010](docs/adr/0010-docker-deployment.md),
-[ADR-0011](docs/adr/0011-container-registry-image.md).
+[ADR-0011](docs/adr/0011-container-registry-image.md), [ADR-0021](docs/adr/0021-ci-before-publish.md).
 
 ## Architecture
 
@@ -67,7 +69,7 @@ uv fetches Python 3.12 automatically (see `backend/.python-version`).
 | `make test` | pytest and vitest |
 | `make lint` | ruff and ESLint |
 | `make typecheck` | mypy --strict and `tsc --noEmit` |
-| `make check-version` | Verify `VERSION`, `backend/pyproject.toml` and `frontend/package.json` agree |
+| `make check-version` | Verify every file that holds the version agrees with `VERSION` (pyproject, `__init__.py`, `package.json`, `package-lock.json`, `uv.lock`, this README) |
 | `make check` | All gates above |
 
 Open http://localhost:5173 after `make dev`. Configuration of the backend is via
@@ -79,6 +81,16 @@ Open http://localhost:5173 after `make dev`. Configuration of the backend is via
 | `COCIBOARD_SEED_ON_STARTUP` | `true` | Seed the recipe catalogue when the database is empty |
 | `COCIBOARD_CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed CORS origins (JSON list) |
 | `COCIBOARD_STATIC_DIR` | unset | Built frontend (`frontend/dist`) to serve at `/`; the Docker image sets it |
+
+## Continuous integration
+
+| Event | What runs |
+| --- | --- |
+| Pull request, push to a branch other than `main`, manual run | `ci.yml`: `make check` on Python 3.12 and Node 22 with locked dependencies |
+| Push to `main`, a `vX.Y.Z` tag, manual run of the publish workflow | `docker-publish.yml`: `ci.yml` first, then (tags only) a check that the tag equals `v` + `VERSION`, a smoke test of the amd64 container (`/api/health` reports the version, `/` returns 200), then the multi-arch push to ghcr.io |
+
+The image is only published when the checks and the smoke test pass. Design:
+[ADR-0021](docs/adr/0021-ci-before-publish.md).
 
 ## Deployment (Docker Compose)
 
@@ -508,7 +520,9 @@ Makefile
 Dockerfile              production image (frontend build + backend)
 docker-compose.yml      deployment; settings in .env (see .env.example)
 docker-compose.ghcr.yml deployment from the prebuilt image on ghcr.io
-.github/workflows/      docker-publish.yml: builds and pushes the image to ghcr.io
+.github/workflows/      ci.yml (make check), docker-publish.yml (check, smoke test, push to ghcr.io)
+.github/dependabot.yml  weekly grouped dependency updates
+scripts/check-version.sh  backs make check-version
 docker/entrypoint.sh    fixes /data ownership, drops to PUID:PGID
 backend/
   pyproject.toml
