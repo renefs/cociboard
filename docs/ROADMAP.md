@@ -121,8 +121,8 @@ CHANGELOG entry.
 
 
 ## Planned
-Later releases (v0.15.0–v0.26.x) are described in `CHANGELOG.md`. Next, in order:
-- Seed recipes with steps and servings.
+Later releases (v0.15.0–v0.27.x) are described in `CHANGELOG.md`. The second improvement
+list is complete; new items will be added here.
 
 - Planning and review: Opus.
 - Development: Sonnet (one subagent per milestone).
