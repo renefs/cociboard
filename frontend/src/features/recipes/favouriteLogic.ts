@@ -22,3 +22,16 @@ const FAVOURITE_KEY_INDEX = 5;
 export function isFavouritesKey(key: readonly unknown[]): boolean {
   return key[FAVOURITE_KEY_INDEX] === true;
 }
+
+/** A cached recipe list with the waiting favourite toggles applied in order. */
+export function applyFavouriteToggles(
+  list: readonly Recipe[],
+  waiting: readonly { recipe: { id: number }; favourite: boolean }[],
+  onlyFavourites: boolean,
+): Recipe[] {
+  if (waiting.length === 0) return list as Recipe[];
+  return waiting.reduce<readonly Recipe[]>(
+    (current, { recipe, favourite }) => withFavourite(current, recipe.id, favourite, onlyFavourites),
+    list,
+  ) as Recipe[];
+}

@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./i18n";
 import { AuthGate } from "./features/auth/AuthGate";
+import { registerMutationDefaults } from "./offline/defaults";
+import { startOfflineEdits } from "./offline/start";
 import { syncOnlineStatus } from "./pwa/online";
 import { UpdatePrompt } from "./pwa/UpdatePrompt";
 import "./styles/tokens.css";
@@ -21,7 +23,12 @@ import "./styles/print.css";
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false, networkMode: "offlineFirst" } },
 });
+// Mutations (plan, shopping, pantry, settings, favourites) pause offline and are kept on the
+// device so they survive closing the app (ADR-0029). The defaults must be registered before
+// anything is restored.
+registerMutationDefaults(queryClient);
 syncOnlineStatus();
+startOfflineEdits(queryClient);
 
 const container = document.getElementById("root");
 if (!container) {

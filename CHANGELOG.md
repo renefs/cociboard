@@ -5,6 +5,38 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-11-20
+
+Offline edits that survive closing the app ([ADR-0029](docs/adr/0029-persisted-offline-edits.md)).
+No schema or API change.
+
+### Added
+- **Waiting changes are stored on the device.** Plan changes, shopping ticks and extras, pantry
+  changes, household preferences and favourite toggles that are waiting for the connection are
+  kept in `localStorage` (`@tanstack/react-query-persist-client`). After closing, reloading or a
+  killed PWA the app shows them applied and the banner counts them; they are sent in the original
+  order per week/list as soon as the connection is there.
+- Stored changes older than 7 days, or written in another stored format, are discarded with a
+  dismissible notice saying how many. A restored change the server rejects is dropped with an
+  error notice. A `401` (expired password session) keeps the changes waiting until the next
+  sign-in, then sends them.
+- Only one tab restores and sends the stored changes (Web Locks); another takes over when it
+  closes.
+- Playwright: changes made offline survive a reload while offline and are sent in order when the
+  connection returns; the same when the app is closed and reopened online.
+
+### Changed
+- Waiting changes are no longer written into the query cache. The cache holds the server's data
+  and every read overlays the pending mutations on it with the pure `apply…` functions, so a
+  restored change looks exactly like one made a moment ago, and a failed change simply stops
+  being overlaid (no snapshot rollback). Plan requests are serialised by a TanStack mutation
+  `scope` per week instead of an in-memory chain.
+- Logging out and restoring a backup discard the waiting changes.
+
+### Fixed
+- Reloading the app while offline with a password set (or any time the auth status could not be
+  read) left it stuck on "Loading…", unmounting and remounting the app in a loop.
+
 ## [0.25.1] - 2026-11-20
 
 ### Fixed

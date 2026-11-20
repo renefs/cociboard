@@ -1,25 +1,28 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient, type MutationOptions, type QueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { assignSlot, clearSlot, getWeek, moveSlot, setSlotNote } from "../../api/client";
 import type { Recipe, SlotRef, SpecialMeal, WeekPlan } from "../../api/types";
+import i18n from "../../i18n";
+import { retryAfterSignIn } from "../../offline/authRetry";
+import { PLAN_CHANGE_KEY } from "../../offline/keys";
+import { pushNotice } from "../../offline/notices";
+import { pendingVariables, usePendingVariables } from "../../offline/pending";
+import { applyPlanChanges, type PlanChange, type PlanMutationVariables } from "./planChanges";
 import { describePlanError } from "./planErrors";
-import {
-  assignInPlan,
-  assignSpecialInPlan,
-  clearInPlan,
-  moveInPlan,
-  setNoteInPlan,
-} from "./planTransforms";
 import { mealAt } from "./slots";
 import { shiftWeek } from "./weekMath";
 
 export const weekKey = (weekStart: string) => ["week", weekStart] as const;
 
+/** The week as the user sees it: the server's plan with the waiting changes laid over it. */
 export function useWeekPlan(weekStart: string) {
+  const waiting = usePendingVariables<PlanMutationVariables>([PLAN_CHANGE_KEY, weekStart]);
+  const select = useCallback((plan: WeekPlan) => applyPlanChanges(plan, waiting), [waiting]);
   return useQuery({
     queryKey: weekKey(weekStart),
     queryFn: ({ signal }) => getWeek(weekStart, signal),
+    select,
   });
 }
 
@@ -34,7 +37,7 @@ export const VARIETY_LOOKAHEAD_WEEKS = 2;
 export function invalidateFollowingWeeks(queryClient: QueryClient, weekStart: string): void {
   for (let offset = 1; offset <= VARIETY_LOOKAHEAD_WEEKS; offset++) {
     const following = shiftWeek(weekStart, offset);
-    if (queryClient.isMutating({ mutationKey: ["week-change", following] }) > 0) continue;
+    if (queryClient.isMutating({ mutationKey: [PLAN_CHANGE_KEY, following] }) > 0) continue;
     void queryClient.invalidateQueries({ queryKey: weekKey(following) });
   }
 }
@@ -56,29 +59,7 @@ export function usePrefetchNeighbours(weekStart: string): void {
   }, [weekStart, queryClient]);
 }
 
-type Change =
-  | { type: "assign"; to: SlotRef; recipe: Recipe; note: string | null }
-  | { type: "special"; to: SlotRef; special: SpecialMeal; note: string | null }
-  | { type: "note"; at: SlotRef; note: string | null }
-  | { type: "clear"; from: SlotRef }
-  | { type: "move"; from: SlotRef; to: SlotRef };
-
-function applyChange(plan: WeekPlan, change: Change): WeekPlan {
-  switch (change.type) {
-    case "assign":
-      return assignInPlan(plan, change.to, change.recipe, change.note);
-    case "special":
-      return assignSpecialInPlan(plan, change.to, change.special, change.note);
-    case "note":
-      return setNoteInPlan(plan, change.at, change.note);
-    case "clear":
-      return clearInPlan(plan, change.from);
-    case "move":
-      return moveInPlan(plan, change.from, change.to);
-  }
-}
-
-function send(weekStart: string, change: Change): Promise<WeekPlan> {
+function send(weekStart: string, change: PlanChange): Promise<WeekPlan> {
   switch (change.type) {
     case "assign":
       return assignSlot(weekStart, change.to.day, change.to.slot, {
@@ -104,24 +85,44 @@ function send(weekStart: string, change: Change): Promise<WeekPlan> {
   }
 }
 
-/**
- * Tail of the request chain per week. Every plan request waits for the previous one of the
- * same week to settle (success or failure) so the server sees them in call order.
- */
-const requestChains = new Map<string, Promise<unknown>>();
+/** Plan requests of one week are sent one at a time, in call order, also after a restore. */
+export const planScope = (weekStart: string) => ({ id: `week-${weekStart}` });
 
-function sendInOrder(weekStart: string, change: Change): Promise<WeekPlan> {
-  const previous = requestChains.get(weekStart) ?? Promise.resolve();
-  const request = previous.then(() => send(weekStart, change));
-  const tail = request.then(
-    () => undefined,
-    () => undefined,
-  );
-  requestChains.set(weekStart, tail);
-  void tail.then(() => {
-    if (requestChains.get(weekStart) === tail) requestChains.delete(weekStart);
-  });
-  return request;
+/**
+ * What a plan change does, whether it was made in this page or restored from the device
+ * (registered as mutation defaults, see `registerMutationDefaults`). The variables hold
+ * everything the request needs. A success stores the server's plan as the base the waiting
+ * changes are overlaid on; the plan and what derives from it are refetched once the last
+ * change of the week settles.
+ */
+export function planMutationDefaults(
+  queryClient: QueryClient,
+): MutationOptions<WeekPlan, unknown, PlanMutationVariables> {
+  return {
+    mutationFn: ({ weekStart, change }) => retryAfterSignIn(() => send(weekStart, change)),
+    onSuccess: (plan, { weekStart }) => {
+      queryClient.setQueryData<WeekPlan>(weekKey(weekStart), plan);
+    },
+    onError: (error) => pushNotice(describePlanError(error, i18n.t)),
+    onSettled: (_plan, _error, { weekStart }) => {
+      if (queryClient.isMutating({ mutationKey: [PLAN_CHANGE_KEY, weekStart] }) <= 1) {
+        void queryClient.invalidateQueries({ queryKey: weekKey(weekStart) });
+        invalidateFollowingWeeks(queryClient, weekStart);
+        // The shopping list is derived from the plan.
+        void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
+        // Recipe history (last planned, times planned, the details list) is derived from the plan.
+        void queryClient.invalidateQueries({ queryKey: ["recipes"] });
+        void queryClient.invalidateQueries({ queryKey: ["recipe-history"] });
+      }
+    },
+  };
+}
+
+/** The plan as the user sees it: the server's plan plus the changes still waiting. */
+export function readWeek(queryClient: QueryClient, weekStart: string): WeekPlan | undefined {
+  const plan = queryClient.getQueryData<WeekPlan>(weekKey(weekStart));
+  if (!plan) return undefined;
+  return applyPlanChanges(plan, pendingVariables<PlanMutationVariables>(queryClient, [PLAN_CHANGE_KEY, weekStart]));
 }
 
 export interface PlanActions {
@@ -139,55 +140,32 @@ export interface PlanActions {
 }
 
 /**
- * Plan mutations with optimistic updates. The cache is updated immediately; on failure
- * it is rolled back to the snapshot taken before the change and `onError` receives a
- * user-facing message. The plan is refetched once the last in-flight change settles, so
- * overlapping responses never overwrite a newer optimistic state. Requests of one week are
- * sent one at a time in call order (see `sendInOrder`) while the cache updates immediately.
+ * Plan mutations. A change shows at once because `useWeekPlan` overlays the waiting changes
+ * on the server's plan; it is sent in order (one request at a time per week, `planScope`),
+ * waits for the connection and survives closing the app. A failure drops the overlay, so the
+ * plan falls back by itself, and `onError` receives a user-facing message.
  */
 export function usePlanActions(weekStart: string, onError: (message: string) => void): PlanActions {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const key = weekKey(weekStart);
-  const mutationKey = ["week-change", weekStart];
 
-  const mutation = useMutation<WeekPlan, unknown, Change, { previous: WeekPlan | undefined }>({
-    mutationKey,
-    mutationFn: (change) => sendInOrder(weekStart, change),
-    onMutate: async (change) => {
-      await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<WeekPlan>(key);
-      if (previous) queryClient.setQueryData<WeekPlan>(key, applyChange(previous, change));
-      return { previous };
-    },
-    onError: (error, _change, context) => {
-      if (context?.previous) queryClient.setQueryData(key, context.previous);
-      onError(describePlanError(error, t));
-    },
-    onSettled: () => {
-      if (queryClient.isMutating({ mutationKey }) <= 1) {
-        void queryClient.invalidateQueries({ queryKey: key });
-        invalidateFollowingWeeks(queryClient, weekStart);
-        // The shopping list is derived from the plan.
-        void queryClient.invalidateQueries({ queryKey: ["shopping", weekStart] });
-        // Recipe history (last planned, times planned, the details list) is derived from the plan.
-        void queryClient.invalidateQueries({ queryKey: ["recipes"] });
-        void queryClient.invalidateQueries({ queryKey: ["recipe-history"] });
-      }
-    },
+  const { mutate } = useMutation<WeekPlan, unknown, PlanMutationVariables>({
+    mutationKey: [PLAN_CHANGE_KEY, weekStart],
+    scope: planScope(weekStart),
+    onError: (error) => onError(describePlanError(error, t)),
   });
 
-  const { mutate } = mutation;
   const noteAt = (ref: SlotRef): string | null => {
-    const plan = queryClient.getQueryData<WeekPlan>(key);
+    const plan = readWeek(queryClient, weekStart);
     return (plan && mealAt(plan, ref)?.note) ?? null;
   };
+  const submit = (change: PlanChange) => mutate({ weekStart, change });
   return {
-    assign: (to, recipe) => mutate({ type: "assign", to, recipe, note: noteAt(to) }),
+    assign: (to, recipe) => submit({ type: "assign", to, recipe, note: noteAt(to) }),
     assignSpecial: (to, special, note) =>
-      mutate({ type: "special", to, special, note: note === undefined ? noteAt(to) : note }),
-    setNote: (at, note) => mutate({ type: "note", at, note }),
-    clear: (from) => mutate({ type: "clear", from }),
-    move: (from, to) => mutate({ type: "move", from, to }),
+      submit({ type: "special", to, special, note: note === undefined ? noteAt(to) : note }),
+    setNote: (at, note) => submit({ type: "note", at, note }),
+    clear: (from) => submit({ type: "clear", from }),
+    move: (from, to) => submit({ type: "move", from, to }),
   };
 }

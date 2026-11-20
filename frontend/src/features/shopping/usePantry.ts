@@ -1,9 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, type MutationOptions, type QueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { addToPantry, getPantry, removeFromPantry } from "../../api/client";
 import type { Pantry, PantryItem, ShoppingList } from "../../api/types";
+import i18n from "../../i18n";
+import { retryAfterSignIn } from "../../offline/authRetry";
+import { PANTRY_CHANGE_KEY } from "../../offline/keys";
+import { pushNotice } from "../../offline/notices";
+import { usePendingVariables } from "../../offline/pending";
+import { applyPantryChanges, type PantryChange } from "./shoppingChanges";
 import {
-  addPantryItem,
   confirmPantryItem,
   ingredientKey,
   isPendingPantryId,
@@ -14,10 +20,14 @@ import { shoppingRootKey } from "./useShoppingList";
 
 export const pantryKey = ["pantry"] as const;
 
+/** The pantry as the user sees it: the server's pantry with the waiting changes laid over it. */
 export function usePantry() {
+  const waiting = usePendingVariables<PantryChange>([PANTRY_CHANGE_KEY]);
+  const select = useCallback((pantry: Pantry) => applyPantryChanges(pantry, waiting), [waiting]);
   return useQuery({
     queryKey: pantryKey,
     queryFn: ({ signal }) => getPantry(signal),
+    select,
   });
 }
 
@@ -28,87 +38,69 @@ export interface PantryActions {
   remove: (key: string, id?: number) => void;
 }
 
-type Change = { type: "add"; name: string } | { type: "remove"; key: string; id?: number | undefined };
-
-interface Snapshot {
-  pantry: Pantry | undefined;
-  lists: [readonly unknown[], ShoppingList | undefined][];
-}
-
 /** Id of the staple with this key on the server, when the client does not know a real one. */
 async function serverId(key: string): Promise<number | undefined> {
   const pantry = await getPantry();
   return pantry.items.find((item) => item.key === key)?.id;
 }
 
-async function send(change: Change): Promise<PantryItem | null> {
+async function send(change: PantryChange): Promise<PantryItem | null> {
   if (change.type === "add") return addToPantry(change.name);
   const id = change.id !== undefined && !isPendingPantryId(change.id) ? change.id : await serverId(change.key);
   if (id !== undefined) await removeFromPantry(id);
   return null;
 }
 
-/**
- * Pantry mutations. They are optimistic across the pantry query and every cached shopping
- * list (the `in_pantry` flags), so an item moves between sections at once. Requests are sent
- * one at a time (scope `pantry`) and pause offline like the other mutations. A failure rolls
- * everything back and is reported through `onError`; the queries are refetched once the last
- * change settles.
- */
-export function usePantryActions(onError: (message: string) => void): PantryActions {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const mutationKey = ["pantry-change"];
+/** Pantry requests are sent one at a time, in order. */
+export const PANTRY_SCOPE = { id: "pantry" };
 
-  const { mutate } = useMutation<PantryItem | null, unknown, Change, Snapshot>({
-    mutationKey,
-    scope: { id: "pantry" },
-    mutationFn: send,
-    onMutate: async (change) => {
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: pantryKey }),
-        queryClient.cancelQueries({ queryKey: shoppingRootKey }),
-      ]);
-      const snapshot: Snapshot = {
-        pantry: queryClient.getQueryData<Pantry>(pantryKey),
-        lists: queryClient.getQueriesData<ShoppingList>({ queryKey: shoppingRootKey }),
-      };
+/**
+ * What a pantry change does, in this page or restored from the device (see
+ * `registerMutationDefaults`). A success applies the same change to the stored pantry and
+ * shopping lists, which are the base the waiting changes are overlaid on; the queries are
+ * refetched once the last change settles.
+ */
+export function pantryMutationDefaults(
+  queryClient: QueryClient,
+): MutationOptions<PantryItem | null, unknown, PantryChange> {
+  return {
+    mutationFn: (change) => retryAfterSignIn(() => send(change)),
+    onSuccess: (saved, change) => {
       const key = change.type === "add" ? ingredientKey(change.name) : change.key;
-      const inPantry = change.type === "add";
-      if (snapshot.pantry) {
-        queryClient.setQueryData<Pantry>(
-          pantryKey,
-          change.type === "add"
-            ? addPantryItem(snapshot.pantry, change.name)
-            : removePantryKey(snapshot.pantry, change.key),
-        );
-      }
-      for (const [listKey, list] of snapshot.lists) {
-        if (list) queryClient.setQueryData<ShoppingList>(listKey, setInPantry(list, key, inPantry));
-      }
-      return snapshot;
-    },
-    onSuccess: (saved) => {
-      // Swap the optimistic copy (temporary id) for the server's item, so it can be removed.
-      if (saved) {
-        queryClient.setQueryData<Pantry>(pantryKey, (pantry) =>
-          pantry ? confirmPantryItem(pantry, saved) : pantry,
-        );
+      queryClient.setQueryData<Pantry>(pantryKey, (pantry) => {
+        if (!pantry) return pantry;
+        if (change.type === "remove") return removePantryKey(pantry, change.key);
+        // The server's item (real id) takes the place of the name that was sent.
+        const confirmed = saved ? confirmPantryItem(pantry, saved) : pantry;
+        return { ...confirmed, suggestions: confirmed.suggestions.filter((suggestion) => suggestion.key !== key) };
+      });
+      for (const [listKey, list] of queryClient.getQueriesData<ShoppingList>({ queryKey: shoppingRootKey })) {
+        if (list) queryClient.setQueryData<ShoppingList>(listKey, setInPantry(list, key, change.type === "add"));
       }
     },
-    onError: (_error, _change, snapshot) => {
-      if (snapshot) {
-        queryClient.setQueryData(pantryKey, snapshot.pantry);
-        for (const [listKey, list] of snapshot.lists) queryClient.setQueryData(listKey, list);
-      }
-      onError(t("pantry.updateFailed"));
-    },
+    onError: () => pushNotice(i18n.t("pantry.updateFailed")),
     onSettled: () => {
-      if (queryClient.isMutating({ mutationKey }) <= 1) {
+      if (queryClient.isMutating({ mutationKey: [PANTRY_CHANGE_KEY] }) <= 1) {
         void queryClient.invalidateQueries({ queryKey: pantryKey });
         void queryClient.invalidateQueries({ queryKey: shoppingRootKey });
       }
     },
+  };
+}
+
+/**
+ * Pantry mutations. The pantry and every cached shopping list (the `in_pantry` flags) show a
+ * change at once because their hooks overlay the waiting ones, so an item moves between
+ * sections immediately. Requests are sent one at a time (scope `pantry`), wait for the
+ * connection and survive closing the app. A failure drops the overlay and is reported through
+ * `onError`.
+ */
+export function usePantryActions(onError: (message: string) => void): PantryActions {
+  const { t } = useTranslation();
+  const { mutate } = useMutation<PantryItem | null, unknown, PantryChange>({
+    mutationKey: [PANTRY_CHANGE_KEY],
+    scope: PANTRY_SCOPE,
+    onError: () => onError(t("pantry.updateFailed")),
   });
 
   return {

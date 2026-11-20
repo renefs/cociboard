@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider, onlineManager, useMutation } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { pushNotice, resetNotices } from "../offline/notices";
 import { OfflineBanner } from "./OfflineBanner";
 import { syncOnlineStatus } from "./online";
 
@@ -27,7 +28,10 @@ function renderBanner() {
 
 const setOnline = (online: boolean) => act(() => onlineManager.setOnline(online));
 
-beforeEach(() => onlineManager.setOnline(true));
+beforeEach(() => {
+  onlineManager.setOnline(true);
+  resetNotices();
+});
 afterEach(() => {
   onlineManager.setOnline(true);
   vi.useRealTimers();
@@ -89,6 +93,13 @@ describe("OfflineBanner", () => {
     renderBanner();
     setOnline(false);
     expect(screen.getByRole("status")).toHaveTextContent("Estás sin conexión");
+  });
+  it("shows a notice about a restored change until it is dismissed", () => {
+    renderBanner();
+    act(() => pushNotice("Couldn't save the change."));
+    expect(screen.getByRole("status")).toHaveTextContent("Couldn't save the change.");
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });
 

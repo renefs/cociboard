@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type MutationOptions, type QueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   createRecipe,
@@ -7,6 +7,10 @@ import {
   getRecipeUsage,
   updateRecipe,
 } from "../../api/client";
+import i18n from "../../i18n";
+import { retryAfterSignIn } from "../../offline/authRetry";
+import { FAVOURITE_CHANGE_KEY } from "../../offline/keys";
+import { pushNotice } from "../../offline/notices";
 import { isFavouritesKey, withFavourite } from "./favouriteLogic";
 import type { Recipe, RecipeCreate, RecipeUpdate } from "../../api/types";
 
@@ -81,6 +85,9 @@ export interface FavouriteInput {
   favourite: boolean;
 }
 
+/** Requests are sent one at a time, in order. */
+export const FAVOURITE_SCOPE = { id: "recipe-favourite" };
+
 function patchCachedRecipes(queryClient: QueryClient, id: number, favourite: boolean): void {
   for (const [key, list] of queryClient.getQueriesData<Recipe[]>({ queryKey: ["recipes"] })) {
     if (list) queryClient.setQueryData(key, withFavourite(list, id, favourite, isFavouritesKey(key)));
@@ -88,37 +95,40 @@ function patchCachedRecipes(queryClient: QueryClient, id: number, favourite: boo
 }
 
 /**
- * Starring a recipe. Every cached recipe list changes at once; requests are sent one at a
- * time (scope `recipe-favourite`) and pause offline like the other mutations. A failure puts
- * that one recipe back (not a snapshot, so a later toggle of another recipe survives) and is
- * reported through `onError`. Once the last toggle settles the lists are refetched, which also
- * brings a newly starred recipe into a favourites-only list.
+ * What starring a recipe does, in this page or restored from the device (see
+ * `registerMutationDefaults`). A success applies the flag to the stored recipe lists, which
+ * are the base the waiting toggles are overlaid on; once the last toggle settles the lists are
+ * refetched, which also brings a newly starred recipe into a favourites-only list.
  */
-export function useToggleFavourite(onError: (message: string, input: FavouriteInput) => void) {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const mutationKey = ["favourite-change"];
-
-  const { mutate } = useMutation<Recipe, unknown, FavouriteInput>({
-    mutationKey,
-    scope: { id: "recipe-favourite" },
-    mutationFn: ({ recipe, favourite }) => updateRecipe(recipe.id, { favourite }),
-    onMutate: async ({ recipe, favourite }) => {
-      await queryClient.cancelQueries({ queryKey: ["recipes"] });
-      patchCachedRecipes(queryClient, recipe.id, favourite);
-    },
-    onError: (_error, input) => {
-      const { recipe, favourite } = input;
-      patchCachedRecipes(queryClient, recipe.id, !favourite);
-      onError(t("recipes.favourite.failed", { name: recipe.name }), input);
-    },
+export function favouriteMutationDefaults(
+  queryClient: QueryClient,
+): MutationOptions<Recipe, unknown, FavouriteInput> {
+  return {
+    mutationFn: ({ recipe, favourite }) => retryAfterSignIn(() => updateRecipe(recipe.id, { favourite })),
+    onSuccess: (_saved, { recipe, favourite }) => patchCachedRecipes(queryClient, recipe.id, favourite),
+    onError: (_error, { recipe }) => pushNotice(i18n.t("recipes.favourite.failed", { name: recipe.name })),
     onSettled: () => {
-      if (queryClient.isMutating({ mutationKey }) <= 1) {
+      if (queryClient.isMutating({ mutationKey: [FAVOURITE_CHANGE_KEY] }) <= 1) {
         void queryClient.invalidateQueries({ queryKey: ["recipes"] });
         // The slot picker shows the star too.
         void queryClient.invalidateQueries({ queryKey: ["candidates"] });
       }
     },
+  };
+}
+
+/**
+ * Starring a recipe. Every recipe list shows the waiting toggles at once (`useRecipes`
+ * overlays them); requests are sent one at a time (scope `recipe-favourite`), wait for the
+ * connection and survive closing the app. A failure drops that toggle (the others stay) and
+ * is reported through `onError`.
+ */
+export function useToggleFavourite(onError: (message: string, input: FavouriteInput) => void) {
+  const { t } = useTranslation();
+  const { mutate } = useMutation<Recipe, unknown, FavouriteInput>({
+    mutationKey: [FAVOURITE_CHANGE_KEY],
+    scope: FAVOURITE_SCOPE,
+    onError: (_error, input) => onError(t("recipes.favourite.failed", { name: input.recipe.name }), input),
   });
 
   return (recipe: FavouriteInput["recipe"], favourite: boolean) => mutate({ recipe, favourite });

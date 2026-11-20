@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeRecipe } from "../../test/fixtures";
-import { isFavouritesKey, withFavourite } from "./favouriteLogic";
+import { applyFavouriteToggles, isFavouritesKey, withFavourite } from "./favouriteLogic";
 
 const a = makeRecipe({ id: 1, name: "A", favourite: true });
 const b = makeRecipe({ id: 2, name: "B" });
@@ -32,5 +32,26 @@ describe("isFavouritesKey", () => {
   it("reads the favourite flag of a recipes query key", () => {
     expect(isFavouritesKey(["recipes", null, "", [], false, true])).toBe(true);
     expect(isFavouritesKey(["recipes", null, "", [], false, false])).toBe(false);
+  });
+});
+
+describe("applyFavouriteToggles", () => {
+  const recipes = [makeRecipe({ id: 1 }), makeRecipe({ id: 2 })];
+
+  it("applies the waiting toggles in order", () => {
+    const shown = applyFavouriteToggles(
+      recipes,
+      [
+        { recipe: { id: 1 }, favourite: true },
+        { recipe: { id: 2 }, favourite: true },
+        { recipe: { id: 1 }, favourite: false },
+      ],
+      false,
+    );
+    expect(shown.map((recipe) => recipe.favourite)).toEqual([false, true]);
+  });
+
+  it("returns the list itself when nothing waits", () => {
+    expect(applyFavouriteToggles(recipes, [], false)).toBe(recipes);
   });
 });

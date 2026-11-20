@@ -8,7 +8,7 @@ import { householdKey } from "../settings/useHouseholdSettings";
 import type { HouseholdSettings } from "../../api/types";
 import { countFilled, planToFills } from "./planTransforms";
 import type { ToastAction } from "./Toast";
-import { invalidateFollowingWeeks, weekKey } from "./useWeekPlan";
+import { invalidateFollowingWeeks, readWeek, weekKey } from "./useWeekPlan";
 import { shiftWeek } from "./weekMath";
 
 const SLOTS_PER_WEEK = 14;
@@ -59,7 +59,8 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
   const run = useCallback(
     async (action: (week: string) => Promise<WeekPlan>, outcome: (before: WeekPlan, after: WeekPlan) => Outcome) => {
       const key = weekKey(weekStart);
-      const previous = queryClient.getQueryData<WeekPlan>(key);
+      // What the user sees, waiting changes included (that is what Undo restores).
+      const previous = readWeek(queryClient, weekStart);
       if (!previous || busy) return;
       setBusy(true);
       try {

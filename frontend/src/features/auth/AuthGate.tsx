@@ -21,7 +21,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [queryClient]);
 
-  if (status.isPending) {
+  // Only the very first read is "checking". A read that failed (offline) and is being retried
+  // by another observer, such as the app's own, must not unmount the app again: it did that
+  // in a loop while the device was offline.
+  if (status.isPending && status.errorUpdatedAt === 0) {
     return (
       <p className="auth-loading" role="status">
         {t("auth.checking")}

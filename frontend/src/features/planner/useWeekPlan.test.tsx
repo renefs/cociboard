@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,8 @@ import { makePlan, makeRecipe } from "../../test/fixtures";
 import i18n from "../../i18n";
 import { describePlanError } from "./planErrors";
 import { recipeAt } from "./slots";
-import { usePlanActions, weekKey } from "./useWeekPlan";
+import { readWeek, usePlanActions, weekKey } from "./useWeekPlan";
+import { makeTestQueryClient } from "../../test/utils";
 
 const WEEK = "2026-10-26";
 const soup = makeRecipe({ id: 1, name: "Soup", meal_type: "both" });
@@ -32,7 +33,7 @@ function deferred(): Deferred {
 }
 
 function setup() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = makeTestQueryClient();
   queryClient.setQueryData(weekKey(WEEK), makePlan());
   const onError = vi.fn();
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -66,7 +67,7 @@ describe("usePlanActions request ordering", () => {
 
     // The optimistic update of the second change is visible immediately.
     await waitFor(() =>
-      expect(recipeAt(queryClient.getQueryData<WeekPlan>(weekKey(WEEK))!, slotA)?.name).toBe("Stew"),
+      expect(recipeAt(readWeek(queryClient, WEEK)!, slotA)?.name).toBe("Stew"),
     );
     await waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
     expect(assign).toHaveBeenLastCalledWith(WEEK, 0, "lunch", { recipe_id: 1, note: null });
@@ -174,7 +175,7 @@ describe("usePlanActions notes and special meals", () => {
       actions.current.setNote(slotA, "From Sunday");
     });
     await waitFor(() => {
-      const day = queryClient.getQueryData<WeekPlan>(weekKey(WEEK))!.days[0]!;
+      const day = readWeek(queryClient, WEEK)!.days[0]!;
       expect(day.lunch_special).toBe("leftovers");
       expect(day.lunch_note).toBe("From Sunday");
     });

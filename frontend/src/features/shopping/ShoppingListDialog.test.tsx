@@ -6,6 +6,9 @@ import type { Pantry, ShoppingList } from "../../api/types";
 import { ingredientKey } from "./pantryLogic";
 import { renderWithQuery } from "../../test/utils";
 import { ShoppingListDialog } from "./ShoppingListDialog";
+import { PANTRY_CHANGE_KEY } from "../../offline/keys";
+import { pendingVariables } from "../../offline/pending";
+import { applyShoppingOverlay, type PantryChange } from "./shoppingChanges";
 
 vi.mock("../../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof client>()),
@@ -313,7 +316,7 @@ describe("ShoppingListDialog", () => {
       expect(screen.queryByText(/In the pantry \(/)).not.toBeInTheDocument();
     });
 
-    it("updates every cached week at once (optimistic) and refetches when settled", async () => {
+    it("shows a pantry change on every cached week at once (overlay) and refetches when settled", async () => {
       const user = userEvent.setup();
       const { queryClient } = renderDialog();
       const otherWeek = { ...makeList(), week_start: "2026-11-02" };
@@ -326,9 +329,16 @@ describe("ShoppingListDialog", () => {
           }),
       );
       await user.click(await screen.findByRole("button", { name: "Mark Aceite as always at home" }));
-      const cached = queryClient.getQueryData<ShoppingList>(["shopping", "2026-11-02"]);
-      expect(cached?.items.find((i) => i.key === "aceite")?.in_pantry).toBe(true);
+      const shown = applyShoppingOverlay(otherWeek, [], pendingVariables<PantryChange>(queryClient, [PANTRY_CHANGE_KEY]));
+      expect(shown.items.find((i) => i.key === "aceite")?.in_pantry).toBe(true);
       release();
+      // Once saved, the change is part of what the cache holds.
+      await waitFor(() =>
+        expect(
+          queryClient.getQueryData<ShoppingList>(["shopping", "2026-11-02"])?.items.find((i) => i.key === "aceite")
+            ?.in_pantry,
+        ).toBe(true),
+      );
       await waitFor(() => expect(client.getPantry).toHaveBeenCalledTimes(2));
     });
   });

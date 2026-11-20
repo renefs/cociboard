@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { downloadBackup, restoreBackup } from "../../api/client";
 import type { RestoreResult } from "../../api/types";
 import { useLocale } from "../../i18n/useLocale";
+import { discardWaitingEdits } from "../../offline/start";
 import { Modal } from "../planner/Modal";
 import { AutomaticCopies } from "./AutomaticCopies";
 import {
@@ -69,6 +70,8 @@ export function BackupDialog({ onClose, onNotify }: BackupDialogProps) {
   const restore = useMutation<RestoreResult, unknown, unknown>({
     mutationFn: (document) => restoreBackup(document),
     onSuccess: (result) => {
+      // Waiting changes refer to the data that was just replaced.
+      discardWaitingEdits(queryClient);
       // Every list, plan and shopping list may have changed.
       void queryClient.invalidateQueries();
       onNotify(

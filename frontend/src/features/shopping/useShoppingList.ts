@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, type MutationOptions, type QueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   addShoppingExtra,
@@ -9,23 +10,34 @@ import {
   updateShoppingExtra,
 } from "../../api/client";
 import type { ShoppingExtraUpdate, ShoppingList } from "../../api/types";
+import i18n from "../../i18n";
+import { retryAfterSignIn } from "../../offline/authRetry";
+import { PANTRY_CHANGE_KEY, SHOPPING_CHANGE_KEY } from "../../offline/keys";
+import { pushNotice } from "../../offline/notices";
+import { usePendingVariables } from "../../offline/pending";
 import {
-  appendExtra,
-  removeExtra,
-  renameExtra,
-  setExtraChecked,
-  setItemChecked,
-  uncheckAll,
-} from "./shoppingLogic";
+  applyShoppingOverlay,
+  type PantryChange,
+  type ShoppingChange,
+  type ShoppingMutationVariables,
+} from "./shoppingChanges";
 
 /** Prefix of every cached shopping list (one per week). */
 export const shoppingRootKey = ["shopping"] as const;
 export const shoppingKey = (weekStart: string) => ["shopping", weekStart] as const;
 
+/** The list as the user sees it: the server's list with the waiting changes (and pantry changes) laid over it. */
 export function useShoppingList(weekStart: string) {
+  const shopping = usePendingVariables<ShoppingMutationVariables>([SHOPPING_CHANGE_KEY, weekStart]);
+  const pantry = usePendingVariables<PantryChange>([PANTRY_CHANGE_KEY]);
+  const select = useCallback(
+    (list: ShoppingList) => applyShoppingOverlay(list, shopping, pantry),
+    [shopping, pantry],
+  );
   return useQuery({
     queryKey: shoppingKey(weekStart),
     queryFn: ({ signal }) => getShoppingList(weekStart, signal),
+    select,
   });
 }
 
@@ -38,32 +50,10 @@ export interface ShoppingActions {
   uncheckAll: () => void;
 }
 
-type Change =
-  | { type: "item"; key: string; checked: boolean }
-  | { type: "extra-check"; id: number; checked: boolean }
-  | { type: "add"; name: string }
-  | { type: "rename"; id: number; name: string }
-  | { type: "remove"; id: number }
-  | { type: "uncheck-all" };
+/** Changes of one week reach the server one at a time, in order (a check-then-uncheck must not arrive reversed). */
+export const shoppingScope = (weekStart: string) => ({ id: `shopping-${weekStart}` });
 
-function applyChange(list: ShoppingList, change: Change): ShoppingList {
-  switch (change.type) {
-    case "item":
-      return setItemChecked(list, change.key, change.checked);
-    case "extra-check":
-      return setExtraChecked(list, change.id, change.checked);
-    case "add":
-      return appendExtra(list, change.name);
-    case "rename":
-      return renameExtra(list, change.id, change.name);
-    case "remove":
-      return removeExtra(list, change.id);
-    case "uncheck-all":
-      return uncheckAll(list);
-  }
-}
-
-function send(weekStart: string, change: Change): Promise<ShoppingList> {
+function send(weekStart: string, change: ShoppingChange): Promise<ShoppingList> {
   switch (change.type) {
     case "item":
       return setShoppingCheck(weekStart, change.key, change.checked);
@@ -83,48 +73,51 @@ function send(weekStart: string, change: Change): Promise<ShoppingList> {
 }
 
 /**
- * Shopping list mutations with optimistic updates. A failed change is rolled back to the
- * snapshot taken before it and reported through `onError`; the list is refetched once the
- * last in-flight change settles, so the server stays the source of truth.
+ * What a shopping change does, in this page or restored from the device (see
+ * `registerMutationDefaults`). A success stores the server's list as the base the waiting
+ * changes are overlaid on; the list is refetched once the last change of the week settles.
+ */
+export function shoppingMutationDefaults(
+  queryClient: QueryClient,
+): MutationOptions<ShoppingList, unknown, ShoppingMutationVariables> {
+  return {
+    mutationFn: ({ weekStart, change }) => retryAfterSignIn(() => send(weekStart, change)),
+    onSuccess: (list, { weekStart }) => {
+      queryClient.setQueryData<ShoppingList>(shoppingKey(weekStart), list);
+    },
+    onError: () => pushNotice(i18n.t("shopping.updateFailed")),
+    onSettled: (_list, _error, { weekStart }) => {
+      if (queryClient.isMutating({ mutationKey: [SHOPPING_CHANGE_KEY, weekStart] }) <= 1) {
+        void queryClient.invalidateQueries({ queryKey: shoppingKey(weekStart) });
+      }
+    },
+  };
+}
+
+/**
+ * Shopping list mutations. A change shows at once (`useShoppingList` overlays the waiting
+ * changes on the server's list), is sent in order, waits for the connection and survives
+ * closing the app. A failure drops the overlay and is reported through `onError`.
  */
 export function useShoppingActions(
   weekStart: string,
   onError: (message: string) => void,
 ): ShoppingActions {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const key = shoppingKey(weekStart);
-  const mutationKey = ["shopping-change", weekStart];
 
-  const { mutate } = useMutation<ShoppingList, unknown, Change, { previous: ShoppingList | undefined }>({
-    mutationKey,
-    // Changes of one week reach the server one at a time, in order, like plan changes:
-    // a quick check-then-uncheck must not arrive reversed.
-    scope: { id: `shopping-${weekStart}` },
-    mutationFn: (change) => send(weekStart, change),
-    onMutate: async (change) => {
-      await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<ShoppingList>(key);
-      if (previous) queryClient.setQueryData<ShoppingList>(key, applyChange(previous, change));
-      return { previous };
-    },
-    onError: (_error, _change, context) => {
-      if (context?.previous) queryClient.setQueryData(key, context.previous);
-      onError(t("shopping.updateFailed"));
-    },
-    onSettled: () => {
-      if (queryClient.isMutating({ mutationKey }) <= 1) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
+  const { mutate } = useMutation<ShoppingList, unknown, ShoppingMutationVariables>({
+    mutationKey: [SHOPPING_CHANGE_KEY, weekStart],
+    scope: shoppingScope(weekStart),
+    onError: () => onError(t("shopping.updateFailed")),
   });
+  const submit = (change: ShoppingChange) => mutate({ weekStart, change });
 
   return {
-    toggleItem: (itemKey, checked) => mutate({ type: "item", key: itemKey, checked }),
-    toggleExtra: (id, checked) => mutate({ type: "extra-check", id, checked }),
-    addExtra: (name) => mutate({ type: "add", name }),
-    renameExtra: (id, name) => mutate({ type: "rename", id, name }),
-    removeExtra: (id) => mutate({ type: "remove", id }),
-    uncheckAll: () => mutate({ type: "uncheck-all" }),
+    toggleItem: (itemKey, checked) => submit({ type: "item", key: itemKey, checked }),
+    toggleExtra: (id, checked) => submit({ type: "extra-check", id, checked }),
+    addExtra: (name) => submit({ type: "add", name }),
+    renameExtra: (id, name) => submit({ type: "rename", id, name }),
+    removeExtra: (id) => submit({ type: "remove", id }),
+    uncheckAll: () => submit({ type: "uncheck-all" }),
   };
 }
