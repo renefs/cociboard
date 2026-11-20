@@ -176,5 +176,5 @@ def test_seed_treats_archived_recipes_as_existing(session: Session) -> None:
     seed_recipes(session)
     first = repository.list_recipes(session)[0]
     repository.update_recipe(session, first.id or 0, RecipeUpdate(archived=True))
-    assert seed_recipes(session) == 0
+    assert seed_recipes(session).inserted == 0
     assert repository.count_recipes(session) == len(SEED_RECIPES)

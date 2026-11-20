@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-11-20
+
+Seed recipes with steps and servings. No schema or API change.
+
+### Added
+- **All 33 seed recipes now have servings and 4 to 8 cooking steps** (Spain Spanish, imperative
+  mood, with heat levels and times that match the prep time). A new database gets them on first
+  start. Two recipes got an ingredient their steps already needed (olive oil in
+  "Albóndigas en salsa con arroz" and "Quesadillas de verduras").
+- **`make seed` fills in existing seed recipes.** A recipe whose name matches a seed recipe
+  (case-insensitive) and that has no steps and no servings gets the seed steps and servings;
+  a recipe with any steps or any servings is never touched. Archived ones are filled too. The
+  command prints both counts: `Seeded N new recipe(s), filled steps for M existing recipe(s)
+  (33 in catalogue).`
+
+### Changed
+- `seed_recipes` returns a `SeedResult` (inserted, filled) instead of a number. Startup is
+  unchanged: it only seeds an empty database and never fills existing recipes.
+- Ruff ignores the line-length rule in `seed.py`, so each Spanish step stays on one line.
+
+### Upgrading
+- Existing installations keep their recipes as they are. To add the steps and servings to the
+  seed recipes you already have, run `make seed` (source checkout) or
+  `docker compose exec --user 1000:1000 cociboard python -m cociboard.seed` (Docker; use your
+  `PUID:PGID`). See "Starter recipes" in the README.
+
 ## [0.26.0] - 2026-11-20
 
 Offline edits that survive closing the app ([ADR-0029](docs/adr/0029-persisted-offline-edits.md)).

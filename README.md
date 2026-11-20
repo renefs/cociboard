@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.26.0** (offline edits that survive closing the app).
+Current version: **0.27.0** (seed recipes with steps and servings).
 
 ## Stack
 
@@ -86,7 +86,7 @@ uv fetches Python 3.12 automatically (see `backend/.python-version`).
 | --- | --- |
 | `make install` | Install backend and frontend dependencies |
 | `make dev` | Run backend (`:8000`, uvicorn `--reload`) and frontend (`:5173`, Vite) together; Vite proxies `/api` to the backend (override the target with `COCIBOARD_API_URL`). Ctrl+C stops both |
-| `make seed` | Add any missing seed recipes to the database (idempotent) |
+| `make seed` | Add any missing seed recipes to the database and fill in steps and servings of seed recipes that have none (idempotent; see [Starter recipes](#starter-recipes)) |
 | `make migrate` | Apply pending schema migrations to `COCIBOARD_DATABASE_URL` (the app also does this on start) |
 | `make migration m="message"` | Generate a migration after changing `models.py` (review the file before committing) |
 | `make test` | pytest and vitest |
@@ -530,6 +530,36 @@ never changes the score: it is a hint, not a fault.
   will disappear from your weeks (past ones included) and recommends **Archive instead**.
 - If you change a recipe's meal type and it is planned in slots that no longer fit, the form
   lists them and offers **Remove them and save**.
+
+### Starter recipes
+
+An empty database starts with 33 Spanish and Mediterranean recipes (Spain Spanish, like all
+recipe content), each with servings, ingredients and 4 to 8 numbered steps. They are only added
+on startup when there are no recipes at all (`COCIBOARD_SEED_ON_STARTUP`).
+
+**Upgrading from before v0.27.0:** the starter recipes you already have were created without
+steps and servings, and upgrading does not change them on its own. To fill them in, run the
+seed command once:
+
+```sh
+make seed                                                      # from a source checkout
+docker compose exec --user 1000:1000 cociboard python -m cociboard.seed   # Docker, see below
+```
+
+It prints, for example, `Seeded 0 new recipe(s), filled steps for 33 existing recipe(s) (33 in
+catalogue).` The command also adds any starter recipe that is missing. It is safe to repeat:
+
+- A recipe is matched by name, ignoring upper and lower case. Only one that has **no steps and
+  no servings** is filled in; if you have added any step or any servings to a recipe, it is left
+  exactly as it is. Nothing else about an existing recipe changes (name, ingredients, meal type,
+  favourites, plans).
+- Archived starter recipes are filled in too.
+- A starter recipe you deleted is added again, as before.
+
+In Docker the command runs inside the running container (the service is called `cociboard` in
+both compose files; with a plain `docker run`, use `docker exec --user 1000:1000 <container>
+python -m cociboard.seed`). Use your `PUID:PGID` from `.env` for `--user` (default `1000:1000`),
+so that the database files keep the owner the server runs as.
 
 ### Importing a recipe from a link
 
