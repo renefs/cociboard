@@ -1,7 +1,9 @@
-# Runs `make check` (version consistency, lint, type checks, tests) and builds the amd64
-# image and smoke tests it (scripts/smoke-test.sh). Used on its own for pull requests and
-# branch pushes, and called by docker-publish.yml before an image is published (ADR-0021). main and tags are not listed under `push` because the publish
-# workflow already runs this one for them.
+# Runs `make check` (version consistency, lint, type checks, tests), the Playwright
+# end-to-end suite (ADR-0028) and builds the amd64 image and smoke tests it
+# (scripts/smoke-test.sh). Used on its own for pull requests and branch pushes, and called by
+# docker-publish.yml before an image is published (ADR-0021): the E2E job is part of that
+# gate. main and tags are not listed under `push` because the publish workflow already runs
+# this one for them.
 name: CI
 
 on:
@@ -54,6 +56,81 @@ jobs:
 
       - name: make check
         run: make check
+
+  # End-to-end tests (ADR-0028): the built frontend served by the real backend, driven by
+  # Playwright in Chromium at a desktop and a phone size. It is part of the gate for publishing
+  # (docker-publish.yml calls this whole workflow). The browser is cached by the Playwright
+  # version in package-lock.json; its system libraries are not part of the cache, so they are
+  # installed on every run.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: UTC
+      LANG: C.UTF-8
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.7"
+          python-version-file: backend/.python-version
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: uv sync --locked
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+        working-directory: frontend
+
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+        working-directory: frontend
+
+      - name: Cache the Playwright browser
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium and its system libraries
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Install the system libraries of Chromium
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+        working-directory: frontend
+
+      - name: Build the frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Playwright tests
+        run: npx playwright test
+        working-directory: frontend
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
 
   # Builds the production image and starts it, so a change that breaks the Dockerfile or the
   # running app (a base image bump, say) fails on the pull request. The gha cache is shared

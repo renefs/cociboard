@@ -14,6 +14,11 @@ export default tseslint.config(
     rules: { ...reactHooks.configs.recommended.rules },
   },
   {
+    // Playwright fixtures take a callback named `use`, which the hooks rule mistakes for React's.
+    files: ["e2e/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
+  },
+  {
     files: ["src/sw/sw.ts"],
     languageOptions: { globals: { ...globals.serviceworker } },
   },

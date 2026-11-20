@@ -236,8 +236,18 @@
   font-weight: 700;
 }
 
+/* Drawn by CSS so the glyph is not text: the button's accessible name has to contain all of
+   its visible text (WCAG 2.5.3), and a chevron is not part of it. */
 .variety-chevron {
   flex-shrink: 0;
+}
+
+.variety-chevron::before {
+  content: "▾";
+}
+
+.variety-badge[aria-expanded="true"] .variety-chevron::before {
+  content: "▴";
 }
 
 .variety-panel {

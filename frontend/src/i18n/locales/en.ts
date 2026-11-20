@@ -80,9 +80,14 @@ const en = {
     slotHint: { lunch: "Not for lunch", dinner: "Not for dinner" },
     varietyWarning: "Variety warning: {{messages}}",
     slotRecipe: "{{name}}, {{where}}. Enter for actions, Space to pick up and move.",
-    slotRecipeArchived:
-      "{{name}} (archived recipe), {{where}}. Enter for actions, Space to pick up and move.",
+    // The accessible name of a slot starts with the text shown in it, in the same order (name,
+    // "Archived" mark, note), so the note variants put the note before the position (WCAG 2.5.3).
+    slotRecipeArchived: "{{name}}, archived, {{where}}. Enter for actions, Space to pick up and move.",
     slotSpecial: "{{name}}, {{where}}. Enter for actions, Space to pick up and move.",
+    slotRecipeNote: "{{name}}, {{note}}, {{where}}. Enter for actions, Space to pick up and move.",
+    slotRecipeArchivedNote:
+      "{{name}}, archived, {{note}}, {{where}}. Enter for actions, Space to pick up and move.",
+    slotSpecialNote: "{{name}}, {{note}}, {{where}}. Enter for actions, Space to pick up and move.",
     slotNote: "Note: {{note}}.",
     archivedMark: "Archived",
     specialsLabel: "Or plan something else",
@@ -503,7 +508,8 @@ const en = {
     heading: "Variety",
     notEnoughData: "Not enough data",
     notEnoughDataYet: "Variety: not enough data yet",
-    scoreLabel: "Variety score {{score}} out of 100. {{summary}}",
+    // Starts with the visible text ("90", "Variety", the summary), as WCAG 2.5.3 asks.
+    scoreLabel: "{{score}} {{title}}: {{summary}} (score out of 100)",
     noIssues: "No issues",
     warnings_one: "{{count}} warning",
     warnings_other: "{{count}} warnings",

@@ -5,6 +5,35 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-11-20
+
+End-to-end tests with Playwright ([ADR-0028](docs/adr/0028-end-to-end-tests.md)). No schema or
+API change.
+
+### Added
+- A **Playwright suite** (`frontend/e2e/`, `frontend/playwright.config.ts`) that drives the real
+  app in Chromium: the built frontend served by the real backend on a real SQLite file, at a
+  desktop (1440×900) and a phone (375×812, touch) size. `make e2e` builds the frontend and runs
+  it; `npx playwright install chromium` is needed once. It covers planning (Add, a real mouse
+  drag, moving and clearing, the variety indicator), keyboard planning with the announcements,
+  Suggest and Copy last week, the phone tab bar, slot picker and Today view (no horizontal
+  scroll), recipes (create, search, edit, favourite, archive, restore, history), the shopping
+  list and pantry, household preferences, Spanish, the password sign-in, axe accessibility scans
+  and an offline edit with the production service worker.
+- A CI job `e2e` in `ci.yml` (Playwright browser cached by version, report and traces uploaded
+  when it fails). `docker-publish.yml` calls the whole workflow, so the image is only published
+  when the E2E tests pass too.
+- `typecheck` and ESLint cover the E2E code (`tsconfig.e2e.json`); Vitest ignores it.
+
+### Fixed
+- Accessibility (WCAG 2.5.3, Label in Name, found by axe): the accessible name of the variety
+  badge and of a planned slot now contains the text shown in them, in the same order. The
+  badge reads "90 Variety: No issues (score out of 100)" instead of "Variety score 90 out of
+  100. No issues"; a slot with a note reads "Paella, double batch, Monday lunch." with the
+  note after the name (and after "archived" for an archived recipe) instead of at the end. The
+  badge chevron is drawn by CSS so it is not part of the button's text.
+- The drag chip's drop animation now respects `prefers-reduced-motion` (it is skipped).
+
 ## [0.24.0] - 2026-11-20
 
 Favourites and history ([ADR-0027](docs/adr/0027-favourites-and-history.md)). Schema change

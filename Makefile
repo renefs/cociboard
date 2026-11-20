@@ -1,4 +1,4 @@
-.PHONY: install dev seed migrate migration test lint typecheck check-version check
+.PHONY: install dev seed migrate migration test lint typecheck e2e check-version check
 
 VERSION := $(shell cat VERSION)
 
@@ -37,6 +37,12 @@ lint:
 typecheck:
 	cd backend && uv run mypy src tests
 	cd frontend && npm run typecheck
+
+# End-to-end tests (ADR-0028): builds the frontend, then Playwright starts the backend on
+# :8766 (and :8767 with a password) with throwaway databases and drives Chromium. Needs the
+# browser once: `cd frontend && npx playwright install chromium`. Not part of `make check`.
+e2e:
+	cd frontend && npm run build && npx playwright test
 
 # Every file that holds the version must equal VERSION (see AGENTS.md).
 check-version:

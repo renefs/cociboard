@@ -33,12 +33,17 @@ Run from the repository root:
 | `make lint` | ruff check + ruff format --check, ESLint |
 | `make typecheck` | mypy --strict, `tsc --noEmit` |
 | `make test` | pytest, vitest run |
+| `make e2e` | Build the frontend and run the Playwright end-to-end suite (Chromium, desktop and phone sizes) against the real backend. Needs `cd frontend && npx playwright install chromium` once. Not part of `make check`, but required in CI |
 | `make check-version` | Verify the version matches in every file that holds it (incl. both lock files and the README line) |
-| `make check` | All of the above. **Must pass before any commit.** CI (`.github/workflows/ci.yml`) runs it on every PR and branch push, and the image is only published after it and a container smoke test pass |
+| `make check` | All of the above except `make e2e`. **Must pass before any commit.** CI (`.github/workflows/ci.yml`) runs it on every PR and branch push, together with the E2E job, and the image is only published after they and a container smoke test pass |
 
 Single tests: `cd backend && uv run pytest tests/test_weeks_api.py -k move` or
 `cd frontend && npx vitest run src/features/planner/dragLogic.test.ts`.
 To fix formatting: `cd backend && uv run ruff format .`.
+A single E2E spec or test: `cd frontend && npx playwright test e2e/recipes.spec.ts --project=desktop`
+or `npx playwright test -g "Suggest"` (rebuild first with `npm run build` when the app changed;
+the config never builds). E2E ports: 8766 and 8767, override with `COCIBOARD_E2E_PORT` and
+`COCIBOARD_E2E_AUTH_PORT`.
 
 ## Layout
 - `backend/src/cociboard/`
@@ -105,6 +110,13 @@ To fix formatting: `cd backend && uv run ruff format .`.
   frontend pure logic plus component behaviour in Vitest with React Testing Library.
 - jsdom can't simulate dnd-kit pointer drags reliably, so test drag behaviour through
   the pure `resolveDrop` / `handleDragEnd` functions.
+- End-to-end specs live in `frontend/e2e/` (Playwright, ADR-0028). Use role and label locators
+  (`getByRole`, `getByLabel`), never CSS selectors or coordinates; run the UI in English unless
+  the spec is about Spanish. Every test starts from the known data set in `e2e/data.ts`,
+  restored through the app's own backup endpoint (`fixtures.ts`), so tests must not depend on
+  each other. Run `make e2e` after any change to a UI flow (planning, recipes, shopping,
+  settings, sign-in, accessibility). It is required in CI and gates the published image. A new
+  dialog or view should get an axe scan in `accessibility.spec.ts`.
 
 ## Versions, change log and commits
 - SemVer. The version is in `VERSION`, `backend/pyproject.toml`,
