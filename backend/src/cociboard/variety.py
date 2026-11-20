@@ -3,24 +3,27 @@
 The input is the ordered list of the week's 14 meals (Monday lunch, Monday dinner,
 Tuesday lunch, ...), with ``None`` for empty slots.
 
-Rules (thresholds are the module constants below):
+Rules (thresholds are the :class:`VarietyTargets`, the household's preferences; the
+defaults are the module constants below):
 
 * ``repeated_recipe``: a recipe used more than once. ``warning``, or ``info`` when the
   recipe is tagged ``batch_cooking`` (leftovers are fine).
 * ``consecutive_protein``: the same main protein in consecutive meals (lunch -> dinner and
   dinner -> next day's lunch). One ``warning`` per run. Protein ``none`` is ignored, and so
   are consecutive servings of the same recipe (already reported as a repeat).
-* ``protein_overload``: one protein in more than ``MAX_MEALS_PER_PROTEIN`` meals. ``warning``.
-* ``few_vegetarian``: fewer than ``MIN_VEGETARIAN_MEALS`` vegetable-forward meals once at
+* ``protein_overload``: one protein in more than ``max_meals_per_protein`` meals. ``warning``.
+* ``few_vegetarian``: fewer than ``min_vegetarian_meals`` vegetable-forward meals once at
   least ``VEGETARIAN_CHECK_FROM`` slots are filled. ``info``. A meal is vegetable-forward
   when it is tagged vegetarian or vegan, or has main protein ``none``.
-* ``little_fish``: fewer than ``MIN_FISH_MEALS`` fish or seafood meals once at least
+* ``little_fish``: fewer than ``min_fish_meals`` fish or seafood meals once at least
   ``FISH_CHECK_FROM`` slots are filled. ``info``.
 * ``previous_week_protein``: Monday lunch has the same main protein (not ``none``) as the
   previous week's Sunday dinner, and is not the same recipe. ``warning``; only available
   when a :class:`WeekContext` is given.
 * ``recent_repeat``: a recipe of this week was also planned 1 or 2 weeks ago (one issue per
   recipe, batch cooking skipped). ``info`` and **score-neutral**: a hint, not a fault.
+
+A minimum of 0 (``few_vegetarian``, ``little_fish``) switches that check off.
 
 Every issue carries an English ``message`` and the ``params`` it was built from, so clients
 can render their own language:
@@ -73,6 +76,18 @@ MAX_PROTEIN_BONUS = 10
 
 FISH_PROTEINS = frozenset({Protein.fish, Protein.seafood})
 _DAY_ABBREVIATIONS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+@dataclass(frozen=True)
+class VarietyTargets:
+    """The adjustable thresholds of the analysis; a minimum of 0 turns that check off."""
+
+    max_meals_per_protein: int = MAX_MEALS_PER_PROTEIN
+    min_vegetarian_meals: int = MIN_VEGETARIAN_MEALS
+    min_fish_meals: int = MIN_FISH_MEALS
+
+
+DEFAULT_TARGETS = VarietyTargets()
 
 
 @dataclass(frozen=True)
@@ -268,10 +283,13 @@ def protein_counts(meals: Week) -> dict[Protein, int]:
     return {protein: counted[protein] for protein in Protein if counted[protein] > 0}
 
 
-def _overload(meals: Week, counts: dict[Protein, int]) -> list[VarietyIssue]:
+def _overload(
+    meals: Week, counts: dict[Protein, int], targets: VarietyTargets
+) -> list[VarietyIssue]:
+    limit = targets.max_meals_per_protein
     issues = []
     for protein, count in counts.items():
-        if protein is Protein.none or count <= MAX_MEALS_PER_PROTEIN:
+        if protein is Protein.none or count <= limit:
             continue
         slots = [
             slot_position(i)
@@ -283,50 +301,51 @@ def _overload(meals: Week, counts: dict[Protein, int]) -> list[VarietyIssue]:
                 kind=IssueKind.protein_overload,
                 severity=IssueSeverity.warning,
                 message=(
-                    f"{_label(protein)} is the main protein in {count} meals "
-                    f"(more than {MAX_MEALS_PER_PROTEIN})."
+                    f"{_label(protein)} is the main protein in {count} meals (more than {limit})."
                 ),
                 slots=slots,
                 params={
                     "protein": protein.value,
                     "count": count,
-                    "max": MAX_MEALS_PER_PROTEIN,
+                    "max": limit,
                 },
             )
         )
     return issues
 
 
-def _coverage(meals: Week, filled: int, counts: dict[Protein, int]) -> list[VarietyIssue]:
+def _coverage(
+    meals: Week, filled: int, counts: dict[Protein, int], targets: VarietyTargets
+) -> list[VarietyIssue]:
     issues = []
     if filled >= VEGETARIAN_CHECK_FROM:
         veggie = sum(1 for m in meals if m is not None and m.is_vegetable_forward)
-        if veggie < MIN_VEGETARIAN_MEALS:
+        if veggie < targets.min_vegetarian_meals:
             issues.append(
                 VarietyIssue(
                     kind=IssueKind.few_vegetarian,
                     severity=IssueSeverity.info,
                     message=(
                         f"Only {_plural(veggie, 'vegetable-forward or vegetarian meal')} "
-                        f"so far. Aim for at least {MIN_VEGETARIAN_MEALS}."
+                        f"so far. Aim for at least {targets.min_vegetarian_meals}."
                     ),
                     slots=[],
-                    params={"count": veggie, "min": MIN_VEGETARIAN_MEALS},
+                    params={"count": veggie, "min": targets.min_vegetarian_meals},
                 )
             )
     if filled >= FISH_CHECK_FROM:
         fish = sum(counts.get(p, 0) for p in FISH_PROTEINS)
-        if fish < MIN_FISH_MEALS:
+        if fish < targets.min_fish_meals:
             issues.append(
                 VarietyIssue(
                     kind=IssueKind.little_fish,
                     severity=IssueSeverity.info,
                     message=(
                         f"Only {_plural(fish, 'fish or seafood meal')} so far. "
-                        f"Aim for at least {MIN_FISH_MEALS}."
+                        f"Aim for at least {targets.min_fish_meals}."
                     ),
                     slots=[],
-                    params={"count": fish, "min": MIN_FISH_MEALS},
+                    params={"count": fish, "min": targets.min_fish_meals},
                 )
             )
     return issues
@@ -347,10 +366,15 @@ def _first_slot(issue: VarietyIssue) -> int:
     return min((slot_index(s.day, s.slot) for s in issue.slots), default=SLOTS_PER_WEEK)
 
 
-def analyze_week(meals: Week, context: WeekContext = EMPTY_CONTEXT) -> VarietyReport:
+def analyze_week(
+    meals: Week,
+    context: WeekContext = EMPTY_CONTEXT,
+    targets: VarietyTargets = DEFAULT_TARGETS,
+) -> VarietyReport:
     """Analyse a week of exactly 14 meals (``None`` for empty slots).
 
     ``context`` carries the previous weeks; without it only this week is looked at.
+    ``targets`` are the household's thresholds.
     """
     if len(meals) != SLOTS_PER_WEEK:
         raise ValueError(f"expected {SLOTS_PER_WEEK} meals, got {len(meals)}")
@@ -359,8 +383,8 @@ def analyze_week(meals: Week, context: WeekContext = EMPTY_CONTEXT) -> VarietyRe
     issues = [
         *_repeated(meals),
         *_consecutive(meals),
-        *_overload(meals, counts),
-        *_coverage(meals, filled, counts),
+        *_overload(meals, counts, targets),
+        *_coverage(meals, filled, counts, targets),
         *_previous_week_protein(meals, context),
         *_recent_repeats(meals, context),
     ]

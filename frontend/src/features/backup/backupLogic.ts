@@ -106,6 +106,7 @@ const SERVER_CODES = [
   "duplicate_shopping_check",
   "invalid_pantry_item",
   "duplicate_pantry_item",
+  "invalid_settings",
 ] as const;
 
 function backupDetail(error: ApiError): BackupErrorDetail | null {

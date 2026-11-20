@@ -89,6 +89,7 @@ class CandidateReason(StrEnum):
     already_planned = "already_planned"
     already_planned_batch = "already_planned_batch"
     planned_recently = "planned_recently"
+    outside_preferences = "outside_preferences"
 
 
 class IssueSeverity(StrEnum):

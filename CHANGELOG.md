@@ -5,6 +5,43 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-11-20
+
+Household preferences ([ADR-0026](docs/adr/0026-household-preferences.md)). Schema change
+(migration `0007_household_settings`) and backup format version 5.
+
+### Added
+- **Household preferences** dialog, opened with the new ⚙️ button in the header:
+  - **Diet** (vegetarian, vegan, gluten-free, dairy-free): Suggest only proposes recipes
+    tagged with all of them.
+  - **Avoid** (any recipe property): Suggest skips recipes with any of them. A property can't
+    be both.
+  - Preferences never block a choice by hand: the slot picker lists the recipes they leave
+    out at the end, marked "Outside your household preferences" and never as a good pick.
+  - **Variety targets**: the most meals with one main protein (1-14) and the fewest
+    vegetable-forward and fish or seafood meals (0-14; 0 switches that tip off). The variety
+    tips and the score follow them.
+  - **Meal times** for lunch and dinner, used by the calendar export.
+- `GET` / `PUT /api/settings/household` (a single settings row; the defaults apply until the
+  first save). Errors are `422 { detail: { code } }`: `invalid_time`, `not_dietary`,
+  `required_and_avoided`.
+- Backup format version 5 includes the household settings; backups of versions 1 to 4 restore
+  with the defaults.
+- Suggest says when household preferences left slots empty.
+- The calendar export (.ics) starts events at the saved meal times; an event that crosses
+  midnight (such as a 23:30 dinner) ends on the next day.
+
+### Changed
+- `variety.analyze_week`, `week_score`, `candidates_for_slot` and `suggest_fills` take the
+  variety targets and preferences; the defaults equal the previous constants.
+- Dependency updates merged from Dependabot since 0.22.1: React 19 (`react`, `react-dom` and
+  their types), i18next 27 and react-i18next, and jsdom 31.
+
+### Fixed
+- Screen readers no longer announce every change to a recipe card (such as the "this week"
+  badge): the recipe list and the slot picker's list were `aria-live` regions. Only the number
+  of results is announced, through a separate status message.
+
 ## [0.22.1] - 2026-11-20
 
 ### Fixed

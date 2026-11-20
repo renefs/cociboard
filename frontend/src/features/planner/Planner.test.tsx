@@ -16,6 +16,7 @@ vi.mock("../../api/client", async (importOriginal) => {
     getWeek: vi.fn(),
     getCandidates: vi.fn(),
     suggestWeek: vi.fn(),
+    getHouseholdSettings: vi.fn(),
     copyWeek: vi.fn(),
     clearWeek: vi.fn(),
     replaceWeek: vi.fn(),
@@ -57,6 +58,7 @@ beforeEach(() => {
   candidateOrder = (slot) =>
     [lentils, tortilla, salad].filter((r) => fitsSlot(r.meal_type, slot)).map((r) => candidate(r));
   vi.mocked(client.listRecipes).mockResolvedValue([lentils, tortilla, salad]);
+  vi.mocked(client.getHouseholdSettings).mockRejectedValue(new Error("no settings in this test"));
   vi.mocked(client.getWeek).mockImplementation(() => Promise.resolve(serverPlan));
   vi.mocked(client.getCandidates).mockImplementation((_week, _day, slot) =>
     Promise.resolve(candidateOrder(slot)),
@@ -288,6 +290,30 @@ describe("Planner week navigation", () => {
 });
 
 describe("Planner suggest, clear and undo", () => {
+  it("says when preferences left slots empty, and says nothing extra without preferences", async () => {
+    const user = userEvent.setup();
+    serverPlan = makePlan(WEEK, { "0:lunch": lentils });
+    const filled = makePlan(WEEK, { "0:lunch": lentils, "1:dinner": tortilla });
+    vi.mocked(client.suggestWeek).mockResolvedValue(filled);
+    vi.mocked(client.getHouseholdSettings).mockResolvedValue({
+      required_properties: ["vegan"],
+      avoided_properties: [],
+      max_meals_per_protein: 4,
+      min_vegetarian_meals: 2,
+      min_fish_meals: 2,
+      lunch_time: "14:00",
+      dinner_time: "21:00",
+    });
+    await renderPlanner();
+    await waitFor(() => expect(client.getHouseholdSettings).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await user.click(screen.getByRole("button", { name: "Suggest" }));
+    expect(await findToast()).toHaveTextContent(
+      "Filled 1 slot. Some slots stayed empty: no recipe matches your household preferences.",
+    );
+  });
+
   it("fills empty slots, reports how many, and Undo restores the previous plan", async () => {
     const user = userEvent.setup();
     serverPlan = makePlan(WEEK, { "0:lunch": lentils });
@@ -513,6 +539,22 @@ describe("Planner picker ordering", () => {
     // searching keeps the order of what remains
     await user.type(within(dialog).getByRole("searchbox"), "a");
     expect(within(dialog).getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Ensalada mixta");
+  });
+
+  it("marks recipes outside the household preferences and announces only the count", async () => {
+    const user = userEvent.setup();
+    candidateOrder = () => [
+      candidate(salad, { score_delta: 4, good_pick: true }),
+      candidate(tortilla, { score_delta: 0, reason_code: "outside_preferences" }),
+    ];
+    await renderPlanner();
+    await user.click(screen.getByRole("button", { name: "Add lunch on Monday" }));
+    const dialog = await screen.findByRole("dialog");
+    const outside = await within(dialog).findByRole("article", { name: "Tortilla de patatas" });
+    expect(within(outside).getByText("Outside your household preferences")).toBeInTheDocument();
+    expect(within(outside).queryByText("Good pick")).not.toBeInTheDocument();
+    expect(within(dialog).getByTestId("picker-results-count")).toHaveTextContent("2 recipes");
+    expect(dialog.querySelector(".picker-list")).not.toHaveAttribute("aria-live");
   });
 });
 

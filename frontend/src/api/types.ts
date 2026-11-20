@@ -260,6 +260,7 @@ export const CANDIDATE_REASONS = [
   "already_planned",
   "already_planned_batch",
   "planned_recently",
+  "outside_preferences",
 ] as const;
 export type CandidateReason = (typeof CANDIDATE_REASONS)[number];
 
@@ -346,11 +347,32 @@ export interface Pantry {
   suggestions: PantrySuggestion[];
 }
 
+/** The properties that can be required as a diet; any property can be avoided. */
+export const DIETARY_PROPERTIES = ["vegetarian", "vegan", "gluten_free", "dairy_free"] as const satisfies readonly RecipeProperty[];
+export type DietaryProperty = (typeof DIETARY_PROPERTIES)[number];
+
+/** Household preferences (`/api/settings/household`); times are 24-hour `HH:MM`. */
+export interface HouseholdSettings {
+  /** Suggestions only propose recipes tagged with all of these (dietary subset). */
+  required_properties: RecipeProperty[];
+  /** Suggestions skip recipes carrying any of these. Never overlaps `required_properties`. */
+  avoided_properties: RecipeProperty[];
+  /** 1-14: more meals with one main protein than this is flagged. */
+  max_meals_per_protein: number;
+  /** 0-14: fewer vegetable-forward meals than this is flagged; 0 turns the check off. */
+  min_vegetarian_meals: number;
+  /** 0-14: fewer fish or seafood meals than this is flagged; 0 turns the check off. */
+  min_fish_meals: number;
+  /** Start of lunch / dinner events in the calendar export. */
+  lunch_time: string;
+  dinner_time: string;
+}
+
 /** Backup file written by `GET /api/backup` and read by `POST /api/backup/restore`. */
 export const BACKUP_FORMAT = "cociboard-backup";
-/** Version written by the server; versions 1 to 3 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link, v3 no pantry). */
-export const BACKUP_FORMAT_VERSION = 4;
-export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3, 4];
+/** Version written by the server; versions 1 to 4 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link, v3 no pantry, v4 no household settings, which then reset to the defaults). */
+export const BACKUP_FORMAT_VERSION = 5;
+export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3, 4, 5];
 
 /** Response of `POST /api/backup/restore`. */
 export interface RestoreResult {

@@ -20,7 +20,7 @@ from cociboard.autobackup import AutoBackupService, BackupState
 from cociboard.config import Settings, get_settings
 from cociboard.db import get_engine, init_db
 from cociboard.recipe_import.fetch import ImportLimiter
-from cociboard.routers import auth, backup, pantry, recipes, shopping, weeks
+from cociboard.routers import auth, backup, pantry, recipes, settings, shopping, weeks
 from cociboard.schemas import HealthResponse
 from cociboard.seed import seed_if_empty
 
@@ -36,6 +36,7 @@ router.include_router(recipes.router)
 router.include_router(weeks.router)
 router.include_router(shopping.router)
 router.include_router(pantry.router)
+router.include_router(settings.router)
 router.include_router(backup.router)
 
 

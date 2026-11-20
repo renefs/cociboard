@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session, col, delete, select
 
-from cociboard import __version__
+from cociboard import __version__, household_repo
 from cociboard.backup import (
     BACKUP_FORMAT,
     SUPPORTED_FORMAT_VERSION,
@@ -18,7 +18,14 @@ from cociboard.backup import (
 )
 from cociboard.dbfiles import RESTORE_LABEL, backup_sqlite, engine_of
 from cociboard.domain import MealSlot, MealType, Protein, RecipeProperty, SpecialMeal
-from cociboard.models import MealAssignment, PantryItem, Recipe, ShoppingCheck, ShoppingExtra
+from cociboard.models import (
+    HouseholdSettingsRow,
+    MealAssignment,
+    PantryItem,
+    Recipe,
+    ShoppingCheck,
+    ShoppingExtra,
+)
 from cociboard.shopping import ingredient_key
 
 
@@ -79,6 +86,7 @@ def export_backup(session: Session) -> BackupDocument:
             for e in extras
         ],
         pantry=[BackupPantryItem(name=p.name) for p in pantry],
+        settings=household_repo.get_settings(session),
     )
 
 
@@ -92,8 +100,16 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
     backup_sqlite(engine_of(session), RESTORE_LABEL)
     try:
         # Foreign keys are enforced: children first when deleting, parents first when inserting.
-        for table in (MealAssignment, ShoppingCheck, ShoppingExtra, PantryItem, Recipe):
+        for table in (
+            MealAssignment,
+            ShoppingCheck,
+            ShoppingExtra,
+            PantryItem,
+            HouseholdSettingsRow,
+            Recipe,
+        ):
             session.exec(delete(table))
+        session.expunge_all()  # a cached settings row would be stale
         new_ids: dict[int, int] = {}
         for item in doc.recipes:
             recipe = Recipe(
@@ -141,6 +157,8 @@ def restore_backup(session: Session, doc: BackupDocument) -> RestoreResult:
             session.add(
                 PantryItem(key=ingredient_key(staple.name), name=" ".join(staple.name.split()))
             )
+        if doc.settings is not None:  # older documents leave the defaults
+            household_repo.apply_settings(session, doc.settings)
         session.commit()
     except BaseException:
         session.rollback()

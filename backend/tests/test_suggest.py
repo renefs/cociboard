@@ -6,8 +6,13 @@ from sqlmodel import Session
 
 from cociboard.domain import MealSlot, MealType, Protein, fits_slot
 from cociboard.seed import seed_if_empty
-from cociboard.suggest import candidates_for_slot, suggest_fills, week_score
-from cociboard.variety import MealInfo, analyze_week, slot_position
+from cociboard.suggest import (
+    allowed_by_preferences,
+    candidates_for_slot,
+    suggest_fills,
+    week_score,
+)
+from cociboard.variety import MealInfo, VarietyTargets, analyze_week, slot_position
 
 MONDAY = "2026-10-26"
 
@@ -276,3 +281,111 @@ def test_every_reason_code_and_params() -> None:
     stew = info(31, Protein.legumes, MealType.both, "batch_cooking", name="Stew")
     batch = reasons([stew] + [None] * 13, 4, [stew])
     assert batch["Stew"][0] is R.already_planned_batch
+
+
+def test_allowed_by_preferences_uses_the_tags_as_they_are() -> None:
+    vegan = info(1, Protein.none, MealType.both, "vegan")
+    both = info(2, Protein.none, MealType.both, "vegetarian", "gluten_free", "spicy")
+    assert allowed_by_preferences(vegan, frozenset(), frozenset())
+    assert not allowed_by_preferences(vegan, frozenset({"vegetarian"}), frozenset())  # no inference
+    assert allowed_by_preferences(both, frozenset({"vegetarian", "gluten_free"}), frozenset())
+    assert not allowed_by_preferences(both, frozenset({"vegetarian", "dairy_free"}), frozenset())
+    assert not allowed_by_preferences(both, frozenset(), frozenset({"spicy"}))
+    assert allowed_by_preferences(both, frozenset({"vegetarian"}), frozenset({"vegan"}))
+
+
+def preference_catalogue() -> list[MealInfo]:
+    return [
+        info(1, Protein.none, MealType.both, "vegetarian", name="Veggie"),
+        info(2, Protein.none, MealType.both, "vegetarian", "spicy", name="Spicy veggie"),
+        info(3, Protein.meat, MealType.both, name="Steak"),
+    ]
+
+
+def test_suggest_fills_only_proposes_allowed_recipes() -> None:
+    meals: list[MealInfo | None] = [None] * 14
+    required = frozenset({"vegetarian"})
+    avoided = frozenset({"spicy"})
+    chosen = suggest_fills(
+        meals,
+        preference_catalogue(),
+        random.Random(1),
+        required=required,
+        avoided=avoided,
+    )
+    assert len(chosen) == 14
+    assert {m.name for m in chosen.values()} == {"Veggie"}  # repeats are unavoidable
+
+
+def test_slot_stays_empty_when_no_allowed_recipe_fits() -> None:
+    meals: list[MealInfo | None] = [None] * 14
+    chosen = suggest_fills(
+        meals, preference_catalogue(), random.Random(1), required=frozenset({"vegan"})
+    )
+    assert chosen == {}
+
+
+def test_candidates_outside_preferences_come_last_and_are_never_good_picks() -> None:
+    meals: list[MealInfo | None] = [None] * 14
+    everyone = candidates_for_slot(meals, 0, preference_catalogue())
+    assert {c.meal.name for c in everyone} == {"Veggie", "Spicy veggie", "Steak"}
+    assert all(c.reason_code.value != "outside_preferences" for c in everyone)
+    ranked = candidates_for_slot(
+        meals,
+        0,
+        preference_catalogue(),
+        required=frozenset({"vegetarian"}),
+        avoided=frozenset({"spicy"}),
+    )
+    assert ranked[0].meal.name == "Veggie"
+    assert ranked[0].reason_code.value != "outside_preferences"
+    outside = ranked[1:]
+    assert {c.meal.name for c in outside} == {"Spicy veggie", "Steak"}
+    assert all(c.reason_code.value == "outside_preferences" for c in outside)
+    assert not any(c.good_pick for c in outside)
+    none_allowed = candidates_for_slot(
+        meals, 0, preference_catalogue(), required=frozenset({"vegan"})
+    )
+    assert len(none_allowed) == 3
+    assert not any(c.good_pick for c in none_allowed)
+
+
+def test_targets_change_the_scoring_of_suggestions() -> None:
+    meals = [info(n + 1, Protein.meat) if n in (0, 2, 4, 6) else None for n in range(14)]
+    strict = VarietyTargets(max_meals_per_protein=4)
+    loose = VarietyTargets(max_meals_per_protein=6)
+    plan = [*meals[:8], info(99, Protein.meat), *meals[9:]]
+    assert week_score(plan, targets=strict) < week_score(plan, targets=loose)
+
+
+def test_zero_minimum_removes_the_positive_reason() -> None:
+    meals: list[MealInfo | None] = [None] * 14
+    fish = [info(1, Protein.fish, name="Fish")]
+    default = candidates_for_slot(meals, 0, fish)
+    assert default[0].reason_code.value == "adds_fish"
+    off = candidates_for_slot(meals, 0, fish, targets=VarietyTargets(min_fish_meals=0))
+    assert off[0].reason_code.value != "adds_fish"
+
+
+def test_manual_assignment_ignores_preferences(client: TestClient) -> None:
+    spicy = client.post(
+        "/api/recipes",
+        json={
+            "name": "Fiery",
+            "meal_type": "both",
+            "protein": "meat",
+            "ingredients": ["chili"],
+            "properties": ["spicy"],
+        },
+    ).json()["id"]
+    saved = client.put("/api/settings/household", json={"avoided_properties": ["spicy"]})
+    assert saved.status_code == 200
+    manual = client.put(f"/api/weeks/{MONDAY}/days/0/lunch", json={"recipe_id": spicy})
+    assert manual.status_code == 200
+    candidates = client.get(f"/api/weeks/{MONDAY}/days/1/lunch/candidates").json()
+    fiery = [c for c in candidates if c["recipe"]["name"] == "Fiery"]
+    assert fiery and fiery[0]["reason_code"] == "outside_preferences"
+    assert not fiery[0]["good_pick"]
+    suggested = client.post(f"/api/weeks/{MONDAY}/suggest").json()
+    assert suggested["days"][0]["lunch"]["name"] == "Fiery"
+    assert suggested["days"][1]["lunch"] is None  # nothing allowed: stays empty

@@ -6,12 +6,12 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.22.1** (Dependabot grouping).
+Current version: **0.23.0** (household preferences).
 
 ## Stack
 
 - Backend: Python 3.12, FastAPI, SQLModel + SQLite, pydantic-settings, managed with [uv](https://docs.astral.sh/uv/)
-- Frontend: React 18, TypeScript (strict), Vite, TanStack Query, react-i18next, plain CSS with design tokens
+- Frontend: React 19, TypeScript (strict), Vite, TanStack Query, react-i18next, plain CSS with design tokens
 - Quality: ruff, mypy (strict), pytest; ESLint, `tsc --noEmit`, Vitest + Testing Library
 
 Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
@@ -31,7 +31,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0018](docs/adr/0018-optional-household-password.md), [ADR-0019](docs/adr/0019-pwa-offline.md),
 [ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md),
 [ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md),
-[ADR-0023](docs/adr/0023-pantry-staples.md).
+[ADR-0023](docs/adr/0023-pantry-staples.md),
+[ADR-0026](docs/adr/0026-household-preferences.md).
 
 ## Architecture
 
@@ -52,7 +53,7 @@ flowchart LR
   end
   Client -- "HTTP /api (Vite proxy in dev)" --> Mw[Auth middleware<br/>optional household password]
   subgraph Server["Backend (FastAPI)"]
-    Mw --> Routers[routers: recipes, weeks,<br/>shopping, pantry, backup, auth]
+    Mw --> Routers[routers: recipes, weeks,<br/>shopping, pantry, settings,<br/>backup, auth]
     Routers --> Repo[repository.py<br/>planner.py]
     Routers --> Rules[domain.py, variety.py, suggest.py<br/>pure business rules]
     Repo --> Rules
@@ -367,7 +368,7 @@ list ignore them ([ADR-0016](docs/adr/0016-special-slots-and-notes.md)).
 | `GET /api/weeks/{week_start}/variety` | Variety report of the week |
 | `POST /api/weeks/{week_start}/suggest` | Fill the empty slots with varied, compatible recipes; optional body `{ "seed": n }` makes the result repeatable. Filled slots are never changed |
 | `POST /api/weeks/{week_start}/copy` | Copy the meals (special meals and notes included) of `{ "from_week_start": "YYYY-MM-DD" }` into the **empty** slots of the week (never overwrites; meals with archived recipes are skipped). Answers `{ plan, copied, skipped_archived, source_meals }`. `422` when either date is not a Monday or both are the same week, `409` on a concurrent change |
-| `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` (English), `reason_code` (including `planned_recently`), `reason_params` (`protein` or `weeks_ago`) and `good_pick` |
+| `GET /api/weeks/{week_start}/days/{day}/{slot}/candidates` | Recipes that fit the slot, best for variety first, each with `score_delta`, `reason` (English), `reason_code` (including `planned_recently` and `outside_preferences`, for recipes the household preferences leave out, listed last), `reason_params` (`protein` or `weeks_ago`) and `good_pick` |
 | `POST /api/weeks/{week_start}/move` | Move `{ from_day, from_slot, to_day, to_slot }`; swaps if the target is occupied, moving the whole entry (recipe or special meal, with its note); recipes must fit their new slot, special meals fit anywhere (`404` empty source, `422` incompatible) |
 
 Deleting a recipe removes it from all weeks.
@@ -403,13 +404,27 @@ Behind the login when a password is set.
 | `POST /api/pantry` | Add `{ "name": "..." }` (1-80 chars after trimming). `201` with the item; when the folded key already exists, `200` with the existing item (idempotent, never `409`). `422` for an invalid name |
 | `DELETE /api/pantry/{id}` | Remove a staple (`204`, `404` if missing) |
 
+### Household settings
+
+Household preferences, one record for the whole household ([ADR-0026](docs/adr/0026-household-preferences.md)).
+Behind the login when a password is set. Until the first save the defaults apply (nothing is stored).
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/settings/household` | `{ required_properties, avoided_properties, max_meals_per_protein, min_vegetarian_meals, min_fish_meals, lunch_time, dinner_time }`. `required_properties` is a list of dietary properties (`vegetarian`, `vegan`, `gluten_free`, `dairy_free`); `avoided_properties` any recipe properties; `max_meals_per_protein` 1-14 (default 4); `min_vegetarian_meals` and `min_fish_meals` 0-14 (default 2; 0 turns that tip off); `lunch_time` and `dinner_time` are 24-hour `HH:MM` (default `14:00` and `21:00`) |
+| `PUT /api/settings/household` | Replace the settings with the full object; answers the stored object (lists are de-duplicated and sorted). `422` with `detail: { code }` for `invalid_time`, `not_dietary` (a required property outside the dietary four) or `required_and_avoided`; ordinary `422` validation errors for values out of range |
+
+The targets change the variety report (`params.max` / `params.min`, the score and the tips). The required
+and avoided properties only narrow what **Suggest** and the **candidates** list propose; assigning a
+recipe by hand (`PUT /api/weeks/{week_start}/days/{day}/{slot}`) is never blocked by them.
+
 ### Backup
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 4): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras, and the pantry (`pantry: [{ name }]`). Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
+| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 5): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras, the pantry (`pantry: [{ name }]`) and the household settings (`settings`, same shape as above). Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
 | `GET /api/backup/status` | State of the automatic database copies: `{ enabled, interval_hours, kept, last_backup_at, copies, last_error, custom_dir }`. `last_backup_at` is `null` until the first copy; `last_error` is `null` or `{ at, code }` with `code` one of `disk_full`, `permission_denied`, `unknown`. Behind the login when a password is set. No host paths are exposed ([ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md)) |
-| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras, pantry }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1 to 4 are accepted; a file without a `pantry` list restores an empty pantry), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
+| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras, pantry }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1 to 5 are accepted; a file without a `pantry` list restores an empty pantry, and one without `settings` resets the household settings to the defaults), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
 
@@ -545,12 +560,35 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
   week, black on white, through the browser's print dialog, so "Save as PDF" works too),
   **Share the menu** (the system share sheet; **Copy the menu** where there is none, and a box
   with the text to select when the clipboard is not available, as on plain-http LAN access) and
-  **Add to calendar (.ics)** (one event per planned meal, lunch 14:00 and dinner 21:00 in your
-  own time zone; importing a later file updates the events instead of duplicating them). The
+  **Add to calendar (.ics)** (one event per planned meal, lunch and dinner at the times set in
+  [Household preferences](#household-preferences), 14:00 and 21:00 by default, in your own time zone; importing a later file updates the events instead of duplicating them). The
   items are disabled while the week has no meals ([ADR-0025](docs/adr/0025-print-and-share.md)).
 - **Keyboard:** Tab to a recipe's drag handle or an assigned recipe, Space to pick it up,
   arrow keys to jump between slots, Space to drop, Esc to cancel. Enter on an assigned
   recipe opens its actions; Enter on an empty slot opens the picker.
+
+### Household preferences
+
+The ⚙️ button in the header opens **Household preferences** (a bottom sheet on phones).
+
+- **Diet**: vegetarian, vegan, gluten-free and dairy-free. Suggestions (the **Suggest** button
+  and the recipe picker's "best for variety" order) only propose recipes tagged with all the
+  ones you tick.
+- **Avoid**: any recipe property (for example spicy). Suggestions skip recipes carrying any of
+  them. A property ticked in Diet can't also be avoided. Recipes are matched on their tags as
+  they are: a recipe tagged only *vegan* does not count as *vegetarian*.
+- Preferences never block you: any recipe can still be put in a slot by hand. The slot picker
+  lists the recipes your preferences leave out at the end, marked "Outside your household
+  preferences" and never as a good pick; the recipe panel (drag, or **Add**) offers them as
+  always. When preferences leave slots empty, **Suggest** says so.
+- **Variety targets**: the most meals with the same main protein (1-14), and the fewest
+  vegetable-forward and fish or seafood meals (0-14; **0 switches that tip off**). The variety
+  tips, their wording and the score follow these numbers.
+- **Meal times**: when lunch and dinner start in the exported calendar file.
+
+Saving applies at once and also while offline (it waits for the connection like other edits).
+The number of people is not a setting: ingredients have no quantities
+([ADR-0026](docs/adr/0026-household-preferences.md)).
 
 ## Shopping list
 
@@ -590,9 +628,10 @@ Ingredients you always have at home. The pantry is shared by all weeks.
 
 The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
 
-- **Download backup** saves one JSON file (format version 4) with all recipes (archived ones
-  too), weekly plans (special meals and notes included), shopping lists and the pantry. Files
-  written by earlier versions (format versions 1 to 3; they have no pantry) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
+- **Download backup** saves one JSON file (format version 5) with all recipes (archived ones
+  too), weekly plans (special meals and notes included), shopping lists, the pantry and the
+  household preferences. Files
+  written by earlier versions (format versions 1 to 4; those before 4 have no pantry, and those before 5 no household preferences, which then go back to the defaults) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
   installation.
 - **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
   shopping items, export date) and asks for confirmation. Restoring **replaces everything**
@@ -682,6 +721,7 @@ backend/
                         repository, planner (week plans), variety (analysis), suggest (auto-fill, candidates),
                         shopping (ingredient grouping), shopping_repo (ticks and extras),
                         pantry (staple suggestions), pantry_repo (pantry),
+                        household (preference rules), household_repo (settings),
                         backup (backup format and validation), backup_repo (export, restore),
                         dbfiles (SQLite file copies and rotation), autobackup (automatic copies),
                         integrity (startup check),
@@ -696,6 +736,7 @@ frontend/
   src/features/share/ share menu, print views, share-or-copy, .ics export, pure text builders
   src/features/variety/ variety summary and presentation helpers
   src/features/shopping/ shopping list (dialog and inline view), pantry panel, hooks with optimistic updates, pure logic
+  src/features/settings/ household preferences dialog, header button, hook with optimistic save, pure form logic
   src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS

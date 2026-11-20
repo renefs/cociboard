@@ -6,6 +6,13 @@ from sqlalchemy import JSON, CheckConstraint, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from cociboard.domain import NOTE_MAX_LENGTH, MealSlot, MealType, Protein
+from cociboard.household import (
+    DEFAULT_DINNER_TIME,
+    DEFAULT_LUNCH_TIME,
+    DEFAULT_MAX_MEALS_PER_PROTEIN,
+    DEFAULT_MIN_FISH_MEALS,
+    DEFAULT_MIN_VEGETARIAN_MEALS,
+)
 
 
 def _utcnow() -> datetime:
@@ -84,3 +91,27 @@ class PantryItem(SQLModel, table=True):
     key: str = Field(max_length=200, unique=True, index=True)
     name: str = Field(max_length=80)
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class HouseholdSettingsRow(SQLModel, table=True):
+    """The household preferences: one row, ``id`` always 1 (ADR-0026).
+
+    The row is created by the first save; until then the defaults apply. The property lists
+    hold ``RecipeProperty`` values as JSON.
+    """
+
+    __tablename__ = "household_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_household_settings_single_row"),)
+
+    id: int = Field(default=1, primary_key=True)
+    required_properties: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    avoided_properties: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    max_meals_per_protein: int = DEFAULT_MAX_MEALS_PER_PROTEIN
+    min_vegetarian_meals: int = DEFAULT_MIN_VEGETARIAN_MEALS
+    min_fish_meals: int = DEFAULT_MIN_FISH_MEALS
+    lunch_time: str = Field(default=DEFAULT_LUNCH_TIME, max_length=5)
+    dinner_time: str = Field(default=DEFAULT_DINNER_TIME, max_length=5)

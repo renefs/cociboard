@@ -29,6 +29,13 @@ from cociboard.domain import (
     clean_source_url,
     clean_steps,
 )
+from cociboard.household import (
+    DEFAULT_DINNER_TIME,
+    DEFAULT_LUNCH_TIME,
+    DEFAULT_MAX_MEALS_PER_PROTEIN,
+    DEFAULT_MIN_FISH_MEALS,
+    DEFAULT_MIN_VEGETARIAN_MEALS,
+)
 from cociboard.recipe_import.parse import ImportWarningCode
 
 
@@ -493,6 +500,22 @@ class PantryRead(BaseModel):
 
     items: list[PantryItemRead]
     suggestions: list[PantrySuggestionRead]
+
+
+class HouseholdSettings(BaseModel):
+    """Household preferences, as read and as written (``/api/settings/household``).
+
+    Cross-field and time checks live in ``household.validate_household`` and answer with
+    a ``{"detail": {"code": ...}}`` 422.
+    """
+
+    required_properties: list[RecipeProperty] = []
+    avoided_properties: list[RecipeProperty] = []
+    max_meals_per_protein: Annotated[int, Field(ge=1, le=14)] = DEFAULT_MAX_MEALS_PER_PROTEIN
+    min_vegetarian_meals: Annotated[int, Field(ge=0, le=14)] = DEFAULT_MIN_VEGETARIAN_MEALS
+    min_fish_meals: Annotated[int, Field(ge=0, le=14)] = DEFAULT_MIN_FISH_MEALS
+    lunch_time: Annotated[str, Field(max_length=5)] = DEFAULT_LUNCH_TIME
+    dinner_time: Annotated[str, Field(max_length=5)] = DEFAULT_DINNER_TIME
 
 
 BackupErrorCode = Literal["disk_full", "permission_denied", "unknown"]

@@ -115,6 +115,7 @@ def test_v09_database_is_stamped_and_upgraded(tmp_path: Path) -> None:
     SQLModel.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE pantryitem"))  # v0.9.0 had no pantry
+        conn.execute(text("DROP TABLE household_settings"))  # ... nor household settings
         conn.execute(
             text(
                 "INSERT INTO shoppingextra (week_start, name, checked, created_at) "
@@ -397,3 +398,18 @@ def test_pantry_table_is_added_at_0006(tmp_path: Path) -> None:
     assert _count(engine, "recipe") == 2  # existing data is untouched
     _alembic(engine, "downgrade", "0005_recipe_steps_servings_source")
     assert "pantryitem" not in inspect(engine).get_table_names()
+
+
+def test_household_settings_table_is_added_at_0007(tmp_path: Path) -> None:
+    engine = _at_0003_with_data(tmp_path / "v022.db")
+    _alembic(engine, "upgrade", "0006_pantry")
+    assert "household_settings" not in inspect(engine).get_table_names()
+
+    run_migrations(engine)
+
+    assert _version(engine) == _head()
+    assert _diff(engine) == []
+    assert _count(engine, "household_settings") == 0  # defaults apply until the first save
+    assert _count(engine, "recipe") == 2  # existing data is untouched
+    _alembic(engine, "downgrade", "0006_pantry")
+    assert "household_settings" not in inspect(engine).get_table_names()

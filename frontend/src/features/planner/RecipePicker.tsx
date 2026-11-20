@@ -76,7 +76,11 @@ export function RecipePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
-      <div className="picker-list" aria-live="polite">
+      {/* Only the count is announced: a live list would read out every card that changes. */}
+      <p className="visually-hidden" role="status" data-testid="picker-results-count">
+        {data ? t("recipes.resultsCount", { count: candidates.length }) : ""}
+      </p>
+      <div className="picker-list">
         {isPending && <p className="status-message">{t("planner.pickerLoading")}</p>}
         {isError && (
           <p className="status-message" role="alert">

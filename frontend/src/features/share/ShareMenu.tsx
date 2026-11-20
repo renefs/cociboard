@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { WeekPlan } from "../../api/types";
 import { useLocale } from "../../i18n/useLocale";
-import { icsFileName, weekAsIcs } from "./ical";
+import { icsFileName, weekAsIcs, type MealTimes } from "./ical";
 import { PrintPortal, usePrintJob } from "./PrintPortal";
 import { PrintWeek } from "./PrintWeek";
 import { canShareText, shareOrDownloadFile } from "./shareActions";
@@ -13,12 +13,14 @@ import { useShareText } from "./useShareText";
 interface ShareMenuProps {
   plan: WeekPlan | undefined;
   onNotify: (kind: "error" | "info", text: string) => void;
+  /** When lunch and dinner start in the calendar export; defaults to 14:00 and 21:00. */
+  mealTimes?: MealTimes;
   /** Injectable for tests. */
   now?: () => Date;
 }
 
 /** The planner's Share button: a disclosure with print, share-as-text and calendar export. */
-export function ShareMenu({ plan, onNotify, now = () => new Date() }: ShareMenuProps) {
+export function ShareMenu({ plan, onNotify, mealTimes, now = () => new Date() }: ShareMenuProps) {
   const { t } = useTranslation();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -78,7 +80,7 @@ export function ShareMenu({ plan, onNotify, now = () => new Date() }: ShareMenuP
     });
 
   const exportCalendar = async () => {
-    const content = weekAsIcs(plan, t, { now: now() });
+    const content = weekAsIcs(plan, t, { now: now(), ...(mealTimes && { times: mealTimes }) });
     const file = new File([content], icsFileName(plan.week_start), { type: "text/calendar;charset=utf-8" });
     const outcome = await shareOrDownloadFile(file);
     if (outcome === "downloaded") onNotify("info", t("share.calendarDownloaded", { name: file.name }));

@@ -187,3 +187,29 @@ describe("RecipePanel variety features", () => {
     expect(order()).toEqual(["Lentejas estofadas", "Tortilla de patatas"]);
   });
 });
+
+describe("RecipePanel announcements", () => {
+  it("does not make the list a live region, so card changes aren't read out", async () => {
+    const { container } = renderWithQuery(<RecipePanel usage={new Map([[1, 1]])} />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    const list = container.querySelector(".recipe-list");
+    expect(list).not.toBeNull();
+    expect(list?.hasAttribute("aria-live")).toBe(false);
+    expect(list?.closest("[aria-live]")).toBeNull();
+    expect(list?.querySelector("[aria-live], [role='status']")).toBeNull();
+  });
+
+  it("announces only the number of results, through a separate status region", async () => {
+    const user = userEvent.setup();
+    vi.mocked(client.listRecipes).mockImplementation((filters) =>
+      Promise.resolve(filters?.archived ? [] : filters?.slot === "dinner" ? [dinner] : [lunch, dinner]),
+    );
+    renderWithQuery(<RecipePanel />);
+    await screen.findByRole("heading", { name: "Lentejas estofadas" });
+    expect(screen.getByTestId("recipe-results-count")).toHaveTextContent("2 recipes");
+    expect(screen.getByTestId("recipe-results-count")).toHaveAttribute("role", "status");
+
+    await user.click(within(screen.getByRole("group", { name: "Meal type" })).getByRole("button", { name: "Dinner" }));
+    await waitFor(() => expect(screen.getByTestId("recipe-results-count")).toHaveTextContent("1 recipe"));
+  });
+});

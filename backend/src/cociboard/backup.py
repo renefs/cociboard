@@ -1,4 +1,4 @@
-"""Backup document format (v4; v1 to v3 are still accepted): schema and pure validation.
+"""Backup document format (v5; v1 to v4 are still accepted): schema and pure validation.
 
 Persistence is in ``backup_repo``.
 
@@ -21,14 +21,16 @@ from cociboard.domain import (
     is_valid_day_index,
     is_week_start,
 )
-from cociboard.schemas import ExtraName, RecipeCreate
+from cociboard.household import validate_household
+from cociboard.schemas import ExtraName, HouseholdSettings, RecipeCreate
 from cociboard.shopping import ingredient_key
 
 BACKUP_FORMAT: Final = "cociboard-backup"
-SUPPORTED_FORMAT_VERSION = 4  # the version written by export
+SUPPORTED_FORMAT_VERSION = 5  # the version written by export
 READABLE_FORMAT_VERSIONS = frozenset(
-    {1, 2, 3, 4}
-)  # v1 meals have a recipe_ref; v1/v2 recipes lack the v3 fields; v1-v3 have no pantry
+    {1, 2, 3, 4, 5}
+)  # v1 meals have a recipe_ref; v1/v2 recipes lack the v3 fields; v1-v3 have no pantry;
+# v1-v4 have no household settings (restoring them resets the settings to the defaults)
 MAX_BACKUP_BYTES = 10 * 1024 * 1024
 
 
@@ -119,6 +121,7 @@ class BackupDocument(BaseModel):
     shopping_checks: list[BackupShoppingCheck]
     shopping_extras: list[BackupShoppingExtra]
     pantry: list[BackupPantryItem] = []  # absent before v4
+    settings: HouseholdSettings | None = None  # absent before v5
 
 
 class RestoreResult(BaseModel):
@@ -190,6 +193,15 @@ def _check_semantics(doc: BackupDocument) -> None:
         if staple_key in staple_keys:
             raise BackupValidationError("duplicate_pantry_item", name=staple.name)
         staple_keys.add(staple_key)
+    if doc.settings is not None:
+        problem = validate_household(
+            doc.settings.required_properties,
+            doc.settings.avoided_properties,
+            doc.settings.lunch_time,
+            doc.settings.dinner_time,
+        )
+        if problem is not None:
+            raise BackupValidationError("invalid_settings", reason=problem)
     check_keys = Counter((c.week_start, c.item_key) for c in doc.shopping_checks)
     for (week, item_key), count in check_keys.items():
         if count > 1:
@@ -205,7 +217,7 @@ def parse_backup(data: object) -> BackupDocument:
     ``duplicate_recipe_ref``, ``duplicate_recipe_name``, ``invalid_week``, ``invalid_day``,
     ``unknown_recipe_ref``, ``meal_does_not_fit``, ``meal_needs_recipe_or_special``,
     ``note_too_long``, ``duplicate_slot``, ``duplicate_shopping_check``,
-    ``invalid_pantry_item``, ``duplicate_pantry_item``.
+    ``invalid_pantry_item``, ``duplicate_pantry_item``, ``invalid_settings``.
     """
     if not isinstance(data, dict):
         raise BackupValidationError("invalid_document")

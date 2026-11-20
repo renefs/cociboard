@@ -7,6 +7,9 @@ import { LogoutButton } from "./features/auth/LogoutButton";
 import { useAuthStatus } from "./features/auth/useAuthStatus";
 import { BackupButton } from "./features/backup/BackupButton";
 import { BackupDialog } from "./features/backup/BackupDialog";
+import { HouseholdButton } from "./features/settings/HouseholdButton";
+import { HouseholdDialog } from "./features/settings/HouseholdDialog";
+import { useSaveHousehold } from "./features/settings/useHouseholdSettings";
 import { Planner } from "./features/planner/Planner";
 import { OfflineBanner } from "./pwa/OfflineBanner";
 import { Toast, type ToastMessage } from "./features/planner/Toast";
@@ -16,6 +19,7 @@ type VersionState = { kind: "loading" } | { kind: "ready"; version: string } | {
 export default function App() {
   const { t } = useTranslation();
   const [backupOpen, setBackupOpen] = useState(false);
+  const [householdOpen, setHouseholdOpen] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const toastId = useRef(0);
   const dismissToast = useCallback(() => setToast(null), []);
@@ -24,6 +28,7 @@ export default function App() {
     toastId.current += 1;
     setToast({ id: toastId.current, kind, text });
   }, []);
+  const saveHousehold = useSaveHousehold((text) => notify("error", text));
   const [backend, setBackend] = useState<VersionState>({ kind: "loading" });
 
   useEffect(() => {
@@ -41,6 +46,7 @@ export default function App() {
       <header className="app-header">
         <h1 className="app-title">{t("app.title")}</h1>
         <div className="app-header-tools">
+          <HouseholdButton onClick={() => setHouseholdOpen(true)} />
           <BackupButton onClick={() => setBackupOpen(true)} />
           {auth.data?.enabled && <LogoutButton onError={(text) => notify("error", text)} />}
           <LanguageSwitcher />
@@ -55,6 +61,16 @@ export default function App() {
         <BackupDialog
           onClose={() => setBackupOpen(false)}
           onNotify={notify}
+        />
+      )}
+      {householdOpen && (
+        <HouseholdDialog
+          onClose={() => setHouseholdOpen(false)}
+          onSave={(settings) => {
+            saveHousehold(settings);
+            setHouseholdOpen(false);
+            notify("info", t("household.saved"));
+          }}
         />
       )}
       <Toast toast={toast} onDismiss={dismissToast} />
