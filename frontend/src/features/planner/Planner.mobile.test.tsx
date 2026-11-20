@@ -43,7 +43,7 @@ beforeEach(() => {
   vi.mocked(client.getCandidates).mockResolvedValue([]);
   const list: ShoppingList = {
     week_start: WEEK,
-    items: [{ key: "huevos", name: "Huevos", checked: false, meals: [] }],
+    items: [{ key: "huevos", name: "Huevos", checked: false, in_pantry: false, meals: [] }],
     extras: [],
   };
   vi.mocked(client.getShoppingList).mockResolvedValue(list);

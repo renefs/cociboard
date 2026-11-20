@@ -71,3 +71,16 @@ class ShoppingExtra(SQLModel, table=True):
     name: str = Field(max_length=80)
     checked: bool = False
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class PantryItem(SQLModel, table=True):
+    """A staple the household always has at home (global, not per week).
+
+    ``key`` is the ``ingredient_key`` of ``name``; shopping items whose key matches exactly
+    are listed as "in the pantry" instead of "to buy".
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    key: str = Field(max_length=200, unique=True, index=True)
+    name: str = Field(max_length=80)
+    created_at: datetime = Field(default_factory=_utcnow)

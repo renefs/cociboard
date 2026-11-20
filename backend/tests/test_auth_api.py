@@ -105,6 +105,9 @@ def test_protected_routes_need_a_session(client: TestClient) -> None:
     for method, path in [
         ("get", "/api/recipes"),
         ("get", "/api/backup"),
+        ("get", "/api/pantry"),
+        ("post", "/api/pantry"),
+        ("delete", "/api/pantry/1"),
         ("delete", "/api/weeks/2026-11-16"),
     ]:
         response = getattr(client, method)(path)

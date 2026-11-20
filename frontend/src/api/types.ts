@@ -267,6 +267,8 @@ export interface ShoppingItem {
   key: string;
   name: string;
   checked: boolean;
+  /** Its key matches a pantry item: listed apart instead of "to buy". Extras never are. */
+  in_pantry: boolean;
   meals: ShoppingMeal[];
 }
 
@@ -289,11 +291,31 @@ export interface ShoppingExtraUpdate {
   checked?: boolean;
 }
 
+/** A pantry staple (global, not per week). `key` is the folded name items are matched on. */
+export interface PantryItem {
+  id: number;
+  key: string;
+  name: string;
+}
+
+/** An ingredient used by many active recipes, offered as a one-tap staple. */
+export interface PantrySuggestion {
+  key: string;
+  name: string;
+  recipe_count: number;
+}
+
+/** Response of `GET /api/pantry`: items sorted by key, plus suggestions. */
+export interface Pantry {
+  items: PantryItem[];
+  suggestions: PantrySuggestion[];
+}
+
 /** Backup file written by `GET /api/backup` and read by `POST /api/backup/restore`. */
 export const BACKUP_FORMAT = "cociboard-backup";
-/** Version written by the server; versions 1 and 2 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link). */
-export const BACKUP_FORMAT_VERSION = 3;
-export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3];
+/** Version written by the server; versions 1 to 3 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link, v3 no pantry). */
+export const BACKUP_FORMAT_VERSION = 4;
+export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3, 4];
 
 /** Response of `POST /api/backup/restore`. */
 export interface RestoreResult {
@@ -301,6 +323,7 @@ export interface RestoreResult {
   meals: number;
   shopping_checks: number;
   shopping_extras: number;
+  pantry: number;
 }
 
 /** Why the last automatic copy failed; the UI translates the code. */

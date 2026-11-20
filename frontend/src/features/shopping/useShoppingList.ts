@@ -18,6 +18,8 @@ import {
   uncheckAll,
 } from "./shoppingLogic";
 
+/** Prefix of every cached shopping list (one per week). */
+export const shoppingRootKey = ["shopping"] as const;
 export const shoppingKey = (weekStart: string) => ["shopping", weekStart] as const;
 
 export function useShoppingList(weekStart: string) {

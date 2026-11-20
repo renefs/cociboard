@@ -32,9 +32,10 @@ const LIST: ShoppingList = {
       key: "aceite",
       name: "Aceite",
       checked: false,
+      in_pantry: false,
       meals: [meal(0, "lunch", 1, "Lentejas"), meal(1, "lunch", 1, "Lentejas"), meal(2, "dinner", 2, "Tortilla")],
     },
-    { key: "huevos", name: "Huevos", checked: true, meals: [meal(2, "dinner", 2, "Tortilla")] },
+    { key: "huevos", name: "Huevos", checked: true, in_pantry: false, meals: [meal(2, "dinner", 2, "Tortilla")] },
   ],
   extras: [
     { id: 5, name: "Leche", checked: false },
@@ -124,5 +125,40 @@ describe("shoppingListText", () => {
     const done = setItemChecked(setItemChecked(LIST, "aceite", true), "huevos", true);
     const text = shoppingListText({ ...done, extras: [] }, t, "en");
     expect(text).toBe("Shopping list (26 Oct – 1 November 2026)\n\nNothing left to buy.");
+  });
+});
+
+describe("pantry items", () => {
+  const withPantry: ShoppingList = {
+    ...LIST,
+    items: LIST.items.map((item) => (item.key === "aceite" ? { ...item, in_pantry: true } : item)),
+  };
+
+  it("leave to buy and the basket for their own group", () => {
+    const { toBuy, basket, pantry } = splitList(withPantry);
+    expect(toBuy.map((r) => r.name)).toEqual(["Leche"]);
+    expect(basket.map((r) => r.name)).toEqual(["Huevos", "Pan"]);
+    expect(pantry.map((r) => r.name)).toEqual(["Aceite"]);
+  });
+
+  it("keep their tick but sit in the pantry group even when ticked", () => {
+    const ticked = setItemChecked(withPantry, "aceite", true);
+    expect(splitList(ticked).basket.map((r) => r.name)).toEqual(["Huevos", "Pan"]);
+    expect(splitList(ticked).pantry.map((r) => r.checked)).toEqual([true]);
+  });
+
+  it("are ignored by the progress", () => {
+    expect(progressOf(withPantry)).toEqual({ done: 2, total: 3 });
+  });
+
+  it("are left out of the text and named on a last line", () => {
+    expect(shoppingListText(withPantry, t, "en")).toBe(
+      "Shopping list (26 Oct – 1 November 2026)\n\n- Leche\n\nAlso check at home: Aceite",
+    );
+  });
+
+  it("still show the last line when nothing else is left to buy", () => {
+    const all = setItemChecked({ ...withPantry, extras: [] }, "huevos", true);
+    expect(shoppingListText(all, t, "en")).toContain("Nothing left to buy.\n\nAlso check at home: Aceite");
   });
 });

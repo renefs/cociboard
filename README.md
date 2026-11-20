@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.19.0** (automatic database copies and enforced foreign keys).
+Current version: **0.20.0** (pantry staples in the shopping list).
 
 ## Stack
 
@@ -30,7 +30,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0017](docs/adr/0017-mobile-navigation.md),
 [ADR-0018](docs/adr/0018-optional-household-password.md), [ADR-0019](docs/adr/0019-pwa-offline.md),
 [ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md),
-[ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md).
+[ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md),
+[ADR-0023](docs/adr/0023-pantry-staples.md).
 
 ## Architecture
 
@@ -51,7 +52,7 @@ flowchart LR
   end
   Client -- "HTTP /api (Vite proxy in dev)" --> Mw[Auth middleware<br/>optional household password]
   subgraph Server["Backend (FastAPI)"]
-    Mw --> Routers[routers: recipes, weeks,<br/>shopping, backup, auth]
+    Mw --> Routers[routers: recipes, weeks,<br/>shopping, pantry, backup, auth]
     Routers --> Repo[repository.py<br/>planner.py]
     Routers --> Rules[domain.py, variety.py, suggest.py<br/>pure business rules]
     Repo --> Rules
@@ -369,10 +370,12 @@ Deleting a recipe removes it from all weeks.
 
 Derived from the week's planned meals; ticks and manual items are stored per week. Every
 endpoint answers the full list:
-`{ week_start, items: [{ key, name, checked, meals: [{ day, slot, recipe_id, recipe_name }] }], extras: [{ id, name, checked }] }`.
+`{ week_start, items: [{ key, name, checked, in_pantry, meals: [{ day, slot, recipe_id, recipe_name }] }], extras: [{ id, name, checked }] }`.
 `key` is the ingredient folded for case, accents and spacing, so "Pimentón" and "pimenton"
 are one item; `name` is the first spelling met. Ingredients are free text, so there are no
-quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
+quantities ([ADR-0012](docs/adr/0012-shopping-list.md)). `in_pantry` is true when the key
+matches a [pantry](#pantry) item (extras are never pantry items); ticks of pantry items are
+still stored per week.
 
 | Method and path | Description |
 | --- | --- |
@@ -383,13 +386,24 @@ quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
 | `PATCH /api/weeks/{week_start}/shopping-list/extras/{id}` | Change `name` and/or `checked` of an extra (`404` if missing or from another week) |
 | `DELETE /api/weeks/{week_start}/shopping-list/extras/{id}` | Remove an extra (`404`) |
 
+### Pantry
+
+Staples the household always has at home, shared by every week ([ADR-0023](docs/adr/0023-pantry-staples.md)).
+Behind the login when a password is set.
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/pantry` | `{ items: [{ id, key, name }], suggestions: [{ key, name, recipe_count }] }`. Items are sorted by `key`. Suggestions are the ingredients used by the most active (non-archived) recipes, counted once per recipe, excluding keys already in the pantry: at most 8, each used by at least 3 recipes, ties by key |
+| `POST /api/pantry` | Add `{ "name": "..." }` (1-80 chars after trimming). `201` with the item; when the folded key already exists, `200` with the existing item (idempotent, never `409`). `422` for an invalid name |
+| `DELETE /api/pantry/{id}` | Remove a staple (`204`, `404` if missing) |
+
 ### Backup
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 3): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
+| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 4): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras, and the pantry (`pantry: [{ name }]`). Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
 | `GET /api/backup/status` | State of the automatic database copies: `{ enabled, interval_hours, kept, last_backup_at, copies, last_error, custom_dir }`. `last_backup_at` is `null` until the first copy; `last_error` is `null` or `{ at, code }` with `code` one of `disk_full`, `permission_denied`, `unknown`. Behind the login when a password is set. No host paths are exposed ([ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md)) |
-| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1, 2 and 3 are accepted), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
+| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras, pantry }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1 to 4 are accepted; a file without a `pantry` list restores an empty pantry), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
 
@@ -508,14 +522,31 @@ never changes the score: it is a hint, not a fault.
   (where the browser supports it) opens the share sheet; **Uncheck all** starts over.
 - The list follows the plan and recipe edits; ticks of ingredients that are no longer needed
   are kept and come back if the ingredient does.
+- Staples such as oil or salt can be kept off the list, see [Pantry](#pantry).
+
+### Pantry
+
+Ingredients you always have at home. The pantry is shared by all weeks.
+
+- **Always at home** (the house button on a line) moves an ingredient to **In the pantry**, a
+  collapsed section at the end of the list. Pantry items are not counted in the progress, are
+  left out of **Copy** and **Share** (a last line, "Also check at home: ...", names them) and
+  come back with **Need to buy**.
+- **Manage pantry** lists every staple (remove with ×), adds any ingredient by name, even one
+  that is not in this week's plan, and offers **suggestions**: the ingredients used by the
+  most of your recipes (archived ones are ignored; at least 3 recipes, up to 8 shown).
+- Matching is exact on the ingredient name with case, accents and extra spaces ignored:
+  "aceite de oliva" matches "Aceite de Oliva" but not "Aceite de oliva virgen extra". Add each
+  spelling you use. Details: [ADR-0023](docs/adr/0023-pantry-staples.md).
+- Changes made offline wait for the connection like other edits and count in the offline banner.
 
 ## Backups
 
 The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
 
-- **Download backup** saves one JSON file (format version 3) with all recipes (archived ones
-  too), weekly plans (special meals and notes included) and shopping lists. Files written by
-  earlier versions (format versions 1 and 2) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
+- **Download backup** saves one JSON file (format version 4) with all recipes (archived ones
+  too), weekly plans (special meals and notes included), shopping lists and the pantry. Files
+  written by earlier versions (format versions 1 to 3; they have no pantry) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
   installation.
 - **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
   shopping items, export date) and asks for confirmation. Restoring **replaces everything**
@@ -604,6 +635,7 @@ backend/
   src/cociboard/        FastAPI app (main.py), settings, domain rules, models, schemas,
                         repository, planner (week plans), variety (analysis), suggest (auto-fill, candidates),
                         shopping (ingredient grouping), shopping_repo (ticks and extras),
+                        pantry (staple suggestions), pantry_repo (pantry),
                         backup (backup format and validation), backup_repo (export, restore),
                         dbfiles (SQLite file copies and rotation), autobackup (automatic copies),
                         integrity (startup check),
@@ -615,7 +647,7 @@ frontend/
   src/features/recipes/ recipe panel, cards, form, details and delete dialogs, mutations, legend, icon metadata
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, phone tab bar and Today view, pure logic
   src/features/variety/ variety summary and presentation helpers
-  src/features/shopping/ shopping list (dialog and inline view), hooks with optimistic updates, pure logic
+  src/features/shopping/ shopping list (dialog and inline view), pantry panel, hooks with optimistic updates, pure logic
   src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS

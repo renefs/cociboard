@@ -2,7 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
-import type { ShoppingList } from "../../api/types";
+import type { Pantry, ShoppingList } from "../../api/types";
+import { ingredientKey } from "./pantryLogic";
 import { renderWithQuery } from "../../test/utils";
 import { ShoppingListDialog } from "./ShoppingListDialog";
 
@@ -14,6 +15,9 @@ vi.mock("../../api/client", async (importOriginal) => ({
   addShoppingExtra: vi.fn(),
   updateShoppingExtra: vi.fn(),
   deleteShoppingExtra: vi.fn(),
+  getPantry: vi.fn(),
+  addToPantry: vi.fn(),
+  removeFromPantry: vi.fn(),
 }));
 
 const WEEK = "2026-10-26";
@@ -23,8 +27,8 @@ function makeList(overrides: Partial<ShoppingList> = {}): ShoppingList {
   return {
     week_start: WEEK,
     items: [
-      { key: "aceite", name: "Aceite", checked: false, meals: [meal(0, 1, "Lentejas"), meal(1, 2, "Tortilla")] },
-      { key: "huevos", name: "Huevos", checked: true, meals: [meal(1, 2, "Tortilla")] },
+      { key: "aceite", name: "Aceite", checked: false, in_pantry: false, meals: [meal(0, 1, "Lentejas"), meal(1, 2, "Tortilla")] },
+      { key: "huevos", name: "Huevos", checked: true, in_pantry: false, meals: [meal(1, 2, "Tortilla")] },
     ],
     extras: [{ id: 5, name: "Leche", checked: false }],
     ...overrides,
@@ -33,11 +37,35 @@ function makeList(overrides: Partial<ShoppingList> = {}): ShoppingList {
 
 /** The server state the mocked API reads and writes. */
 let server: ShoppingList;
+let pantry: Pantry;
+let nextPantryId: number;
 const onClose = vi.fn();
 const onNotify = vi.fn();
 
 beforeEach(() => {
   server = makeList();
+  pantry = { items: [], suggestions: [] };
+  nextPantryId = 40;
+  vi.mocked(client.getPantry).mockImplementation(() => Promise.resolve(structuredClone(pantry)));
+  vi.mocked(client.addToPantry).mockImplementation((name) => {
+    const key = ingredientKey(name);
+    let item = pantry.items.find((i) => i.key === key);
+    if (!item) {
+      item = { id: nextPantryId++, key, name };
+      pantry = {
+        items: [...pantry.items, item],
+        suggestions: pantry.suggestions.filter((suggestion) => suggestion.key !== key),
+      };
+    }
+    server = { ...server, items: server.items.map((i) => (i.key === key ? { ...i, in_pantry: true } : i)) };
+    return Promise.resolve(structuredClone(item));
+  });
+  vi.mocked(client.removeFromPantry).mockImplementation((id) => {
+    const gone = pantry.items.find((i) => i.id === id);
+    pantry = { ...pantry, items: pantry.items.filter((i) => i.id !== id) };
+    server = { ...server, items: server.items.map((i) => (i.key === gone?.key ? { ...i, in_pantry: false } : i)) };
+    return Promise.resolve();
+  });
   onClose.mockReset();
   onNotify.mockReset();
   vi.mocked(client.getShoppingList).mockImplementation(() => Promise.resolve(structuredClone(server)));
@@ -170,5 +198,163 @@ describe("ShoppingListDialog", () => {
     await user.click(await screen.findByRole("checkbox", { name: /Aceite/ }));
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith("error", expect.stringContaining("Couldn't update")));
     expect(await screen.findByRole("checkbox", { name: /Aceite/ })).not.toBeChecked();
+  });
+  describe("pantry", () => {
+    function pantryAt(key: string, name: string, id = 3) {
+      pantry = { ...pantry, items: [...pantry.items, { id, key, name }] };
+      server = { ...server, items: server.items.map((i) => (i.key === key ? { ...i, in_pantry: true } : i)) };
+    }
+
+    it("moves an item to the pantry at once, announces it and focuses the next row", async () => {
+      const user = userEvent.setup();
+      renderDialog();
+      await user.click(await screen.findByRole("button", { name: "Mark Aceite as always at home" }));
+      expect(client.addToPantry).toHaveBeenCalledWith("Aceite");
+      const toBuy = screen.getByRole("region", { name: /To buy/ });
+      expect(within(toBuy).queryByRole("checkbox", { name: /Aceite/ })).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Aceite is in the pantry and won't be listed to buy.");
+      expect(within(toBuy).getByRole("checkbox", { name: /Leche/ })).toHaveFocus();
+      expect(await screen.findByText("In the pantry (1)")).toBeInTheDocument();
+      expect(screen.getByText("1 of 2 bought")).toBeInTheDocument();
+    });
+
+    it("focuses the to-buy heading when the last row leaves", async () => {
+      const user = userEvent.setup();
+      server = makeList({ extras: [] });
+      renderDialog();
+      await user.click(await screen.findByRole("button", { name: "Mark Aceite as always at home" }));
+      expect(screen.getByRole("heading", { name: /To buy/ })).toHaveFocus();
+      expect(await screen.findByText("Everything is in the basket.")).toBeInTheDocument();
+    });
+
+    it("offers the action on generated items only, not on extras", async () => {
+      renderDialog();
+      await screen.findByRole("checkbox", { name: /Leche/ });
+      expect(screen.getAllByRole("button", { name: /as always at home/ })).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: /Leche as always/ })).not.toBeInTheDocument();
+    });
+
+    it("lists pantry items apart, ignores them in progress and says when nothing is left", async () => {
+      server = makeList({ extras: [] });
+      pantryAt("aceite", "Aceite");
+      server = { ...server, items: server.items.map((i) => (i.key === "huevos" ? { ...i, in_pantry: true } : i)) };
+      renderDialog();
+      expect(await screen.findByText("In the pantry (2)")).toBeInTheDocument();
+      expect(screen.getByText("0 of 0 bought")).toBeInTheDocument();
+      expect(screen.getByText("Nothing to buy: everything is in the pantry.")).toBeInTheDocument();
+      expect(screen.getByText("You usually have these at home. Check you're not running low.")).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /In the basket/ })).not.toBeInTheDocument();
+    });
+
+    it("brings an item back with Need to buy, announces it and focuses the heading", async () => {
+      const user = userEvent.setup();
+      pantryAt("aceite", "Aceite", 7);
+      renderDialog();
+      await user.click(await screen.findByRole("button", { name: "Need to buy Aceite" }));
+      expect(client.removeFromPantry).toHaveBeenCalledWith(7);
+      expect(screen.getByRole("status")).toHaveTextContent("Aceite is no longer in the pantry and is listed to buy again.");
+      const toBuy = screen.getByRole("region", { name: /To buy/ });
+      expect(await within(toBuy).findByRole("checkbox", { name: /Aceite/ })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /To buy/ })).toHaveFocus();
+      expect(screen.queryByText(/In the pantry \(/)).not.toBeInTheDocument();
+    });
+
+    it("keeps pantry items out of the copied text but names them", async () => {
+      const user = userEvent.setup();
+      pantryAt("aceite", "Aceite");
+      const writeText = vi.fn(() => Promise.resolve());
+      renderDialog();
+      await screen.findByText("In the pantry (1)");
+      vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+      await user.click(screen.getByRole("button", { name: "Copy" }));
+      expect(writeText).toHaveBeenCalledWith(
+        "Shopping list (26 Oct – 1 November 2026)\n\n- Leche\n\nAlso check at home: Aceite",
+      );
+    });
+
+    it("rolls back and reports when the pantry update fails", async () => {
+      const user = userEvent.setup();
+      vi.mocked(client.addToPantry).mockRejectedValueOnce(new Error("boom"));
+      renderDialog();
+      await user.click(await screen.findByRole("button", { name: "Mark Aceite as always at home" }));
+      await waitFor(() => expect(onNotify).toHaveBeenCalledWith("error", expect.stringContaining("Couldn't update the pantry")));
+      const toBuy = screen.getByRole("region", { name: /To buy/ });
+      expect(await within(toBuy).findByRole("checkbox", { name: /Aceite/ })).toBeInTheDocument();
+      expect(screen.queryByText(/In the pantry \(/)).not.toBeInTheDocument();
+    });
+
+    it("updates every cached week at once (optimistic) and refetches when settled", async () => {
+      const user = userEvent.setup();
+      const { queryClient } = renderDialog();
+      const otherWeek = { ...makeList(), week_start: "2026-11-02" };
+      queryClient.setQueryData(["shopping", "2026-11-02"], otherWeek);
+      let release: () => void = () => undefined;
+      vi.mocked(client.addToPantry).mockImplementationOnce(
+        (name) =>
+          new Promise((resolve) => {
+            release = () => resolve({ id: 11, key: ingredientKey(name), name });
+          }),
+      );
+      await user.click(await screen.findByRole("button", { name: "Mark Aceite as always at home" }));
+      const cached = queryClient.getQueryData<ShoppingList>(["shopping", "2026-11-02"]);
+      expect(cached?.items.find((i) => i.key === "aceite")?.in_pantry).toBe(true);
+      release();
+      await waitFor(() => expect(client.getPantry).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  describe("manage pantry", () => {
+    async function openPanel() {
+      const user = userEvent.setup();
+      renderDialog();
+      await user.click(await screen.findByText("Manage pantry"));
+      return user;
+    }
+
+    it("shows the empty state", async () => {
+      await openPanel();
+      expect(await screen.findByText(/Nothing in the pantry yet/)).toBeInTheDocument();
+    });
+
+    it("adds any ingredient by name, trimmed, and clears the input", async () => {
+      const user = await openPanel();
+      const input = await screen.findByLabelText("Add to the pantry");
+      await user.type(input, "   {Enter}");
+      expect(client.addToPantry).not.toHaveBeenCalled();
+      await user.type(input, "  Aceite de  oliva {Enter}");
+      expect(client.addToPantry).toHaveBeenCalledWith("Aceite de oliva");
+      expect(input).toHaveValue("");
+      expect(await screen.findByRole("button", { name: "Remove Aceite de oliva from the pantry" })).toBeInTheDocument();
+    });
+
+    it("adds a suggestion with one tap and removes a staple", async () => {
+      pantry = { items: [{ id: 3, key: "sal", name: "Sal" }], suggestions: [{ key: "ajo", name: "Ajo", recipe_count: 18 }] };
+      const user = await openPanel();
+      await user.click(await screen.findByRole("button", { name: "Add Ajo (used in 18 recipes)" }));
+      expect(client.addToPantry).toHaveBeenCalledWith("Ajo");
+      await waitFor(() => expect(screen.queryByRole("button", { name: /^Add Ajo/ })).not.toBeInTheDocument());
+      await user.click(await screen.findByRole("button", { name: "Remove Sal from the pantry" }));
+      expect(client.removeFromPantry).toHaveBeenCalledWith(3);
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Remove Sal from the pantry" })).not.toBeInTheDocument(),
+      );
+    });
+
+    it("removing a staple puts a matching item back in the list to buy", async () => {
+      pantry = { items: [{ id: 3, key: "aceite", name: "Aceite" }], suggestions: [] };
+      server = { ...server, items: server.items.map((i) => (i.key === "aceite" ? { ...i, in_pantry: true } : i)) };
+      const user = await openPanel();
+      await user.click(await screen.findByRole("button", { name: "Remove Aceite from the pantry" }));
+      const toBuy = screen.getByRole("region", { name: /To buy/ });
+      expect(await within(toBuy).findByRole("checkbox", { name: /Aceite/ })).toBeInTheDocument();
+    });
+
+    it("reports a failed add and drops the optimistic item", async () => {
+      vi.mocked(client.addToPantry).mockRejectedValueOnce(new Error("boom"));
+      const user = await openPanel();
+      await user.type(await screen.findByLabelText("Add to the pantry"), "Sal{Enter}");
+      await waitFor(() => expect(onNotify).toHaveBeenCalledWith("error", expect.stringContaining("Couldn't update the pantry")));
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Remove Sal from the pantry" })).not.toBeInTheDocument());
+    });
   });
 });
