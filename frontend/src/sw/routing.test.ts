@@ -32,6 +32,8 @@ describe("routeRequest", () => {
   it("treats page loads as navigations and ignores other requests", () => {
     expect(route("/", "GET", true)).toBe("navigation");
     expect(route("/some/deep/path", "GET", true)).toBe("navigation");
+    // The Android share target opens the app at "/?share-url=..." and must get the shell.
+    expect(route("/?share-url=https%3A%2F%2Fexample.com%2Fr&share-text=Stew", "GET", true)).toBe("navigation");
     expect(route("/sw.js")).toBe("bypass");
     expect(route("/favicon.ico")).toBe("bypass");
   });

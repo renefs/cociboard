@@ -13,6 +13,7 @@ import {
 } from "../../api/types";
 import { ApiError } from "../../api/client";
 import { useLocale } from "../../i18n/useLocale";
+import { ImportFromLink } from "./ImportFromLink";
 import { IngredientsEditor } from "./IngredientsEditor";
 import { StepsEditor } from "./StepsEditor";
 import {
@@ -30,6 +31,7 @@ import {
   type FormField,
   type RecipeFormValues,
 } from "./recipeFormLogic";
+import { applyDraft, hasTypedContent } from "./importLogic";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
 import { useCreateRecipe, useUpdateRecipe } from "./useRecipeMutations";
 
@@ -43,11 +45,13 @@ export interface SavedInfo {
 interface RecipeFormProps {
   /** The recipe to edit; omit to create a new one. */
   recipe?: Recipe | undefined;
+  /** New recipe only: a link to import as soon as the form opens (shared from another app). */
+  importUrl?: string | undefined;
   onSaved: (info: SavedInfo) => void;
   onCancel: () => void;
 }
 
-export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
+export function RecipeForm({ recipe, importUrl, onSaved, onCancel }: RecipeFormProps) {
   const { t } = useTranslation();
   const editing = recipe !== undefined;
   const [values, setValues] = useState<RecipeFormValues>(() =>
@@ -171,6 +175,18 @@ export function RecipeForm({ recipe, onSaved, onCancel }: RecipeFormProps) {
   return (
     <form className="recipe-form" ref={formRef} onSubmit={onSubmit} noValidate>
       <div className="form-body">
+        {!editing && (
+          <ImportFromLink
+            hasContent={hasTypedContent(values)}
+            initialUrl={importUrl}
+            onApply={(draft) => {
+              setValues((current) => applyDraft(current, draft));
+              setErrors({});
+              setFormError(null);
+            }}
+          />
+        )}
+
         <div className="field">
           <label htmlFor={ids.name}>
             {t("recipeForm.name")} <span className="required">{t("recipeForm.required")}</span>

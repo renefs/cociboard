@@ -12,6 +12,7 @@ import { sortByVariety } from "../variety/varietyLogic";
 import { RecipeCard, type CardDensity } from "./RecipeCard";
 import { RecipeDetailsModal, type Notify } from "./RecipeDetailsModal";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
+import { useSharedLink } from "./useSharedLink";
 import { RecipeListSkeleton } from "./RecipeListSkeleton";
 import { ArchivedRow } from "./ArchivedRow";
 import { PROPERTY_META } from "./recipeMeta";
@@ -60,9 +61,11 @@ export function RecipePanel({
   const [meal, setMeal] = useState<MealFilter>("all");
   const [properties, setProperties] = useState<RecipeProperty[]>([]);
   const [sort, setSort] = useState<SortMode>("name");
+  // A link shared from another app (Android share sheet) opens the form and starts the import.
+  const sharedLink = useSharedLink();
   const [dialog, setDialog] = useState<
-    { kind: "none" } | { kind: "new" } | { kind: "details"; recipe: Recipe }
-  >({ kind: "none" });
+    { kind: "none" } | { kind: "new"; importUrl?: string } | { kind: "details"; recipe: Recipe }
+  >(() => (sharedLink ? { kind: "new", importUrl: sharedLink } : { kind: "none" }));
   const q = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
 
   const filters = { slot: meal === "all" ? undefined : meal, q, properties };
@@ -251,6 +254,7 @@ export function RecipePanel({
 
       {dialog.kind === "new" && (
         <RecipeFormModal
+          importUrl={dialog.importUrl}
           onClose={closeDialog}
           onSaved={(info) => {
             closeDialog();

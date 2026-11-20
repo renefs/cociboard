@@ -87,6 +87,41 @@ export interface RecipeCreate {
   source_url?: string | null;
 }
 
+/** Warning codes of an imported draft (`warnings` of `POST /api/recipes/import`). */
+export type ImportWarning =
+  | "name_truncated"
+  | "steps_truncated"
+  | "ingredients_truncated"
+  | "servings_unknown"
+  | "time_unknown"
+  | "no_ingredients"
+  | "no_steps"
+  | "name_exists";
+
+/** Response of `POST /api/recipes/import`: fields for the form; nothing is saved. */
+export interface RecipeDraft {
+  name: string;
+  description: string | null;
+  servings: number | null;
+  prep_minutes: number | null;
+  ingredients: string[];
+  steps: string[];
+  source_url: string | null;
+  warnings: ImportWarning[];
+}
+
+/** `detail.code` of a failed import (HTTP 422, 502, 504, 413, 415, 429, or 404 when disabled). */
+export type ImportErrorCode =
+  | "invalid_url"
+  | "blocked_address"
+  | "fetch_failed"
+  | "timeout"
+  | "too_large"
+  | "not_html"
+  | "no_recipe_found"
+  | "busy"
+  | "import_disabled";
+
 /** `archived` archives or restores the recipe without touching planned meals. */
 export type RecipeUpdate = Partial<RecipeCreate> & { archived?: boolean };
 

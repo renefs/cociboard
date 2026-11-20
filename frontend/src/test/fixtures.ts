@@ -1,4 +1,4 @@
-import type { Recipe } from "../api/types";
+import type { Recipe, RecipeDraft } from "../api/types";
 
 export function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
   return {
@@ -59,4 +59,18 @@ export function makePlan(
     };
   });
   return { week_start: weekStart, days, variety };
+}
+
+export function makeDraft(overrides: Partial<RecipeDraft> = {}): RecipeDraft {
+  return {
+    name: "Lemon Chicken Traybake",
+    description: "A simple weeknight dinner.",
+    servings: 4,
+    prep_minutes: 60,
+    ingredients: ["8 chicken thighs", "2 lemons"],
+    steps: ["Heat the oven.", "Roast."],
+    source_url: "https://www.example.com/final",
+    warnings: [],
+    ...overrides,
+  };
 }

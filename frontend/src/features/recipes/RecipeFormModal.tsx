@@ -6,12 +6,14 @@ import { RecipeForm, type SavedInfo } from "./RecipeForm";
 
 interface RecipeFormModalProps {
   recipe?: Recipe | undefined;
+  /** A link to import at once (new recipes only). */
+  importUrl?: string | undefined;
   onSaved: (info: SavedInfo) => void;
   onClose: () => void;
 }
 
 /** The recipe form in the shared modal: a full-screen sheet on phones. */
-export function RecipeFormModal({ recipe, onSaved, onClose }: RecipeFormModalProps) {
+export function RecipeFormModal({ recipe, importUrl, onSaved, onClose }: RecipeFormModalProps) {
   const { t } = useTranslation();
   return (
     <Modal
@@ -21,7 +23,7 @@ export function RecipeFormModal({ recipe, onSaved, onClose }: RecipeFormModalPro
       focusInput
       onClose={onClose}
     >
-      <RecipeForm recipe={recipe} onSaved={onSaved} onCancel={onClose} />
+      <RecipeForm recipe={recipe} importUrl={importUrl} onSaved={onSaved} onCancel={onClose} />
     </Modal>
   );
 }

@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.20.0** (pantry staples in the shopping list).
+Current version: **0.21.0** (import a recipe from a link).
 
 ## Stack
 
@@ -157,6 +157,7 @@ backup file (copy it, keeping the same name) and start the image version that ma
 | `COCIBOARD_BACKUP_INTERVAL_HOURS` | `24` | Hours between automatic database copies; `0` turns them off, see [Backups](#backups) |
 | `COCIBOARD_BACKUPS_KEPT` | `7` | How many automatic copies are kept (at least 1) |
 | `COCIBOARD_BACKUP_DIR` | unset | Folder for the automatic copies (inside the container, e.g. `/data/backups`); by default next to the database |
+| `COCIBOARD_RECIPE_IMPORT` | `true` | Allow "Import from a link" on the new-recipe form; `false` turns it off, see [Importing a recipe from a link](#importing-a-recipe-from-a-link) |
 
 The container starts as root only to `chown` `/data`, then drops to `PUID:PGID`. Setting
 `user:` in the compose file also works if `./data` is already writable by that user.
@@ -300,6 +301,10 @@ app*). It then opens full screen with its own icon.
 - **Updates:** when a new version is installed, a bar offers **Reload**; nothing changes
   under you until you tap it.
 - Logging out also removes the offline copy of your data from the device.
+- **Share to Cociboard (Android):** once the app is installed from Chrome, Cociboard appears in
+  the share sheet. Share a recipe page from the browser or another app and Cociboard opens the
+  new-recipe form and imports it (see [Importing a recipe from a link](#importing-a-recipe-from-a-link)).
+  iOS has no web share targets, so there you paste the link into the form.
 - Icons are rendered by `uv run --with pillow python frontend/scripts/render_icons.py`.
 
 Reasoning and alternatives: [ADR-0019](docs/adr/0019-pwa-offline.md).
@@ -318,6 +323,7 @@ requests whose `Origin` header is not the app's own origin get `403` `detail: { 
 | `POST /api/auth/login` | Body `{ password }` (max 1024 characters). `204` and the `cociboard_session` cookie on success; `401` `detail: { code: "invalid_password" }`; `429` `detail: { code: "too_many_attempts", retry_after }` plus a `Retry-After` header; `404` `detail: { code: "auth_disabled" }` when no password is set |
 | `POST /api/auth/logout` | `204`; deletes the session cookie |
 | `GET /api/recipes` | List recipes, ordered by name. Archived recipes are left out unless `archived=true`, which returns only them. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
+| `POST /api/recipes/import` | Body `{ "url" }`. Reads the schema.org `Recipe` of a public web page and answers `200` with a draft `{ name, description, servings, prep_minutes, ingredients, steps, source_url, warnings }`; **nothing is saved**. `warnings` are codes: `name_truncated`, `steps_truncated`, `ingredients_truncated`, `servings_unknown`, `time_unknown`, `no_ingredients`, `no_steps`, `name_exists`. Errors are `{ detail: { code } }`: `422` `invalid_url`, `blocked_address`, `no_recipe_found`; `502` `fetch_failed` (network error or the site's non-2xx answer, with `status` when there is one); `504` `timeout`; `413` `too_large`; `415` `not_html`; `429` `busy`; `404` `import_disabled` ([ADR-0024](docs/adr/0024-recipe-import.md)) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
 | `POST /api/recipes` | Create (`201`; `409` duplicate name, with `detail: { code: "duplicate_name", message, archived }`; `422` invalid, including a `servings` outside 1-50, a `source_url` that is not an `http://` or `https://` link with a host, or steps over the limits) |
 | `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). Sending `null` clears the optional fields `description`, `prep_minutes`, `servings` and `source_url`; `steps: []` clears the steps (`steps` cannot be `null`). `archived: true\|false` archives or restores the recipe without touching planned meals ([ADR-0014](docs/adr/0014-archive-and-backups.md)). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
@@ -459,6 +465,8 @@ never changes the score: it is a hint, not a fault.
   prep time, servings, description, ingredients (Enter adds a row; pasting a list splits it into rows),
   numbered steps (Add step, with Move up, Move down and Remove buttons per step; no dragging
   needed), a source link (http or https only) and properties. Errors are shown next to the fields.
+- **Import from a link** (top of the new-recipe form): paste the address of a recipe page and
+  the form is filled in; see [Importing a recipe from a link](#importing-a-recipe-from-a-link).
 - Click a recipe name (or choose **View details** on a planned meal) to see everything, including
   servings, the steps and a link to the original recipe, then
   **Edit**, **Archive** or **Delete**.
@@ -470,6 +478,35 @@ never changes the score: it is a hint, not a fault.
   will disappear from your weeks (past ones included) and recommends **Archive instead**.
 - If you change a recipe's meal type and it is planned in slots that no longer fit, the form
   lists them and offers **Remove them and save**.
+
+### Importing a recipe from a link
+
+Paste a link in **Import from a link** (or share a page to the installed app on Android) and
+Cociboard fills in the name, description, servings, time, ingredients, steps and the source
+link. Nothing is saved until you press **Create recipe**, so check the result, and choose the
+meal type and the main protein yourself: pages do not say them. If you had already typed
+something you are asked before it is replaced. Notes under the form say what could not be read
+or was shortened, and warn when a recipe with that name already exists.
+
+How it works and what it cannot read:
+- The **server** downloads the page and reads its schema.org `Recipe` data (JSON-LD), which
+  most recipe sites publish for search engines. Pages without it (some blogs, pages that build
+  the recipe in the browser, PDFs, paywalled or login-only pages, sites that block automated
+  requests) answer "doesn't contain a recipe Cociboard can read".
+- Quantities stay in the ingredient text as written; recipe content is never translated.
+- Limits: pages up to 2 MiB, 15 seconds in total, at most 5 redirects, two imports at once per
+  server (a third waits a moment, then is told to try again).
+- Turn it off with `COCIBOARD_RECIPE_IMPORT=false`; the form then hides the option.
+
+Because the server fetches an address someone typed, it is guarded against being used to reach
+your home network (SSRF): only `http` and `https` on ports 80 and 443, no `user:pass@`; the name
+is resolved by the server and **every** address must be public (loopback, private, link-local,
+carrier-grade NAT, multicast, reserved and unique-local ranges are refused, as are IPv6 forms
+that embed such an IPv4 address); the connection is then made to that vetted address, with the
+site name kept for TLS and the `Host` header, so the address cannot change between the check
+and the request (DNS rebinding); redirects are followed by hand and every hop is checked again;
+no cookies, credentials or proxy settings are ever sent, and only text pages are read.
+Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
 
 ## Using the planner
 
@@ -639,6 +676,7 @@ backend/
                         backup (backup format and validation), backup_repo (export, restore),
                         dbfiles (SQLite file copies and rotation), autobackup (automatic copies),
                         integrity (startup check),
+                        recipe_import/ (import from a link: validate, fetch, parse),
                         routers/, seed.py, migrate.py, migrations/
   alembic.ini           CLI configuration for `make migrate` / `make migration`
   tests/

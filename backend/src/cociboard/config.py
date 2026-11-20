@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # Signs session cookies; default: a random key stored next to the database file.
     secret_key: SecretStr | None = None
     session_days: int = 90
+    # "Import from a link" on the recipe form (ADR-0024). Off: the endpoint answers 404.
+    recipe_import: bool = True
     # Automatic copies of the database file (ADR-0022). 0 hours turns them off.
     backup_interval_hours: int = Field(default=24, ge=0)
     # How many automatic copies are kept (the migration and restore copies are separate).
@@ -43,7 +45,7 @@ class Settings(BaseSettings):
         """An empty number (compose ``${VAR:-}``) means "use the default"."""
         if not isinstance(data, dict):
             return data
-        numbers = ("backup_interval_hours", "backups_kept")
+        numbers = ("backup_interval_hours", "backups_kept", "recipe_import")
         return {
             k: v
             for k, v in data.items()
