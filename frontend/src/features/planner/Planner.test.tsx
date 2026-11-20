@@ -697,3 +697,60 @@ describe("Planner special meals and notes", () => {
     expect(fills[0]).toEqual({ day: 0, slot: "lunch", recipe_id: null, special: "free", note: "hi" });
   });
 });
+
+describe("Planner leftovers from batch cooking", () => {
+  const cocido = makeRecipe({
+    id: 4,
+    name: "Cocido madrileño",
+    meal_type: "both",
+    properties: ["batch_cooking"],
+  });
+
+  it("plans leftovers with the recipe name as note in the next slot, in one request", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, { "1:dinner": cocido }));
+    vi.mocked(client.assignSlot).mockImplementation(() =>
+      Promise.resolve(
+        serverReturns(
+          makePlan(WEEK, { "1:dinner": cocido }, undefined, {
+            specials: { "2:lunch": "leftovers" },
+            notes: { "2:lunch": "Cocido madrileño" },
+          }),
+        ),
+      ),
+    );
+    await renderPlanner();
+
+    await user.click(screen.getByRole("button", { name: /^Cocido madrileño, Tuesday dinner/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Cocido madrileño" });
+    await user.click(within(dialog).getByRole("button", { name: "Save leftovers for the next meal" }));
+
+    expect(client.assignSlot).toHaveBeenCalledTimes(1);
+    expect(client.assignSlot).toHaveBeenCalledWith(WEEK, 2, "lunch", {
+      special: "leftovers",
+      note: "Cocido madrileño",
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await findToast()).toHaveTextContent("Leftovers planned for Wednesday lunch.");
+    const slot = screen.getByRole("group", { name: "Wednesday lunch" });
+    expect(within(slot).getByText("Cocido madrileño")).toBeInTheDocument();
+  });
+
+  const plainLunch = makeRecipe({ id: 5, name: "Gazpacho", meal_type: "both", properties: ["vegan"] });
+
+  it("is not offered when the next slot is taken, for other recipes, or after Sunday dinner", async () => {
+    const user = userEvent.setup();
+    serverReturns(makePlan(WEEK, { "0:lunch": cocido, "0:dinner": tortilla, "1:lunch": plainLunch, "6:dinner": cocido }));
+    await renderPlanner();
+    const offered = async (name: RegExp) => {
+      await user.click(screen.getByRole("button", { name }));
+      const dialog = await screen.findByRole("dialog");
+      const found = within(dialog).queryByRole("button", { name: "Save leftovers for the next meal" }) !== null;
+      await user.click(within(dialog).getByRole("button", { name: "Close" }));
+      return found;
+    };
+    expect(await offered(/^Cocido madrileño, Monday lunch/)).toBe(false); // Monday dinner is taken
+    expect(await offered(/^Gazpacho, Tuesday lunch/)).toBe(false); // not batch cooking
+    expect(await offered(/^Cocido madrileño, Sunday dinner/)).toBe(false); // no next slot
+  });
+});

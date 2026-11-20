@@ -4,7 +4,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.16.0** (installable app with offline reading).
+Current version: **0.17.0** (richer recipes: steps, servings, source link and leftovers).
 
 ## Stack
 
@@ -271,8 +271,8 @@ requests whose `Origin` header is not the app's own origin get `403` `detail: { 
 | `POST /api/auth/logout` | `204`; deletes the session cookie |
 | `GET /api/recipes` | List recipes, ordered by name. Archived recipes are left out unless `archived=true`, which returns only them. Filters: `slot=lunch\|dinner` (recipes that fit the slot, including `both`), `q=` (case- and accent-insensitive search in name and ingredients), `property=` (repeatable; recipes must have all given properties) |
 | `GET /api/recipes/{id}` | One recipe (`404` if missing) |
-| `POST /api/recipes` | Create (`201`; `409` duplicate name, with `detail: { code: "duplicate_name", message, archived }`; `422` invalid) |
-| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). `archived: true\|false` archives or restores the recipe without touching planned meals ([ADR-0014](docs/adr/0014-archive-and-backups.md)). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
+| `POST /api/recipes` | Create (`201`; `409` duplicate name, with `detail: { code: "duplicate_name", message, archived }`; `422` invalid, including a `servings` outside 1-50, a `source_url` that is not an `http://` or `https://` link with a host, or steps over the limits) |
+| `PATCH /api/recipes/{id}` | Partial update (`404`, `409`, `422`). Sending `null` clears the optional fields `description`, `prep_minutes`, `servings` and `source_url`; `steps: []` clears the steps (`steps` cannot be `null`). `archived: true\|false` archives or restores the recipe without touching planned meals ([ADR-0014](docs/adr/0014-archive-and-backups.md)). A `meal_type` change that no longer fits slots the recipe occupies answers `409` with `detail: { code: "meal_type_conflict", message, conflicts: [{ week_start, day, slot }] }`; add `?force=true` to remove those planned meals and apply the change ([ADR-0008](docs/adr/0008-recipe-edits-vs-planned-meals.md)) |
 | `GET /api/recipes/{id}/usage` | `{ count }`: planned slots, across all weeks, that use the recipe (`404`) |
 | `DELETE /api/recipes/{id}` | Delete permanently, including its planned meals in every week (`204`; `404`). Prefer archiving |
 
@@ -283,7 +283,12 @@ A recipe has `name` (1-80 chars, unique), optional `description`, `meal_type`
 (`lunch`, `dinner`, `both`), `protein` (`meat`, `poultry`, `fish`, `seafood`, `eggs`,
 `legumes`, `dairy`, `tofu`, `none`), optional `prep_minutes` (> 0), `ingredients` (at least
 one non-empty string) and `properties` (`vegetarian`, `vegan`, `gluten_free`, `dairy_free`,
-`quick`, `spicy`, `light`, `kid_friendly`, `batch_cooking`).
+`quick`, `spicy`, `light`, `kid_friendly`, `batch_cooking`). Since 0.17 it also has optional
+`servings` (1-50), `steps` (a list of up to 50 texts of at most 1000 characters; each is
+trimmed and empty ones are dropped, default `[]`) and `source_url` (an `http://` or `https://`
+link with a host, at most 500 characters; `javascript:`, `data:` and relative links are
+rejected). Quantities stay in the free-text ingredients, and search (`q=`) still looks only at
+name and ingredients ([ADR-0020](docs/adr/0020-richer-recipes.md)).
 
 ### Weekly plans
 
@@ -335,8 +340,8 @@ quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 2): recipes (with `archived`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
-| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; version 1 and 2 files are accepted), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
+| `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 3): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
+| `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1, 2 and 3 are accepted), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
 
@@ -389,9 +394,11 @@ never changes the score: it is a hint, not a fault.
 ## Managing recipes
 
 - **New recipe** opens a form (a full-screen sheet on phones): name, meal type, main protein,
-  prep time, description, ingredients (Enter adds a row; pasting a list splits it into rows)
-  and properties. Errors are shown next to the fields.
-- Click a recipe name (or choose **View details** on a planned meal) to see everything, then
+  prep time, servings, description, ingredients (Enter adds a row; pasting a list splits it into rows),
+  numbered steps (Add step, with Move up, Move down and Remove buttons per step; no dragging
+  needed), a source link (http or https only) and properties. Errors are shown next to the fields.
+- Click a recipe name (or choose **View details** on a planned meal) to see everything, including
+  servings, the steps and a link to the original recipe, then
   **Edit**, **Archive** or **Delete**.
 - **Archive** hides a recipe from the catalogue and from suggestions but keeps it in the weeks
   where it is planned (marked "Archived"; it still counts for variety). Find archived recipes
@@ -425,7 +432,9 @@ never changes the score: it is a hint, not a fault.
   removes it. Compatible slots light up, incompatible ones are dimmed ("Not for lunch").
 - **Touch:** press and hold a card for about 0.2 s to drag. Or just tap: tap an empty slot
   to pick a recipe from a list of the ones that fit, tap a filled slot for Replace, Remove
-  and View details, or tap **Add** on a recipe and then tap a highlighted slot (Esc or
+  and View details (plus **Save leftovers for the next meal** on a batch-cooking recipe whose
+  next slot is empty: it plans "Leftovers" there with the recipe name as the note; nothing is
+  offered after Sunday dinner), or tap **Add** on a recipe and then tap a highlighted slot (Esc or
   Cancel to leave).
 - **Phone (below 900 px):** one view at a time, chosen in the bar at the bottom: **Today**
   (today's and tomorrow's lunch and dinner with ingredients and notes; tap a recipe for its
@@ -456,9 +465,9 @@ never changes the score: it is a hint, not a fault.
 
 The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
 
-- **Download backup** saves one JSON file (format version 2) with all recipes (archived ones
+- **Download backup** saves one JSON file (format version 3) with all recipes (archived ones
   too), weekly plans (special meals and notes included) and shopping lists. Files written by
-  earlier versions (format version 1) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
+  earlier versions (format versions 1 and 2) can still be restored. Keep it somewhere safe; it is also a way to move your data to another
   installation.
 - **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
   shopping items, export date) and asks for confirmation. Restoring **replaces everything**

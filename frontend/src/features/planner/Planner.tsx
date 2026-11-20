@@ -42,6 +42,7 @@ import {
   type DragSource,
 } from "./dragLogic";
 import { keyboardCoordinates } from "./keyboardNavigation";
+import { leftoversTarget } from "./leftovers";
 import { NARROW_QUERY } from "./mobileView";
 import { MobileTabBar } from "./MobileTabBar";
 import { RecipePicker } from "./RecipePicker";
@@ -477,8 +478,10 @@ interface ActionsForProps {
 
 function ActionsFor({ plan, ui, actions, setUi, notify }: ActionsForProps) {
   const { t } = useTranslation();
+  const locale = useLocale();
   const meal: SlotMeal | null = mealAt(plan, ui);
   if (!meal) return null;
+  const leftovers = leftoversTarget(plan, ui);
   return (
     <SlotActions
       meal={meal}
@@ -486,6 +489,16 @@ function ActionsFor({ plan, ui, actions, setUi, notify }: ActionsForProps) {
       onClose={() => setUi({ kind: "none" })}
       onReplace={() => setUi({ kind: "picker", day: ui.day, slot: ui.slot })}
       onDetails={() => setUi({ kind: "details", day: ui.day, slot: ui.slot })}
+      onLeftovers={
+        leftovers
+          ? () => {
+              // One request: the leftovers special with the recipe name as its note.
+              actions.assignSpecial(leftovers, "leftovers", recipeOf(meal)?.name ?? null);
+              notify("info", t(`planner.leftoversPlanned.${leftovers.slot}`, dayParams(leftovers.day, locale)));
+              setUi({ kind: "none" });
+            }
+          : undefined
+      }
       onSaveNote={(note) => {
         actions.setNote(ui, note);
         notify("info", t(note ? "planner.noteSaved" : "planner.noteRemoved"));

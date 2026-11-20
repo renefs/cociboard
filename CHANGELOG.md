@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-11-20
+
+Richer recipes: steps, servings, a source link and leftovers from batch cooking
+([ADR-0020](docs/adr/0020-richer-recipes.md)).
+
+### Added
+- Recipes can have **servings** (1-50), numbered **steps** (up to 50, stored as a JSON list)
+  and a **source link** (`http://` or `https://` only). Migration `0005_recipe_steps_servings_source`
+  adds the columns; existing recipes get no steps.
+- The recipe form has a servings field, a source link field and a **steps editor** with
+  Add step, Move up, Move down and Remove buttons (labelled with the step number, no dragging).
+- The recipe details show "Serves N", the numbered steps and "View original recipe (host)",
+  which opens in a new tab and is only rendered for safe links. Recipe cards show a compact
+  servings indicator.
+- **Save leftovers for the next meal** in the slot actions of a batch-cooking recipe: plans
+  "Leftovers" in the next empty slot of the week with the recipe name as the note, in one
+  request (English and Spanish).
+- API: `servings`, `steps` and `source_url` on create, update and read; `null` clears
+  `servings` and `source_url`.
+
+### Changed
+- Backup format version 3 includes the new recipe fields. Versions 1 and 2 still restore;
+  an invalid `source_url` in a file is rejected as `invalid_document` before anything changes.
+- The description placeholder no longer suggests putting steps or a source in it.
+
 ## [0.16.0] - 2026-11-19
 
 Installable app with offline reading ([ADR-0019](docs/adr/0019-pwa-offline.md)).

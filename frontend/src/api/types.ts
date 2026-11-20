@@ -18,6 +18,13 @@ export type SpecialMeal = (typeof SPECIAL_MEALS)[number];
 /** Longest note a slot can carry. */
 export const NOTE_MAX_LENGTH = 120;
 
+/** Limits of the richer recipe fields; mirror `domain.py`. */
+export const SERVINGS_MIN = 1;
+export const SERVINGS_MAX = 50;
+export const STEP_MAX_LENGTH = 1000;
+export const STEPS_MAX_COUNT = 50;
+export const SOURCE_URL_MAX_LENGTH = 500;
+
 export const PROTEINS = [
   "meat",
   "poultry",
@@ -53,6 +60,12 @@ export interface Recipe {
   prep_minutes: number | null;
   ingredients: string[];
   properties: RecipeProperty[];
+  /** How many people the recipe feeds (1-50), or null when unknown. */
+  servings: number | null;
+  /** Method steps in order; empty when the recipe has none. */
+  steps: string[];
+  /** Link to the original recipe (http or https only), or null. */
+  source_url: string | null;
   created_at: string;
   /** Hidden from the catalogue and suggestions, but still shown in the plans that use it. */
   archived: boolean;
@@ -66,6 +79,12 @@ export interface RecipeCreate {
   prep_minutes?: number | null;
   ingredients: string[];
   properties?: RecipeProperty[];
+  /** 1-50; `null` clears it on update. */
+  servings?: number | null;
+  /** At most 50 steps of at most 1000 characters; empty ones are dropped by the server. */
+  steps?: string[];
+  /** http(s) URL of at most 500 characters; `null` clears it on update. */
+  source_url?: string | null;
 }
 
 /** `archived` archives or restores the recipe without touching planned meals. */
@@ -272,9 +291,9 @@ export interface ShoppingExtraUpdate {
 
 /** Backup file written by `GET /api/backup` and read by `POST /api/backup/restore`. */
 export const BACKUP_FORMAT = "cociboard-backup";
-/** Version written by the server; version 1 files (no special meals or notes) still restore. */
-export const BACKUP_FORMAT_VERSION = 2;
-export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2];
+/** Version written by the server; versions 1 and 2 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link). */
+export const BACKUP_FORMAT_VERSION = 3;
+export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3];
 
 /** Response of `POST /api/backup/restore`. */
 export interface RestoreResult {

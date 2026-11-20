@@ -43,3 +43,6 @@ export const PROPERTY_META: Record<RecipeProperty, Meta> = {
   kid_friendly: { icon: "🧒", labelKey: "meta.property.kid_friendly", color: "#b83280" },
   batch_cooking: { icon: "🍲", labelKey: "meta.property.batch_cooking", color: "#6b46c1" },
 };
+
+/** Servings indicator on recipe cards; always rendered with an accessible "Serves N" label. */
+export const SERVINGS_ICON = "👥";

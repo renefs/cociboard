@@ -2,11 +2,23 @@ import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { MetaIcon } from "./MetaIcon";
-import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "./recipeMeta";
+import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META, SERVINGS_ICON } from "./recipeMeta";
 
 export const COLLAPSED_INGREDIENTS = 4;
 /** Compact cards show a one-line summary; offer expansion beyond this many characters. */
 export const COMPACT_SUMMARY_CHARS = 36;
+
+/** Icon plus number; the accessible name is the whole sentence ("Serves 4"). */
+function ServingsFact({ servings }: { servings: number | null }) {
+  const { t } = useTranslation();
+  if (servings === null) return null;
+  const label = t("recipes.serves", { count: servings });
+  return (
+    <span className="fact" role="img" aria-label={label} title={label}>
+      <span aria-hidden="true">{SERVINGS_ICON}</span> <span aria-hidden="true">{servings}</span>
+    </span>
+  );
+}
 
 export type CardDensity = "comfortable" | "compact";
 
@@ -92,6 +104,7 @@ function ComfortableCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omi
             <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
           </span>
         )}
+        <ServingsFact servings={recipe.servings} />
         <span className="fact" title={t("recipes.mainProtein")}>
           <span aria-hidden="true">{protein.icon}</span>{" "}
           <span className="visually-hidden">{t("recipes.mainProtein")}: </span>
@@ -161,6 +174,7 @@ function CompactCard({ recipe, actions, usageCount = 0, extra, onOpen }: Omit<Re
             <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
           </span>
         )}
+        <ServingsFact servings={recipe.servings} />
         <span className="fact" title={t("recipes.mainProtein")}>
           <span aria-hidden="true">{protein.icon}</span>{" "}
           <span className="visually-hidden">{t("recipes.mainProtein")}: </span>

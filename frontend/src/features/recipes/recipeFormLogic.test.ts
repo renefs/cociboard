@@ -5,6 +5,9 @@ import { makeRecipe } from "../../test/fixtures";
 import {
   asMealTypeConflict,
   cleanIngredients,
+  cleanSteps,
+  isSafeSourceUrl,
+  sourceHost,
   describeConflict,
   emptyValues,
   isDuplicateNameError,
@@ -45,6 +48,69 @@ describe("validateValues", () => {
   });
 });
 
+describe("servings, source link and steps", () => {
+  it("checks servings are whole numbers from 1 to 50", () => {
+    for (const ok of ["", " ", "1", "50", " 4 "]) {
+      expect(validateValues({ ...valid, servings: ok }, en).servings).toBeUndefined();
+    }
+    expect(validateValues({ ...valid, servings: "0" }, en).servings).toMatch(/between 1 and 50/);
+    expect(validateValues({ ...valid, servings: "51" }, en).servings).toMatch(/between 1 and 50/);
+    expect(validateValues({ ...valid, servings: "2.5" }, en).servings).toBeDefined();
+    expect(validateValues({ ...valid, servings: "-1" }, en).servings).toBeDefined();
+  });
+
+  it("accepts only http(s) links with a host", () => {
+    for (const ok of ["http://example.com", "https://example.com/a?b=1#c", "  https://example.com  "]) {
+      expect(isSafeSourceUrl(ok)).toBe(true);
+    }
+    for (const bad of [
+      "",
+      "javascript:alert(1)",
+      "data:text/html,hi",
+      "ftp://example.com",
+      "/relative",
+      "example.com/recipe",
+      "https://",
+      "https://exa mple.com",
+      `https://example.com/${"a".repeat(500)}`,
+    ]) {
+      expect(isSafeSourceUrl(bad)).toBe(false);
+    }
+  });
+
+  it("reports an invalid source link and allows it to be empty", () => {
+    expect(validateValues({ ...valid, sourceUrl: "" }, en).sourceUrl).toBeUndefined();
+    expect(validateValues({ ...valid, sourceUrl: "javascript:alert(1)" }, en).sourceUrl).toMatch(/http/);
+    expect(validateValues({ ...valid, sourceUrl: "https://example.com" }, en).sourceUrl).toBeUndefined();
+  });
+
+  it("names the host without www", () => {
+    expect(sourceHost("https://www.example.com/recipe")).toBe("example.com");
+    expect(sourceHost("http://cocina.example.org:8080/x")).toBe("cocina.example.org");
+    expect(sourceHost("javascript:alert(1)")).toBeNull();
+  });
+
+  it("limits steps to 50 of at most 1000 characters; empty ones do not count", () => {
+    expect(validateValues({ ...valid, steps: Array(50).fill("x") }, en).steps).toBeUndefined();
+    expect(validateValues({ ...valid, steps: Array(51).fill("x") }, en).steps).toMatch(/50/);
+    expect(validateValues({ ...valid, steps: [...Array(50).fill("x"), "", " "] }, en).steps).toBeUndefined();
+    expect(validateValues({ ...valid, steps: ["x".repeat(1000)] }, en).steps).toBeUndefined();
+    expect(validateValues({ ...valid, steps: ["x".repeat(1001)] }, en).steps).toMatch(/1000/);
+    expect(cleanSteps([" a ", "", "b"])).toEqual(["a", "b"]);
+  });
+
+  it("maps server errors on the new fields to form fields", () => {
+    const detail = [
+      { loc: ["body", "source_url"], type: "value_error", msg: "bad" },
+      { loc: ["body", "servings"], type: "less_than_equal", msg: "bad" },
+    ];
+    const { fields, other } = mapValidationErrors(detail, en);
+    expect(fields.sourceUrl).toMatch(/http/);
+    expect(fields.servings).toMatch(/between 1 and 50/);
+    expect(other).toEqual([]);
+  });
+});
+
 describe("payload and values", () => {
   it("trims, drops empty rows and nulls empty optionals", () => {
     expect(
@@ -57,7 +123,29 @@ describe("payload and values", () => {
       prep_minutes: null,
       ingredients: ["Tomate", "Pepino"],
       properties: [],
+      servings: null,
+      steps: [],
+      source_url: null,
     });
+  });
+
+  it("sends servings, cleaned steps and the trimmed source link", () => {
+    expect(
+      toPayload({
+        ...valid,
+        servings: " 4 ",
+        steps: [" Chop ", "", "Cook"],
+        sourceUrl: " https://example.com/x ",
+      }),
+    ).toMatchObject({ servings: 4, steps: ["Chop", "Cook"], source_url: "https://example.com/x" });
+  });
+
+  it("round-trips servings, steps and source link", () => {
+    const recipe = makeRecipe({ servings: 6, steps: ["a", "b"], source_url: "https://example.com" });
+    const values = valuesFromRecipe(recipe);
+    expect(values).toMatchObject({ servings: "6", steps: ["a", "b"], sourceUrl: "https://example.com" });
+    expect(toPayload(values)).toMatchObject({ servings: 6, steps: ["a", "b"], source_url: "https://example.com" });
+    expect(valuesFromRecipe(makeRecipe())).toMatchObject({ servings: "", steps: [], sourceUrl: "" });
   });
 
   it("round-trips a recipe", () => {

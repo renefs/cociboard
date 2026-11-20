@@ -83,7 +83,7 @@ def test_export_shape_and_header(client: TestClient) -> None:
     )
     doc = response.json()
     assert doc["format"] == "cociboard-backup"
-    assert doc["format_version"] == 2
+    assert doc["format_version"] == 3
     assert doc["app_version"] == __version__
     assert doc["exported_at"]
     assert [r["name"] for r in doc["recipes"]] == ["Alpha", "Beta", "Gamma"]
@@ -97,6 +97,9 @@ def test_export_shape_and_header(client: TestClient) -> None:
         "prep_minutes",
         "ingredients",
         "properties",
+        "servings",
+        "steps",
+        "source_url",
         "archived",
         "created_at",
     }
@@ -207,9 +210,9 @@ def test_rejects_non_documents(client: TestClient) -> None:
 def test_rejects_wrong_format_and_versions(client: TestClient) -> None:
     doc = valid_doc(client)
     assert code_of(restore(client, {**doc, "format": "other"}))["code"] == "wrong_format"
-    unsupported = code_of(restore(client, {**doc, "format_version": 3}))
+    unsupported = code_of(restore(client, {**doc, "format_version": 4}))
     assert unsupported["code"] == "unsupported_version"
-    assert unsupported["params"] == {"version": 3}
+    assert unsupported["params"] == {"version": 4}
     assert code_of(restore(client, {**doc, "format_version": "1"}))["code"] == "invalid_document"
 
 
@@ -226,6 +229,9 @@ def mutate(doc: dict[str, Any], change: Any) -> dict[str, Any]:
         (lambda d: d["recipes"][0].update(ingredients=[]), "invalid_document"),
         (lambda d: d["recipes"][0].update(meal_type="brunch"), "invalid_document"),
         (lambda d: d["recipes"][0].update(prep_minutes=0), "invalid_document"),
+        (lambda d: d["recipes"][0].update(servings=0), "invalid_document"),
+        (lambda d: d["recipes"][0].update(source_url="javascript:alert(1)"), "invalid_document"),
+        (lambda d: d["recipes"][0].update(steps=["x"] * 51), "invalid_document"),
         (lambda d: d["recipes"][1].update(name="alpha"), "duplicate_recipe_name"),
         (lambda d: d["recipes"][1].update(ref=d["recipes"][0]["ref"]), "duplicate_recipe_ref"),
         (lambda d: d["meals"][0].update(recipe_ref=9999), "unknown_recipe_ref"),
@@ -343,10 +349,10 @@ def special_populate(client: TestClient) -> None:
     client.put(f"/api/weeks/{MONDAY}/days/1/dinner", json={"special": "leftovers", "note": "Ana"})
 
 
-def test_v2_round_trip_keeps_specials_and_notes(client: TestClient) -> None:
+def test_v3_round_trip_keeps_specials_and_notes(client: TestClient) -> None:
     special_populate(client)
     before = export(client)
-    assert before["format_version"] == 2
+    assert before["format_version"] == 3
     kinds = {
         (m["day"], m["slot"]): (m["recipe_ref"], m["special"], m["note"]) for m in before["meals"]
     }
@@ -373,7 +379,7 @@ def test_v1_backup_still_restores(client: TestClient) -> None:
     result = restore(client, v1)
     assert result.status_code == 200, result.text
     assert result.json()["meals"] == 3
-    assert normalised(export(client)) == normalised({**doc, "format_version": 2})
+    assert normalised(export(client)) == normalised({**doc, "format_version": 3})
 
 
 def test_note_is_trimmed_and_validated(client: TestClient) -> None:
@@ -406,3 +412,34 @@ def test_unknown_special_is_invalid(client: TestClient) -> None:
         export(client), lambda d: d["meals"][1].update(recipe_ref=None, special="takeaway")
     )
     assert code_of(restore(client, bad))["code"] == "invalid_document"
+
+
+def test_v3_round_trip_keeps_new_recipe_fields(client: TestClient) -> None:
+    make(
+        client,
+        "Stew",
+        servings=4,
+        steps=["Chop", "  ", "Simmer"],
+        source_url="https://example.com/stew",
+    )
+    doc = export(client)
+    assert doc["recipes"][0]["steps"] == ["Chop", "Simmer"]
+    assert restore(client, doc).status_code == 200
+    again = export(client)["recipes"][0]
+    assert (again["servings"], again["steps"], again["source_url"]) == (
+        4,
+        ["Chop", "Simmer"],
+        "https://example.com/stew",
+    )
+
+
+def test_v2_backup_without_new_fields_is_restored_with_defaults(client: TestClient) -> None:
+    make(client, "Stew")
+    doc = export(client)
+    doc["format_version"] = 2
+    for recipe in doc["recipes"]:
+        for key in ("servings", "steps", "source_url"):
+            del recipe[key]
+    assert restore(client, doc).status_code == 200
+    recipe = export(client)["recipes"][0]
+    assert (recipe["servings"], recipe["steps"], recipe["source_url"]) == (None, [], None)

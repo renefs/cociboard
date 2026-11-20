@@ -12,6 +12,8 @@ interface SlotActionsProps {
   onRemove: () => void;
   /** Only offered for recipes. */
   onDetails: () => void;
+  /** Only given when leftovers can be saved for the next meal (see `leftoversTarget`). */
+  onLeftovers?: (() => void) | undefined;
   /** Save a note, or remove it with `null`. */
   onSaveNote: (note: string | null) => void;
   onClose: () => void;
@@ -27,6 +29,7 @@ export function SlotActions({
   onReplace,
   onRemove,
   onDetails,
+  onLeftovers,
   onSaveNote,
   onClose,
 }: SlotActionsProps) {
@@ -92,6 +95,11 @@ export function SlotActions({
         {meal.kind === "recipe" && (
           <button type="button" className="btn btn-large" onClick={onDetails}>
             {t("planner.viewDetails")}
+          </button>
+        )}
+        {onLeftovers && (
+          <button type="button" className="btn btn-large" onClick={onLeftovers}>
+            {t("planner.leftovers")}
           </button>
         )}
         <button type="button" className="btn btn-large" onClick={() => setEditing(true)}>
