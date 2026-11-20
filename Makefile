@@ -1,4 +1,4 @@
-.PHONY: install dev seed migrate migration test lint typecheck e2e check-version check
+.PHONY: install dev seed migrate migration test lint typecheck e2e check-version check docs docs-serve docs-screenshots
 
 VERSION := $(shell cat VERSION)
 
@@ -43,6 +43,23 @@ typecheck:
 # browser once: `cd frontend && npx playwright install chromium`. Not part of `make check`.
 e2e:
 	cd frontend && npm run build && npx playwright test
+
+# The user guide (userguide/, ADR-0030), published to GitHub Pages by
+# .github/workflows/userguide.yml. `docs` builds it into userguide/site/, `docs-serve`
+# previews it at http://127.0.0.1:8001 with live reload.
+MKDOCS := cd userguide && NO_MKDOCS_2_WARNING=1 uv run --no-project --python 3.12 --with-requirements requirements.txt mkdocs
+
+docs:
+	$(MKDOCS) build --strict
+
+docs-serve:
+	$(MKDOCS) serve --dev-addr 127.0.0.1:8001
+
+# Regenerates every screenshot of the guide (English and Spanish, desktop and phone) from the
+# real app with the starter recipes. Run it after a UI change that the guide shows. Like
+# `make e2e` it needs `npx playwright install chromium` once; it uses ports 8768 and 8769.
+docs-screenshots:
+	cd frontend && npm run build && npx playwright test -c playwright.userguide.config.ts
 
 # Every file that holds the version must equal VERSION (see AGENTS.md).
 check-version:

@@ -1,0 +1,115 @@
+# The Cociboard user guide, published to GitHub Pages by .github/workflows/userguide.yml.
+# Build locally with `make docs` (output in userguide/site/) or preview with `make docs-serve`.
+site_name: Cociboard
+site_description: How to plan varied weekly menus with Cociboard
+site_url: https://renefs.github.io/cociboard/
+repo_url: https://github.com/renefs/cociboard
+repo_name: renefs/cociboard
+edit_uri: ""
+copyright: Cociboard user guide
+
+docs_dir: docs
+site_dir: site
+
+# Broken links and anchors fail the build (`mkdocs build --strict`).
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/favicon.png
+  icon:
+    repo: fontawesome/brands/github
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  features:
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.highlight
+    - content.tooltips
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.keys
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: es
+          name: Español
+          build: true
+          site_description: Cómo planificar menús semanales variados con Cociboard
+          nav_translations:
+            Home: Inicio
+            Getting started: Primeros pasos
+            Planning the week: Planificar la semana
+            Variety: Variedad
+            Recipes: Recetas
+            Shopping list and pantry: Lista de la compra y despensa
+            Print and share: Imprimir y compartir
+            Household preferences: Preferencias del hogar
+            On your phone: En el móvil
+            Backups: Copias de seguridad
+            Questions and answers: Preguntas frecuentes
+            For administrators: Para administradores
+            Installing Cociboard: Instalar Cociboard
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Planning the week: planning.md
+  - Variety: variety.md
+  - Recipes: recipes.md
+  - Shopping list and pantry: shopping.md
+  - Print and share: sharing.md
+  - Household preferences: preferences.md
+  - On your phone: phone.md
+  - Backups: backups.md
+  - Questions and answers: faq.md
+  - For administrators:
+      - Installing Cociboard: install.md

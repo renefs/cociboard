@@ -15,8 +15,9 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
-    // The Playwright specs in e2e/ run with `make e2e`, not here.
-    exclude: [...configDefaults.exclude, "e2e/**", "playwright.config.ts"],
+    // The Playwright specs in e2e/ (`make e2e`) and the guide screenshots in userguide/
+    // (`make docs-screenshots`) are not unit tests.
+    exclude: [...configDefaults.exclude, "e2e/**", "userguide/**", "playwright.config.ts", "playwright.userguide.config.ts"],
     globals: false,
     restoreMocks: true,
   },

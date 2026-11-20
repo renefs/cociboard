@@ -13,3 +13,7 @@ data/
 **/*.db
 **/*.db-*
 **/*.sqlite*
+
+# Documentation is not part of the image
+docs/
+userguide/

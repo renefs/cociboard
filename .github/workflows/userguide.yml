@@ -1,0 +1,57 @@
+# The user guide (userguide/, ADR-0030): built on every change to it, published to GitHub
+# Pages from main. Screenshots are committed (`make docs-screenshots`), so this only runs
+# MkDocs; --strict fails the build on a broken link, anchor or image.
+name: User guide
+
+on:
+  push:
+    branches: [main]
+    paths: ["userguide/**", ".github/workflows/userguide.yml"]
+  pull_request:
+    paths: ["userguide/**", ".github/workflows/userguide.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: userguide-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NO_MKDOCS_2_WARNING: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.7"
+          python-version: "3.12"
+
+      - name: Build the site
+        working-directory: userguide
+        run: uv run --no-project --with-requirements requirements.txt mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: userguide/site
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
