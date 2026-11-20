@@ -29,6 +29,7 @@ from cociboard.domain import (
     clean_source_url,
     clean_steps,
 )
+from cociboard.recipe_import.parse import ImportWarningCode
 
 
 class HealthResponse(BaseModel):
@@ -193,6 +194,25 @@ class RecipeRead(BaseModel):
     def archived(self) -> bool:
         """Whether the recipe is archived (hidden from the catalogue, kept in plans)."""
         return self.archived_at is not None
+
+
+class RecipeImportRequest(BaseModel):
+    """Body of ``POST /api/recipes/import``."""
+
+    url: str
+
+
+class RecipeDraft(BaseModel):
+    """Response of ``POST /api/recipes/import``: fields to review in the form; nothing is saved."""
+
+    name: str
+    description: str | None
+    servings: int | None
+    prep_minutes: int | None
+    ingredients: list[str]
+    steps: list[str]
+    source_url: str | None
+    warnings: list[ImportWarningCode]
 
 
 class RecipeUsage(BaseModel):

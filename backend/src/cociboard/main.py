@@ -19,6 +19,7 @@ from cociboard.auth_middleware import AuthMiddleware
 from cociboard.autobackup import AutoBackupService, BackupState
 from cociboard.config import Settings, get_settings
 from cociboard.db import get_engine, init_db
+from cociboard.recipe_import.fetch import ImportLimiter
 from cociboard.routers import auth, backup, pantry, recipes, shopping, weeks
 from cociboard.schemas import HealthResponse
 from cociboard.seed import seed_if_empty
@@ -102,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Cociboard", version=__version__, lifespan=lifespan)
     app.state.auth = build_auth_state(settings)
     app.state.backup_state = BackupState()
+    app.state.import_limiter = ImportLimiter()
     if app.state.auth is not None:
         # Added before CORS so CORS is outermost and 401/403 answers carry its headers.
         app.add_middleware(AuthMiddleware, auth=app.state.auth, cors_origins=settings.cors_origins)

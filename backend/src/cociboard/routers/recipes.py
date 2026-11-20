@@ -1,18 +1,25 @@
 """``/api/recipes`` endpoints."""
 
+import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlmodel import Session
 
 from cociboard import repository
+from cociboard.config import Settings, get_settings
 from cociboard.db import get_session
 from cociboard.domain import MealSlot, RecipeProperty
+from cociboard.recipe_import.errors import HTTP_STATUS, ImportFailure
+from cociboard.recipe_import.fetch import ImportLimiter, PageFetcher, fetch_page
+from cociboard.recipe_import.parse import parse_recipe
 from cociboard.schemas import (
     ConflictSlot,
     DuplicateNameDetail,
     MealTypeConflictDetail,
     RecipeCreate,
+    RecipeDraft,
+    RecipeImportRequest,
     RecipeRead,
     RecipeUpdate,
     RecipeUsage,
@@ -32,6 +39,53 @@ def _duplicate(exc: repository.DuplicateRecipeNameError) -> HTTPException:
         message=f"A recipe named '{exc.args[0]}' already exists", archived=exc.archived
     )
     return HTTPException(status.HTTP_409_CONFLICT, detail=detail.model_dump(mode="json"))
+
+
+def get_page_fetcher() -> PageFetcher:
+    """The page downloader; tests replace it so no import touches the network."""
+    return fetch_page
+
+
+@router.post("/import", response_model=RecipeDraft)
+async def import_recipe(
+    data: RecipeImportRequest,
+    request: Request,
+    session: SessionDep,
+    settings: Annotated[Settings, Depends(get_settings)],
+    fetch: Annotated[PageFetcher, Depends(get_page_fetcher)],
+) -> RecipeDraft:
+    """Read a recipe from a web page into a draft for the form (ADR-0024). Nothing is saved.
+
+    Errors carry ``detail.code``: invalid_url, blocked_address, no_recipe_found (422),
+    fetch_failed (502, with the remote ``status``), timeout (504), too_large (413),
+    not_html (415), busy (429, two imports are already running), import_disabled (404).
+    """
+    if not settings.recipe_import:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"code": "import_disabled"})
+    limiter: ImportLimiter = request.app.state.import_limiter
+    try:
+        async with limiter.slot():
+            page = await fetch(data.url)
+            # Up to 2 MiB of HTML: parse off the event loop, still inside the slot.
+            parsed = await asyncio.to_thread(parse_recipe, page.html, page.url, data.url)
+    except ImportFailure as exc:
+        detail: dict[str, object] = {"code": exc.code}
+        if exc.status is not None:
+            detail["status"] = exc.status
+        raise HTTPException(HTTP_STATUS[exc.code], detail=detail) from None
+    warnings = list(parsed.warnings)
+    if repository.name_taken(session, parsed.name):
+        warnings.append("name_exists")
+    return RecipeDraft(
+        name=parsed.name,
+        description=parsed.description,
+        servings=parsed.servings,
+        prep_minutes=parsed.prep_minutes,
+        ingredients=parsed.ingredients,
+        steps=parsed.steps,
+        source_url=parsed.source_url,
+        warnings=warnings,
+    )
 
 
 @router.get("", response_model=list[RecipeRead])

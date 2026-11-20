@@ -38,6 +38,11 @@ def _name_clash(session: Session, name: str, exclude_id: int | None = None) -> R
     return next((r for r in session.exec(statement) if r.id != exclude_id), None)
 
 
+def name_taken(session: Session, name: str) -> bool:
+    """Whether an active or archived recipe already has ``name`` (case-insensitive)."""
+    return _name_clash(session, name) is not None
+
+
 def _raise_if_taken(session: Session, name: str, exclude_id: int | None = None) -> None:
     clash = _name_clash(session, name, exclude_id)
     if clash is not None:

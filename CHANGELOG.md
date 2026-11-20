@@ -5,6 +5,35 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-11-20
+
+Import a recipe from a link ([ADR-0024](docs/adr/0024-recipe-import.md)).
+
+### Added
+- **Import from a link** at the top of the new-recipe form: paste a recipe page address and the
+  name, description, servings, time, ingredients, steps and source link are filled in from the
+  page's schema.org `Recipe` data. Nothing is saved until the form is submitted; the user is
+  asked before typed content is replaced; translated notes explain what was shortened or not
+  found, and a recipe with the same name is flagged.
+- `POST /api/recipes/import` answers a draft or `{ detail: { code } }` (`invalid_url`,
+  `blocked_address`, `no_recipe_found`, `fetch_failed`, `timeout`, `too_large`, `not_html`,
+  `busy`, `import_disabled`). Setting `COCIBOARD_RECIPE_IMPORT` (default `true`) turns it off;
+  the form then hides the option after the first attempt.
+- **Share target** for the installed Android app: sharing a link to Cociboard opens the new-recipe
+  form and imports it; the share parameters are removed from the address bar.
+- English and Spanish texts for the import, its warnings and its errors.
+
+### Security
+- The server fetches user-supplied addresses, so the import refuses non-public destinations
+  (SSRF): http(s) on ports 80 and 443 only, no userinfo; every resolved address must be public
+  (including IPv4 addresses hidden in IPv6 forms); the connection is pinned to the vetted address
+  (TLS name and `Host` kept); redirects are followed manually and re-validated at every hop;
+  2 MiB and 15 s limits, text content types only, no proxies, cookies or credentials sent, two
+  imports at once.
+
+### Changed
+- `httpx` is now a runtime dependency (it was a development one).
+
 ## [0.20.0] - 2026-11-20
 
 Pantry staples in the shopping list ([ADR-0023](docs/adr/0023-pantry-staples.md)).

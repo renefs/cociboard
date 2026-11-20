@@ -9,6 +9,7 @@ import type {
   PantryItem,
   Recipe,
   RecipeCreate,
+  RecipeDraft,
   RecipeFilters,
   RecipeUpdate,
   RecipeUsage,
@@ -120,6 +121,15 @@ export function createRecipe(recipe: RecipeCreate): Promise<Recipe> {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(recipe),
+  });
+}
+
+/** Read a recipe from a web page into a draft; nothing is saved. Fails with `detail.code`. */
+export function importRecipe(url: string): Promise<RecipeDraft> {
+  return request<RecipeDraft>("/recipes/import", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ url }),
   });
 }
 
