@@ -5,6 +5,7 @@ import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
 import { MetaIcon } from "../recipes/MetaIcon";
 import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "../recipes/recipeMeta";
 import {
+  acceptsDrop,
   canDrop,
   isDragSource,
   slotDragId,
@@ -73,7 +74,7 @@ export function Slot({
   const { setNodeRef, isOver } = useDroppable({
     id: slotDropId(ref),
     data: target,
-    disabled: dragBlocked || isOwnSlot,
+    disabled: !acceptsDrop(plan, source, target),
   });
 
   const dragRecipe = source ? sourceRecipe(source) : null;

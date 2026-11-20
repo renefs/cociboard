@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.1] - 2026-11-20
+
+### Fixed
+- Keyboard drag and drop: picking up a planned meal with Space started the drag over a
+  neighbouring slot (for example "over Tuesday dinner" when picking up from Wednesday dinner),
+  so pressing Space again at once moved the meal there. The meal's own slot now stays a drop
+  target while it is dragged, so a keyboard drag starts over it ("is over its own slot") and an
+  immediate drop leaves the meal in place and announces that it was not moved. Arrow keys work
+  as before, and an arrow can now also bring the meal back to its own slot. The rule is the
+  pure `acceptsDrop` in `dragLogic.ts`, with Vitest coverage of the pick-up collision.
+- E2E: the keyboard spec no longer accepts any first slot after a pick-up and gains a
+  "pick up and drop at once" test. `pickUpWithKeyboard` waits until dnd-kit's keyboard sensor
+  listens for keys (it starts in a timer after the pick-up), so a key pressed straight away is
+  not taken as a click on the meal's button.
+
 ## [0.25.0] - 2026-11-20
 
 End-to-end tests with Playwright ([ADR-0028](docs/adr/0028-end-to-end-tests.md)). No schema or

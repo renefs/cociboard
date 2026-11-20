@@ -20,18 +20,31 @@ test.describe("keyboard planning", () => {
     await expect(announced).toContainText("Baked salmon was added to Wednesday dinner.");
     await expect(slot(page, "Wednesday", "dinner").getByRole("button", { name: /^Baked salmon, Wednesday dinner/ })).toBeVisible();
 
-    // Pick the meal up from its slot and move it one day later.
+    // Pick the meal up from its slot (it starts over its own slot) and move it one day later.
     await pickUpWithKeyboard(
       page,
       slot(page, "Wednesday", "dinner").getByRole("button", { name: /^Baked salmon, Wednesday dinner/ }),
-      // dnd-kit starts on whichever slot is closest to the picked-up meal; the arrows decide.
-      /^Baked salmon is over \w+ dinner\.$/,
+      "Baked salmon is over its own slot, Wednesday dinner.",
     );
     await pressUntilAnnounced(page, "ArrowRight", "Baked salmon is over Thursday dinner.");
     await page.keyboard.press("Space");
     await expect(announced).toContainText("Baked salmon was moved to Thursday dinner.");
     await expect(slot(page, "Thursday", "dinner").getByRole("button", { name: /^Baked salmon, Thursday dinner/ })).toBeVisible();
     await expect(slot(page, "Wednesday", "dinner").getByRole("button", { name: "Add dinner on Wednesday" })).toBeVisible();
+  });
+
+  test("picking a meal up and dropping it at once leaves it in place", async ({ page }) => {
+    const announced = dragAnnouncements(page);
+    await page.getByRole("button", { name: "Add Baked salmon to the plan" }).click();
+    await page.getByRole("button", { name: "Add dinner on Wednesday" }).click();
+    const meal = slot(page, "Wednesday", "dinner").getByRole("button", { name: /^Baked salmon, Wednesday dinner/ });
+
+    await pickUpWithKeyboard(page, meal, "Baked salmon is over its own slot, Wednesday dinner.");
+    await page.keyboard.press("Space");
+    await expect(announced).toContainText("Baked salmon was not moved.");
+    await expect(meal).toBeVisible();
+    await expect(slot(page, "Tuesday", "dinner").getByRole("button", { name: "Add dinner on Tuesday" })).toBeVisible();
+    await expect(slot(page, "Thursday", "dinner").getByRole("button", { name: "Add dinner on Thursday" })).toBeVisible();
   });
 
   test("Escape cancels a keyboard drag", async ({ page }) => {

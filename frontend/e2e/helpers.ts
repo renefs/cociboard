@@ -65,6 +65,10 @@ export async function pickUpWithKeyboard(page: Page, item: Locator, text: string
     await page.keyboard.press("Space");
     await expect(live).toContainText(text, { timeout: 700 });
   }).toPass({ timeout: 6_000 });
+  // dnd-kit's keyboard sensor starts listening for keys in a `setTimeout` after the pick-up,
+  // which can be after the announcement renders. A key pressed before that reaches the
+  // focused button instead, so wait for a timer queued now, which runs after dnd-kit's.
+  await page.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
 }
 
 type Tab = "Today" | "Week" | "Recipes" | "Shopping";

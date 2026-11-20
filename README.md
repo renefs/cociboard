@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.25.0** (end-to-end tests).
+Current version: **0.25.1** (keyboard pick-up fix).
 
 ## Stack
 
