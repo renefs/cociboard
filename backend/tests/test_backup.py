@@ -84,7 +84,7 @@ def test_export_shape_and_header(client: TestClient) -> None:
     )
     doc = response.json()
     assert doc["format"] == "cociboard-backup"
-    assert doc["format_version"] == 4
+    assert doc["format_version"] == 5
     assert doc["app_version"] == __version__
     assert doc["exported_at"]
     assert [r["name"] for r in doc["recipes"]] == ["Alpha", "Beta", "Gamma"]
@@ -214,9 +214,9 @@ def test_rejects_non_documents(client: TestClient) -> None:
 def test_rejects_wrong_format_and_versions(client: TestClient) -> None:
     doc = valid_doc(client)
     assert code_of(restore(client, {**doc, "format": "other"}))["code"] == "wrong_format"
-    unsupported = code_of(restore(client, {**doc, "format_version": 5}))
+    unsupported = code_of(restore(client, {**doc, "format_version": 6}))
     assert unsupported["code"] == "unsupported_version"
-    assert unsupported["params"] == {"version": 5}
+    assert unsupported["params"] == {"version": 6}
     assert code_of(restore(client, {**doc, "format_version": "1"}))["code"] == "invalid_document"
 
 
@@ -359,7 +359,7 @@ def special_populate(client: TestClient) -> None:
 def test_v3_round_trip_keeps_specials_and_notes(client: TestClient) -> None:
     special_populate(client)
     before = export(client)
-    assert before["format_version"] == 4
+    assert before["format_version"] == 5
     kinds = {
         (m["day"], m["slot"]): (m["recipe_ref"], m["special"], m["note"]) for m in before["meals"]
     }
@@ -386,7 +386,7 @@ def test_v1_backup_still_restores(client: TestClient) -> None:
     result = restore(client, v1)
     assert result.status_code == 200, result.text
     assert result.json()["meals"] == 3
-    assert normalised(export(client)) == normalised({**doc, "format_version": 4})
+    assert normalised(export(client)) == normalised({**doc, "format_version": 5})
 
 
 def test_note_is_trimmed_and_validated(client: TestClient) -> None:
@@ -476,3 +476,68 @@ def test_v3_backup_restores_with_an_empty_pantry(client: TestClient) -> None:
     assert result.status_code == 200, result.text
     assert result.json()["pantry"] == 0
     assert client.get("/api/pantry").json()["items"] == []
+
+
+SETTINGS = {
+    "required_properties": ["vegetarian"],
+    "avoided_properties": ["spicy"],
+    "max_meals_per_protein": 3,
+    "min_vegetarian_meals": 0,
+    "min_fish_meals": 1,
+    "lunch_time": "13:30",
+    "dinner_time": "22:00",
+}
+
+
+def test_v5_round_trip_keeps_the_household_settings(client: TestClient) -> None:
+    populate(client)
+    assert client.put("/api/settings/household", json=SETTINGS).status_code == 200
+    doc = export(client)
+    assert doc["settings"] == SETTINGS
+    client.put("/api/settings/household", json={**SETTINGS, "required_properties": []})
+    assert restore(client, doc).status_code == 200
+    assert client.get("/api/settings/household").json() == SETTINGS
+    assert export(client)["settings"] == SETTINGS
+
+
+def test_export_of_fresh_database_has_default_settings(client: TestClient) -> None:
+    assert export(client)["settings"]["max_meals_per_protein"] == 4
+
+
+def test_v4_backup_resets_the_settings_to_defaults(client: TestClient) -> None:
+    populate(client)
+    doc = export(client)
+    doc["format_version"] = 4
+    del doc["settings"]
+    client.put("/api/settings/household", json=SETTINGS)
+    result = restore(client, doc)
+    assert result.status_code == 200, result.text
+    assert client.get("/api/settings/household").json() == {
+        "required_properties": [],
+        "avoided_properties": [],
+        "max_meals_per_protein": 4,
+        "min_vegetarian_meals": 2,
+        "min_fish_meals": 2,
+        "lunch_time": "14:00",
+        "dinner_time": "21:00",
+    }
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"lunch_time": "99:00"},
+        {"required_properties": ["spicy"]},
+        {"required_properties": ["vegan"], "avoided_properties": ["vegan"]},
+    ],
+)
+def test_inconsistent_settings_are_rejected(client: TestClient, change: dict[str, Any]) -> None:
+    doc = valid_doc(client)
+    doc["settings"] = {**SETTINGS, **change}
+    assert code_of(restore(client, doc))["code"] == "invalid_settings"
+
+
+def test_out_of_range_settings_are_an_invalid_document(client: TestClient) -> None:
+    doc = valid_doc(client)
+    doc["settings"] = {**SETTINGS, "max_meals_per_protein": 0}
+    assert code_of(restore(client, doc))["code"] == "invalid_document"

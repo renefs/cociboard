@@ -3,6 +3,7 @@ import type {
   BackupStatus,
   Candidate,
   HealthResponse,
+  HouseholdSettings,
   LoginBody,
   MealSlot,
   Pantry,
@@ -333,5 +334,18 @@ export function restoreBackup(document: unknown): Promise<RestoreResult> {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(document),
+  });
+}
+
+export function getHouseholdSettings(signal?: AbortSignal): Promise<HouseholdSettings> {
+  return request<HouseholdSettings>("/settings/household", { signal: signal ?? null });
+}
+
+/** Replaces the settings. Rejects with `ApiError` 422 whose detail is `{ code }` when inconsistent. */
+export function putHouseholdSettings(settings: HouseholdSettings): Promise<HouseholdSettings> {
+  return request<HouseholdSettings>("/settings/household", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
   });
 }

@@ -4,10 +4,15 @@ import type { DayPlan, MealSlot, WeekPlan } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
 import { mealName, mealOfDay, recipeOf } from "../planner/slots";
 
-/** Typical meal times in Spain, as floating local times (hour of day, one hour long). */
-export const SLOT_HOURS: Record<MealSlot, number> = { lunch: 14, dinner: 21 };
+/** Typical meal times in Spain: the defaults of the household preferences. */
+export const DEFAULT_MEAL_TIMES: MealTimes = { lunch: "14:00", dinner: "21:00" };
+
+/** Start of each meal as `HH:MM` (24 h); events are floating local times, one hour long. */
+export type MealTimes = Record<MealSlot, string>;
 
 export interface IcsOptions {
+  /** When lunch and dinner start; defaults to 14:00 and 21:00. */
+  times?: MealTimes;
   /** The moment of export, written as DTSTAMP (injected so the output is deterministic). */
   now: Date;
   /** App version for PRODID; omitted from it when not given. */
@@ -59,23 +64,52 @@ function utcStamp(date: Date): string {
   );
 }
 
-function localStamp(isoDate: string, hour: number): string {
-  return `${isoDate.replaceAll("-", "")}T${pad(hour)}0000`;
+function localStamp(isoDate: string, minutes: number): string {
+  return `${isoDate.replaceAll("-", "")}T${pad(Math.floor(minutes / 60))}${pad(minutes % 60)}00`;
 }
 
-function eventLines(day: DayPlan, slot: MealSlot, t: TFunction, stamp: string): string[] | null {
+/** Minutes after midnight of an `HH:MM` time; falls back to the default for a malformed one. */
+function minutesOf(time: string, fallback: string): number {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time) ?? /^(\d\d):(\d\d)$/.exec(fallback);
+  return Number(match?.[1]) * 60 + Number(match?.[2]);
+}
+
+const addDays = (isoDate: string, days: number) => {
+  const [year = 0, month = 1, day = 1] = isoDate.split("-").map(Number);
+  const moved = new Date(Date.UTC(year, month - 1, day + days));
+  return `${moved.getUTCFullYear()}-${pad(moved.getUTCMonth() + 1)}-${pad(moved.getUTCDate())}`;
+};
+
+/** Start and end (one hour later, possibly after midnight) of a slot's event. */
+function eventTimes(isoDate: string, slot: MealSlot, times: MealTimes): { start: string; end: string } {
+  const start = minutesOf(times[slot], DEFAULT_MEAL_TIMES[slot]);
+  const end = start + 60;
+  return {
+    start: localStamp(isoDate, start),
+    end: end >= 24 * 60 ? localStamp(addDays(isoDate, 1), end - 24 * 60) : localStamp(isoDate, end),
+  };
+}
+
+function eventLines(
+  day: DayPlan,
+  slot: MealSlot,
+  t: TFunction,
+  stamp: string,
+  times: MealTimes,
+): string[] | null {
   const meal = mealOfDay(day, slot);
   if (!meal) return null;
   const recipe = recipeOf(meal);
   const description = [meal.note, ...(recipe?.ingredients ?? [])].filter(
     (line): line is string => typeof line === "string" && line !== "",
   );
+  const { start, end } = eventTimes(day.date, slot, times);
   return [
     "BEGIN:VEVENT",
     `UID:${day.date}-${slot}@cociboard`,
     `DTSTAMP:${stamp}`,
-    `DTSTART:${localStamp(day.date, SLOT_HOURS[slot])}`,
-    `DTEND:${localStamp(day.date, SLOT_HOURS[slot] + 1)}`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
     `SUMMARY:${escapeText(t(`share.line.${slot}`, { meal: mealName(meal, t) }))}`,
     ...(description.length > 0 ? [`DESCRIPTION:${escapeText(description.join("\n"))}`] : []),
     ...(recipe?.source_url ? [`URL:${recipe.source_url}`] : []),
@@ -89,13 +123,14 @@ function eventLines(day: DayPlan, slot: MealSlot, t: TFunction, stamp: string): 
  */
 export function weekAsIcs(plan: WeekPlan, t: TFunction, options: IcsOptions): string {
   const stamp = utcStamp(options.now);
+  const times = options.times ?? DEFAULT_MEAL_TIMES;
   const product = options.version ? `Cociboard ${options.version}` : "Cociboard";
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     `PRODID:-//Cociboard//${product}//EN`,
     "CALSCALE:GREGORIAN",
-    ...plan.days.flatMap((day) => MEAL_SLOTS.flatMap((slot) => eventLines(day, slot, t, stamp) ?? [])),
+    ...plan.days.flatMap((day) => MEAL_SLOTS.flatMap((slot) => eventLines(day, slot, t, stamp, times) ?? [])),
     "END:VCALENDAR",
   ];
   return lines.map(foldLine).join("\r\n") + "\r\n";

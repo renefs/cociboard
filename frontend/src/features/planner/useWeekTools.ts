@@ -3,10 +3,15 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { clearWeek, copyWeek, replaceWeek, suggestWeek } from "../../api/client";
 import type { WeekCopyResult, WeekPlan } from "../../api/types";
+import { hasRecipePreferences } from "../settings/householdLogic";
+import { householdKey } from "../settings/useHouseholdSettings";
+import type { HouseholdSettings } from "../../api/types";
 import { countFilled, planToFills } from "./planTransforms";
 import type { ToastAction } from "./Toast";
 import { invalidateFollowingWeeks, weekKey } from "./useWeekPlan";
 import { shiftWeek } from "./weekMath";
+
+const SLOTS_PER_WEEK = 14;
 
 export interface WeekTools {
   busy: boolean;
@@ -96,9 +101,12 @@ export function useWeekTools(weekStart: string, notify: Notify): WeekTools {
         (week) => suggestWeek(week),
         (before, after) => {
           const added = countFilled(after) - countFilled(before);
-          return added > 0
-            ? { text: t("planner.filledSlots", { count: added }), undo: true }
-            : { text: t("planner.noEmptySlots"), undo: false };
+          // With preferences set, empty slots that remain are likely due to them.
+          const household = queryClient.getQueryData<HouseholdSettings>(householdKey);
+          const leftEmpty = countFilled(after) < SLOTS_PER_WEEK && hasRecipePreferences(household);
+          const note = leftEmpty ? `. ${t("planner.slotsLeftEmptyByPreferences")}` : "";
+          if (added > 0) return { text: `${t("planner.filledSlots", { count: added })}${note}`, undo: true };
+          return { text: leftEmpty ? t("planner.slotsLeftEmptyByPreferences") : t("planner.noEmptySlots"), undo: false };
         },
       ),
     clear: () =>

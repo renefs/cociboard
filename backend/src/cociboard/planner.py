@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, select
 
-from cociboard import repository
+from cociboard import household_repo, repository
 from cociboard.domain import (
     MealSlot,
     SpecialMeal,
@@ -160,7 +160,8 @@ def get_variety(session: Session, week_start: date) -> VarietyReport:
     """Variety analysis of the stored plan of a week."""
     _check_position(week_start, 0)
     meals = _meals(_load_slots(session, week_start))
-    return analyze_week(meals, week_context(session, week_start))
+    household = household_repo.get_household(session)
+    return analyze_week(meals, week_context(session, week_start), household.targets)
 
 
 def get_week_plan(session: Session, week_start: date) -> WeekPlanRead:
@@ -195,7 +196,11 @@ def get_week_plan(session: Session, week_start: date) -> WeekPlanRead:
         )
         for day in range(7)
     ]
-    variety = analyze_week(_meals(slots), week_context(session, week_start))
+    variety = analyze_week(
+        _meals(slots),
+        week_context(session, week_start),
+        household_repo.get_household(session).targets,
+    )
     return WeekPlanRead(week_start=week_start, days=days, variety=variety)
 
 
@@ -362,7 +367,18 @@ def suggest_week(session: Session, week_start: date, seed: int | None = None) ->
     catalogue = [meal_info(recipe) for recipe in repository.list_recipes(session)]
     rng = random.Random(seed)
     context = week_context(session, week_start)
-    for index, meal in suggest_fills(meals, catalogue, rng, context, _occupied(slots)).items():
+    household = household_repo.get_household(session)
+    fills = suggest_fills(
+        meals,
+        catalogue,
+        rng,
+        context,
+        _occupied(slots),
+        household.targets,
+        household.required,
+        household.avoided,
+    )
+    for index, meal in fills.items():
         position = slot_position(index)
         session.add(
             MealAssignment(
@@ -384,6 +400,7 @@ def slot_candidates(
     meals = _meals(_load_slots(session, week_start))
     recipes = {r.id: r for r in repository.list_recipes(session)}
     catalogue = [meal_info(recipe) for recipe in recipes.values()]
+    household = household_repo.get_household(session)
     return [
         CandidateRead(
             recipe=RecipeRead.model_validate(recipes[candidate.meal.recipe_id]),
@@ -394,7 +411,13 @@ def slot_candidates(
             good_pick=candidate.good_pick,
         )
         for candidate in candidates_for_slot(
-            meals, slot_index(day, slot), catalogue, week_context(session, week_start)
+            meals,
+            slot_index(day, slot),
+            catalogue,
+            week_context(session, week_start),
+            household.targets,
+            household.required,
+            household.avoided,
         )
     ]
 

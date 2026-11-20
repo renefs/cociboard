@@ -66,6 +66,29 @@ body {
   border-radius: 999px;
 }
 
+/* The household preferences button: a round icon-only button, 36px with a mouse and 44px on
+   touch (like .icon-button). */
+.header-button--icon {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  border-radius: 50%;
+}
+
+@media (pointer: coarse) {
+  .header-button--icon {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
 @media (max-width: 479px) {
   /* Icon only on phones; the accessible name stays through the label's visually-hidden style. */
   .header-button-label {

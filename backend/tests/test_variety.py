@@ -1,15 +1,24 @@
 import pytest
 
 from cociboard.domain import IssueKind, IssueSeverity, MealType, Protein
+from cociboard.household import (
+    DEFAULT_MAX_MEALS_PER_PROTEIN,
+    DEFAULT_MIN_FISH_MEALS,
+    DEFAULT_MIN_VEGETARIAN_MEALS,
+)
 from cociboard.schemas import VarietyReport
 from cociboard.variety import (
     BASE_SCORE,
+    DEFAULT_TARGETS,
     FISH_CHECK_FROM,
     INFO_PENALTY,
     MAX_MEALS_PER_PROTEIN,
+    MIN_FISH_MEALS,
+    MIN_VEGETARIAN_MEALS,
     VEGETARIAN_CHECK_FROM,
     WARNING_PENALTY,
     MealInfo,
+    VarietyTargets,
     analyze_week,
     slot_index,
     slot_position,
@@ -222,3 +231,59 @@ def test_params_are_json_serialisable() -> None:
     report = analyze_week(week(meal(1, Protein.fish), meal(2, Protein.fish)))
     data = report.model_dump(mode="json")
     assert data["issues"][0]["params"]["from"] == {"day": 0, "slot": "lunch"}
+
+
+def _meat_every_other_slot(count: int) -> list[MealInfo | None]:
+    slots: list[MealInfo | None] = [None] * 14
+    for n in range(count):
+        slots[n * 2] = meal(n + 1, Protein.meat)
+    return slots
+
+
+def test_default_targets_equal_the_module_constants() -> None:
+    assert (
+        VarietyTargets(MAX_MEALS_PER_PROTEIN, MIN_VEGETARIAN_MEALS, MIN_FISH_MEALS)
+        == DEFAULT_TARGETS
+    )
+    assert (
+        DEFAULT_MAX_MEALS_PER_PROTEIN,
+        DEFAULT_MIN_VEGETARIAN_MEALS,
+        DEFAULT_MIN_FISH_MEALS,
+    ) == (
+        MAX_MEALS_PER_PROTEIN,
+        MIN_VEGETARIAN_MEALS,
+        MIN_FISH_MEALS,
+    )
+
+
+def test_a_higher_protein_limit_allows_more_meals_and_a_lower_one_flags_earlier() -> None:
+    five = _meat_every_other_slot(5)
+    assert analyze_week(five, targets=VarietyTargets(max_meals_per_protein=5)).issues == []
+    report = analyze_week(
+        _meat_every_other_slot(3), targets=VarietyTargets(max_meals_per_protein=2)
+    )
+    [issue] = report.issues
+    assert issue.kind is IssueKind.protein_overload
+    assert issue.params == {"protein": "meat", "count": 3, "max": 2}
+    assert "more than 2" in issue.message
+
+
+def test_minimum_of_zero_switches_the_coverage_checks_off() -> None:
+    proteins = [Protein.meat, Protein.poultry, Protein.eggs, Protein.dairy, Protein.legumes]
+    meals: list[MealInfo | None] = [meal(i + 1, proteins[i % 5], "x") for i in range(12)]
+    meals = meals + [None] * 2
+    assert {IssueKind.few_vegetarian, IssueKind.little_fish} <= set(kinds(analyze_week(meals)))
+    off = VarietyTargets(min_vegetarian_meals=0, min_fish_meals=0)
+    assert analyze_week(meals, targets=off).issues == []
+    only_fish_off = analyze_week(meals, targets=VarietyTargets(min_fish_meals=0))
+    assert kinds(only_fish_off) == [IssueKind.few_vegetarian]
+
+
+def test_coverage_params_reflect_the_targets() -> None:
+    proteins = [Protein.meat, Protein.poultry, Protein.eggs, Protein.dairy, Protein.legumes]
+    meals: list[MealInfo | None] = [meal(i + 1, proteins[i % 5]) for i in range(12)]
+    meals = meals + [None] * 2
+    report = analyze_week(meals, targets=VarietyTargets(min_vegetarian_meals=5, min_fish_meals=3))
+    params = {i.kind: i.params for i in report.issues}
+    assert params[IssueKind.few_vegetarian]["min"] == 5
+    assert params[IssueKind.little_fish] == {"count": 0, "min": 3}

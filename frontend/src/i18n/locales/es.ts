@@ -60,6 +60,8 @@ const es = {
     restored: "Se ha restaurado el plan anterior.",
     undoFailed: "No se pudo deshacer. Se ha recargado la semana; revisa tu plan.",
     noEmptySlots: "No se pudo rellenar ningún hueco vacío.",
+    slotsLeftEmptyByPreferences:
+      "Algunos huecos han quedado vacíos: ninguna receta cumple las preferencias de tu hogar.",
     updateFailed: "No se pudo actualizar la semana. Comprueba tu conexión e inténtalo de nuevo.",
     filledSlots_one: "Se ha rellenado {{count}} hueco",
     filledSlots_other: "Se han rellenado {{count}} huecos",
@@ -178,6 +180,8 @@ const es = {
     cancelled: "Arrastre cancelado. {{name}} no se ha movido.",
   },
   recipes: {
+    resultsCount_one: "{{count}} receta",
+    resultsCount_other: "{{count}} recetas",
     heading: "Recetas",
     newRecipe: "Nueva receta",
     searchLabel: "Buscar recetas",
@@ -367,6 +371,7 @@ const es = {
       duplicate_shopping_check: "La copia marca dos veces el mismo artículo de la compra.",
       invalid_pantry_item: "La copia tiene un artículo de la despensa sin un nombre válido.",
       duplicate_pantry_item: "La copia incluye dos veces el artículo de la despensa «{{name}}».",
+      invalid_settings: "La copia incluye unas preferencias del hogar que no son válidas.",
     },
   },
   recipeForm: {
@@ -529,6 +534,7 @@ const es = {
       already_planned_batch: "Ya planificada (cocina por lotes)",
       planned_recently_one: "Planificada la semana pasada",
       planned_recently_other: "Planificada hace {{count}} semanas",
+      outside_preferences: "Fuera de las preferencias del hogar",
     },
   },
   mobile: {
@@ -635,6 +641,44 @@ const es = {
     announce: {
       added: "{{name}} añadido a la despensa.",
       removed: "{{name}} quitado de la despensa.",
+    },
+  },
+  household: {
+    button: "Preferencias del hogar",
+    buttonTitle: "Preferencias del hogar: dieta, objetivos de variedad y horarios de comidas",
+    title: "Preferencias del hogar",
+    loading: "Cargando tus preferencias…",
+    loadError: "No se pueden cargar tus preferencias. Comprueba la conexión e inténtalo de nuevo.",
+    dietHeading: "Dieta",
+    dietHelp: "Las sugerencias solo proponen recetas etiquetadas con todas estas opciones.",
+    avoidHeading: "Evitar",
+    avoidHelp:
+      "Las sugerencias descartan las recetas con cualquiera de estas etiquetas. Aun así, puedes añadirlas a mano.",
+    requiredInDiet: "(obligatoria en Dieta)",
+    varietyHeading: "Objetivos de variedad",
+    varietyHelp:
+      "Determinan cuándo aparecen los consejos de variedad y cómo se calcula la puntuación. Pon un mínimo en 0 para desactivar ese consejo.",
+    maxProtein: "Máximo de comidas con la misma proteína principal",
+    maxProteinHint: "Si se supera en una semana, se avisa con una advertencia (de 1 a 14).",
+    minVegetarian: "Mínimo de comidas con verduras como protagonistas",
+    minVegetarianHint: "Si hay menos, aparece un consejo cuando la semana está a medias. Con 0 se desactiva.",
+    minFish: "Mínimo de comidas con pescado o marisco",
+    minFishHint: "Si hay menos, aparece un consejo cuando la semana está casi planificada. Con 0 se desactiva.",
+    increase: "Aumentar: {{name}}",
+    decrease: "Disminuir: {{name}}",
+    timesHeading: "Horarios de las comidas",
+    timesHelp: "A qué hora empiezan la comida y la cena en el archivo de calendario que exportas desde la semana.",
+    lunchTime: "La comida empieza a las",
+    dinnerTime: "La cena empieza a las",
+    save: "Guardar",
+    saved: "Preferencias del hogar guardadas.",
+    saveFailed: "No se han podido guardar tus preferencias. Comprueba la conexión e inténtalo de nuevo.",
+    errors: {
+      range: "Introduce un número entero de {{min}} a {{max}}.",
+      time: "Introduce una hora como 14:00.",
+      invalid_time: "Uno de los horarios de comida no es una hora válida.",
+      not_dietary: "Solo se pueden exigir vegetariana, vegana, sin gluten y sin lácteos.",
+      required_and_avoided: "Una etiqueta no puede ser a la vez obligatoria y evitada.",
     },
   },
   meta: {

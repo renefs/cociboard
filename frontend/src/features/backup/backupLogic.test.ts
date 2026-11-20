@@ -43,13 +43,15 @@ describe("checkBackup", () => {
     expect(checkBackup({ ...valid, format_version: 1 }).ok).toBe(true);
     expect(checkBackup({ ...valid, format_version: 2 }).ok).toBe(true);
     expect(checkBackup({ ...valid, format_version: 3 }).ok).toBe(true);
+    expect(checkBackup({ ...valid, format_version: 4 }).ok).toBe(true);
+    expect(checkBackup({ ...valid, format_version: 5 }).ok).toBe(true);
   });
 
   it("rejects what is not a backup of this format", () => {
     expect(checkBackup(null)).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup([valid])).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup({ ...valid, format: "other" })).toEqual({ ok: false, reason: "wrongFormat" });
-    expect(checkBackup({ ...valid, format_version: 5 })).toEqual({ ok: false, reason: "unsupportedVersion" });
+    expect(checkBackup({ ...valid, format_version: 6 })).toEqual({ ok: false, reason: "unsupportedVersion" });
     expect(checkBackup({ ...valid, meals: undefined })).toEqual({ ok: false, reason: "incomplete" });
     expect(checkBackup({ ...valid, recipes: {} })).toEqual({ ok: false, reason: "incomplete" });
   });

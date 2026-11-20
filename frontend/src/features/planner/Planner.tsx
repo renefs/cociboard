@@ -19,6 +19,7 @@ import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, SpecialMeal, WeekPlan } from "../../api/types";
 import { RecipeDetailsModal } from "../recipes/RecipeDetailsModal";
 import { RecipePanel } from "../recipes/RecipePanel";
+import { useHouseholdSettings } from "../settings/useHouseholdSettings";
 import { ShareMenu } from "../share/ShareMenu";
 import { ShoppingListDialog, ShoppingListView } from "../shopping/ShoppingListDialog";
 import { VarietySummary } from "../variety/VarietySummary";
@@ -86,6 +87,11 @@ export function Planner({ now: nowProp }: PlannerProps) {
   const { weekStart, isCurrentWeek, previous, next, today } = useWeekNavigation(now);
   usePrefetchNeighbours(weekStart);
   const { data: plan, isPending, isError, refetch } = useWeekPlan(weekStart);
+  const household = useHouseholdSettings().data;
+  const mealTimes = useMemo(
+    () => (household ? { lunch: household.lunch_time, dinner: household.dinner_time } : undefined),
+    [household],
+  );
 
   // Below 900px one view is shown at a time (ADR-0017); on desktop everything is visible.
   const narrow = useMediaQuery(NARROW_QUERY);
@@ -342,7 +348,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
               >
                 <span aria-hidden="true">🛒 </span>{t("shopping.open")}
               </button>
-              <ShareMenu plan={plan} onNotify={notify} />
+              <ShareMenu plan={plan} onNotify={notify} mealTimes={mealTimes} />
             </div>
             {plan && (
               <VarietySummary

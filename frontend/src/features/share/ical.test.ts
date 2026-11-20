@@ -130,6 +130,47 @@ describe("weekAsIcs", () => {
   });
 });
 
+describe("weekAsIcs meal times", () => {
+  const lunchAndDinner = makePlan("2026-11-16", { "0:lunch": lentils, "0:dinner": tortilla });
+  const stamps = (ics: string) => linesOf(ics).filter((line) => /^DT(START|END):/.test(line));
+
+  it("uses the given times, each event lasting one hour", () => {
+    const ics = weekAsIcs(lunchAndDinner, en, { now: NOW, times: { lunch: "13:30", dinner: "20:45" } });
+    expect(stamps(ics)).toEqual([
+      "DTSTART:20261116T133000",
+      "DTEND:20261116T143000",
+      "DTSTART:20261116T204500",
+      "DTEND:20261116T214500",
+    ]);
+  });
+
+  it("defaults to 14:00 and 21:00 when no times are given", () => {
+    expect(stamps(weekAsIcs(lunchAndDinner, en, { now: NOW }))).toEqual([
+      "DTSTART:20261116T140000",
+      "DTEND:20261116T150000",
+      "DTSTART:20261116T210000",
+      "DTEND:20261116T220000",
+    ]);
+  });
+
+  it("ends the next day for an event that crosses midnight", () => {
+    const ics = weekAsIcs(lunchAndDinner, en, { now: NOW, times: { lunch: "14:00", dinner: "23:30" } });
+    expect(stamps(ics).slice(2)).toEqual(["DTSTART:20261116T233000", "DTEND:20261117T003000"]);
+  });
+
+  it("rolls over month and year ends", () => {
+    const newYear = makePlan("2026-12-28", { "3:dinner": tortilla }); // Thursday 31 December
+    const ics = weekAsIcs(newYear, en, { now: NOW, times: { lunch: "14:00", dinner: "23:00" } });
+    expect(stamps(ics)).toEqual(["DTSTART:20261231T230000", "DTEND:20270101T000000"]);
+  });
+
+  it("falls back to the default for a malformed time", () => {
+    const ics = weekAsIcs(lunchAndDinner, en, { now: NOW, times: { lunch: "soon", dinner: "25:00" } });
+    expect(stamps(ics)[0]).toBe("DTSTART:20261116T140000");
+    expect(stamps(ics)[2]).toBe("DTSTART:20261116T210000");
+  });
+});
+
 describe("icsFileName", () => {
   it("is named after the week", () => {
     expect(icsFileName("2026-11-16")).toBe("cociboard-2026-11-16.ics");

@@ -178,7 +178,13 @@ export function RecipePanel({
         </details>
       </div>
 
-      <div className="recipe-list" aria-live="polite" aria-busy={isPending}>
+      {/* Only the count is announced; the list itself must not be a live region, or every
+          change to a card (such as its "this week" badge) would be read out. */}
+      <p className="visually-hidden" role="status" data-testid="recipe-results-count">
+        {recipes ? t("recipes.resultsCount", { count: recipes.length }) : ""}
+      </p>
+
+      <div className="recipe-list" aria-busy={isPending}>
         {isPending && (
           <>
             <p className="visually-hidden">{t("recipes.loading")}</p>
