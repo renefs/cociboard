@@ -1,7 +1,10 @@
 import i18n from "../../i18n";
 import { describe, expect, it } from "vitest";
 import { makePlan, makeRecipe } from "../../test/fixtures";
+import type { ClientRect, DroppableContainer } from "@dnd-kit/core";
+import { collisionDetection } from "./sensors";
 import {
+  acceptsDrop,
   announceCancel,
   announceEnd,
   announceOver,
@@ -11,7 +14,9 @@ import {
   isDragSource,
   isDropTarget,
   resolveDrop,
+  slotDropId,
   type DragSource,
+  type DropTarget,
 } from "./dragLogic";
 
 const lunchOnly = makeRecipe({ id: 1, name: "Lentejas", meal_type: "lunch" });
@@ -87,6 +92,77 @@ describe("handleDragEnd", () => {
 
   it("returns the action for a valid drop", () => {
     expect(handleDragEnd(plan, fromPanel(), { kind: "slot", day: 6, slot: "dinner" })?.type).toBe("assign");
+  });
+});
+
+describe("acceptsDrop", () => {
+  const plan = makePlan("2026-10-26", { "0:lunch": both, "1:dinner": dinnerOnly });
+
+  it("keeps every slot enabled when nothing is dragged", () => {
+    expect(acceptsDrop(plan, null, { kind: "slot", day: 0, slot: "dinner" })).toBe(true);
+  });
+
+  it("enables valid targets and disables refused ones", () => {
+    expect(acceptsDrop(plan, fromPanel(lunchOnly), { kind: "slot", day: 2, slot: "lunch" })).toBe(true);
+    expect(acceptsDrop(plan, fromPanel(lunchOnly), { kind: "slot", day: 2, slot: "dinner" })).toBe(false);
+  });
+
+  it("keeps the dragged meal's own slot enabled, where a drop does nothing", () => {
+    const own: DropTarget = { kind: "slot", day: 0, slot: "lunch" };
+    expect(acceptsDrop(plan, fromSlot(both, 0, "lunch"), own)).toBe(true);
+    expect(handleDragEnd(plan, fromSlot(both, 0, "lunch"), own)).toBeNull();
+  });
+});
+
+describe("keyboard pick-up from a filled slot", () => {
+  // Wednesday dinner holds the meal; Tuesday and Thursday dinner are empty neighbours.
+  const plan = makePlan("2026-10-26", { "2:dinner": dinnerOnly });
+  const source = fromSlot(dinnerOnly, 2, "dinner");
+  const en = { t: i18n.getFixedT("en"), locale: "en" };
+  const rectOf = (day: number): ClientRect => {
+    const left = day * 120;
+    return { left, top: 300, width: 110, height: 80, right: left + 110, bottom: 380 };
+  };
+
+  // What dnd-kit hands the collision detection right after Space: no pointer, and the
+  // dragged meal's rect still where it was. Only enabled droppables take part.
+  function firstTargetOnPickUp(): DropTarget | null {
+    const containers: DroppableContainer[] = [];
+    const rects = new Map<string, ClientRect>();
+    for (const day of [1, 2, 3]) {
+      const target: DropTarget = { kind: "slot", day, slot: "dinner" };
+      if (!acceptsDrop(plan, source, target)) continue;
+      const id = slotDropId({ day, slot: "dinner" });
+      rects.set(id, rectOf(day));
+      containers.push({
+        id,
+        key: id,
+        data: { current: target },
+        disabled: false,
+        node: { current: null },
+        rect: { current: rectOf(day) },
+      });
+    }
+    const collisions = collisionDetection({
+      active: { id: "slot-item:2:dinner", data: { current: source }, rect: { current: { initial: rectOf(2), translated: rectOf(2) } } },
+      collisionRect: rectOf(2),
+      droppableRects: rects,
+      droppableContainers: containers,
+      pointerCoordinates: null,
+    });
+    const first = containers.find((container) => container.id === collisions[0]?.id);
+    const data: unknown = first?.data.current;
+    return isDropTarget(data) ? data : null;
+  }
+
+  it("starts over the meal's own slot, not a neighbour", () => {
+    expect(firstTargetOnPickUp()).toEqual({ kind: "slot", day: 2, slot: "dinner" });
+  });
+
+  it("dropping straight away leaves the meal in place and says so", () => {
+    const target = firstTargetOnPickUp();
+    expect(handleDragEnd(plan, source, target)).toBeNull();
+    expect(announceEnd(en, plan, source, target)).toBe("Tortilla was not moved.");
   });
 });
 

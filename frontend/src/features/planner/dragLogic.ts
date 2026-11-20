@@ -62,6 +62,18 @@ export function canDrop(plan: WeekPlan, source: DragSource, target: DropTarget):
   return resolveDrop(plan, source, target) !== null;
 }
 
+/**
+ * Whether a slot's droppable stays enabled while `source` is dragged. Valid targets do, and
+ * so does the source's own slot: a keyboard drag starts on the closest droppable, so without
+ * it the first target would be a neighbour and an immediate drop would move the meal there.
+ * Dropping on the own slot resolves to no action ("not moved").
+ */
+export function acceptsDrop(plan: WeekPlan, source: DragSource | null, target: DropTarget): boolean {
+  if (!source) return true;
+  if (target.kind === "slot" && source.kind === "slot" && sameSlot(source.from, target)) return true;
+  return canDrop(plan, source, target);
+}
+
 /** The `onDragEnd` logic: `over` is the data of the droppable under the pointer, if any. */
 export function handleDragEnd(
   plan: WeekPlan,
