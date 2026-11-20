@@ -299,6 +299,19 @@ const en = {
     tryAgain: "Try again",
     retryHint: "Your data was not changed.",
     restored: "Backup restored: {{counts}}.",
+    autoHeading: "Automatic copies",
+    autoLast_one: "Last automatic copy: {{date}}. Only the latest copy is kept.",
+    autoLast_other: "Last automatic copy: {{date}}. The last {{count}} are kept.",
+    autoNone: "The first automatic copy will be made soon.",
+    autoOff: "Automatic copies are off (COCIBOARD_BACKUP_INTERVAL_HOURS=0).",
+    autoRestoreHelp:
+      "To use an automatic copy, stop the app, replace the database file with the copy and start the app again. The steps are in the “Backups” section of the README.",
+    autoErrors: {
+      disk_full: "The last automatic copy failed: the disk is full.",
+      permission_denied:
+        "The last automatic copy failed: the app is not allowed to write to the backup folder.",
+      unknown: "The last automatic copy failed: unexpected error. Check the server log.",
+    },
     summary: {
       recipes_one: "{{count}} recipe",
       recipes_other: "{{count}} recipes",

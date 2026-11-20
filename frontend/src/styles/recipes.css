@@ -611,10 +611,16 @@
 
 /* Backup dialog */
 
+/* The dialog uses the full-screen sheet, whose body has no padding and doesn't scroll
+   (the recipe form brings its own), so the backup content provides both. */
 .backup {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--space-6);
+  min-height: 0;
+  padding: var(--space-3) var(--space-4) var(--space-6);
+  overflow-y: auto;
 }
 
 .backup-section {
@@ -646,6 +652,11 @@
 
 .backup-chosen p {
   margin: 0;
+}
+
+.backup-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .backup-error {

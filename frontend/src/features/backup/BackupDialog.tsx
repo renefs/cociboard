@@ -5,6 +5,7 @@ import { downloadBackup, restoreBackup } from "../../api/client";
 import type { RestoreResult } from "../../api/types";
 import { useLocale } from "../../i18n/useLocale";
 import { Modal } from "../planner/Modal";
+import { AutomaticCopies } from "./AutomaticCopies";
 import {
   MAX_BACKUP_BYTES,
   checkBackupText,
@@ -209,6 +210,8 @@ export function BackupDialog({ onClose, onNotify }: BackupDialogProps) {
             </div>
           )}
         </section>
+
+        <AutomaticCopies />
       </div>
     </Modal>
   );

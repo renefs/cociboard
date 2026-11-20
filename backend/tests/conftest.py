@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from cociboard.config import Settings, get_settings
-from cociboard.db import get_session
+from cociboard.db import enable_sqlite_foreign_keys, get_session
 from cociboard.main import create_app
 
 
@@ -15,6 +15,7 @@ def session() -> Iterator[Session]:
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
+    enable_sqlite_foreign_keys(engine)
     SQLModel.metadata.create_all(engine)
     with Session(engine) as db_session:
         yield db_session

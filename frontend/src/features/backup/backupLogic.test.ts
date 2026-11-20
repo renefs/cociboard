@@ -4,6 +4,7 @@ import i18n from "../../i18n";
 import {
   checkBackup,
   checkBackupText,
+  describeAutoBackupError,
   describeRestoreError,
   describeSummary,
   isRetryable,
@@ -111,5 +112,13 @@ describe("describeRestoreError", () => {
     expect(isRetryable(new ApiError(500, "x"))).toBe(true);
     expect(isRetryable(new ApiError(422, "x"))).toBe(false);
     expect(isRetryable(new ApiError(413, "x"))).toBe(false);
+  });
+});
+
+describe("describeAutoBackupError", () => {
+  it("names the known causes in both languages and falls back to unexpected", () => {
+    expect(describeAutoBackupError("disk_full", en)).toContain("disk is full");
+    expect(describeAutoBackupError("permission_denied", es)).toContain("no tiene permiso");
+    expect(describeAutoBackupError("something_new", en)).toContain("unexpected error");
   });
 });

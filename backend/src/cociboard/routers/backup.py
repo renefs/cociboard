@@ -9,10 +9,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
+from cociboard.autobackup import BackupState, build_status
 from cociboard.backup import MAX_BACKUP_BYTES, BackupValidationError, RestoreResult, parse_backup
 from cociboard.backup_repo import export_backup, restore_backup
+from cociboard.config import Settings, get_settings
 from cociboard.db import get_session
+from cociboard.dbfiles import engine_of, sqlite_file
 from cociboard.routers.weeks import get_today
+from cociboard.schemas import BackupStatus
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -37,6 +41,15 @@ def download_backup(
         document.model_dump(mode="json"),
         headers={"Content-Disposition": f'attachment; filename="cociboard-backup-{today}.json"'},
     )
+
+
+@router.get("/status", response_model=BackupStatus)
+def backup_status(
+    request: Request, session: SessionDep, settings: Annotated[Settings, Depends(get_settings)]
+) -> BackupStatus:
+    """State of the automatic database copies (ADR-0022): settings, last copy, last failure."""
+    state: BackupState = request.app.state.backup_state
+    return build_status(settings, sqlite_file(engine_of(session)), state.last_error)
 
 
 @router.post("/restore", response_model=RestoreResult)

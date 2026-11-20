@@ -6,7 +6,7 @@ A web app for planning varied weekly menus from a personal recipe list. A weekly
 (Monday–Sunday) has a lunch and a dinner slot per day; recipes are dragged (or tapped,
 on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for scope.
 
-Current version: **0.18.1** (CI builds and smoke tests the image on every pull request; Dependabot updates are grouped safely).
+Current version: **0.19.0** (automatic database copies and enforced foreign keys).
 
 ## Stack
 
@@ -29,7 +29,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0016](docs/adr/0016-special-slots-and-notes.md),
 [ADR-0017](docs/adr/0017-mobile-navigation.md),
 [ADR-0018](docs/adr/0018-optional-household-password.md), [ADR-0019](docs/adr/0019-pwa-offline.md),
-[ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md).
+[ADR-0020](docs/adr/0020-richer-recipes.md), [ADR-0021](docs/adr/0021-ci-before-publish.md),
+[ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md).
 
 ## Architecture
 
@@ -135,8 +136,8 @@ docker compose up -d --build
 ```
 
 Open `http://<host>:8000`. To update, pull the new sources and run the same command;
-the data in `./data` is kept. Back up by copying `./data/cociboard.db` while the
-container is stopped.
+the data in `./data` is kept. The app also makes automatic copies of the database
+(see [Backups](#backups)).
 
 Database schema changes are applied automatically on start. Before changing an existing
 database, the app copies it next to the original as
@@ -152,6 +153,9 @@ backup file (copy it, keeping the same name) and start the image version that ma
 | `COCIBOARD_SEED_ON_STARTUP` | `true` | Add the starter recipes when the database is empty |
 | `COCIBOARD_PASSWORD` / `COCIBOARD_PASSWORD_HASH` | unset | Optional household password, see [Security](#security-password) |
 | `COCIBOARD_SECRET_KEY` | unset | Signs session cookies; by default a key is kept in `./data/cociboard.secret` |
+| `COCIBOARD_BACKUP_INTERVAL_HOURS` | `24` | Hours between automatic database copies; `0` turns them off, see [Backups](#backups) |
+| `COCIBOARD_BACKUPS_KEPT` | `7` | How many automatic copies are kept (at least 1) |
+| `COCIBOARD_BACKUP_DIR` | unset | Folder for the automatic copies (inside the container, e.g. `/data/backups`); by default next to the database |
 
 The container starts as root only to `chown` `/data`, then drops to `PUID:PGID`. Setting
 `user:` in the compose file also works if `./data` is already writable by that user.
@@ -384,6 +388,7 @@ quantities ([ADR-0012](docs/adr/0012-shopping-list.md)).
 | Method and path | Description |
 | --- | --- |
 | `GET /api/backup` | Everything as a JSON download (`cociboard-backup-YYYY-MM-DD.json`, `format_version` 3): recipes (with `archived`, `servings`, `steps` and `source_url`), planned meals (`recipe_ref` or `special`, plus `note`), shopping ticks and extras. Format: [ADR-0014](docs/adr/0014-archive-and-backups.md), [ADR-0016](docs/adr/0016-special-slots-and-notes.md) |
+| `GET /api/backup/status` | State of the automatic database copies: `{ enabled, interval_hours, kept, last_backup_at, copies, last_error, custom_dir }`. `last_backup_at` is `null` until the first copy; `last_error` is `null` or `{ at, code }` with `code` one of `disk_full`, `permission_denied`, `unknown`. Behind the login when a password is set. No host paths are exposed ([ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md)) |
 | `POST /api/backup/restore` | Replace **all** data with a backup document, in one transaction. Answers `{ recipes, meals, shopping_checks, shopping_extras }` (counts). `422` with `detail: { code, message, params }` when the file is invalid (nothing is changed; versions 1, 2 and 3 are accepted), `413` above 10 MB. A SQLite file is copied to `*.bak-pre-restore-*` first |
 
 ### Variety
@@ -515,16 +520,55 @@ The **Backup** button in the header opens the backup dialog (a full-screen sheet
 - **Restore from file** reads a backup file, shows what it contains (recipes, planned meals,
   shopping items, export date) and asks for confirmation. Restoring **replaces everything**
   (there is no merge). Nothing changes if the file is invalid.
-- Before a restore the server copies the database next to it as
-  `cociboard.db.bak-pre-restore-<UTC timestamp>`. The three most recent `pre-restore` copies
-  are kept, and the three most recent schema-upgrade copies (`.bak-<revision>-...`) are kept
-  separately. To undo a restore, stop the container, replace `./data/cociboard.db` with that
-  copy and start it again.
-- Disaster recovery without the UI: stop the container and copy `./data/cociboard.db`
-  (the whole file) somewhere safe; to go back, copy it over the database and start the image
-  version that matches it.
+- The dialog also shows the **automatic copies**: when the last one was made, how many are
+  kept, and a warning when the last attempt failed.
 
-Design: [ADR-0014](docs/adr/0014-archive-and-backups.md).
+### Copies the server makes
+
+The server copies the database file (SQLite online backup, safe while the app runs) in
+three situations. Each kind rotates on its own, so one kind never pushes out another.
+
+| Kind | File name | When | Kept |
+| --- | --- | --- | --- |
+| Automatic | `cociboard.db.bak-auto-<UTC timestamp>` | At startup and then about every `COCIBOARD_BACKUP_INTERVAL_HOURS` (default 24), but only if the data changed since the last automatic copy | `COCIBOARD_BACKUPS_KEPT` (default 7) |
+| Schema upgrade | `cociboard.db.bak-<previous revision>-<timestamp>` (or `bak-legacy-`) and `cociboard.db.bak-integrity-<timestamp>` | Before a migration, and before the startup check removes planned meals that point at a deleted recipe (see below) | 3 |
+| Before a restore | `cociboard.db.bak-pre-restore-<timestamp>` | Before **Restore from file** | 3 |
+
+Automatic copies go next to the database (`./data`) unless `COCIBOARD_BACKUP_DIR` is set,
+e.g. `/data/backups` to keep them in `./data/backups`; the other kinds always stay next to
+the database. Copies already made stay where they were if you change the folder. A copy
+only protects against mistakes and file damage, not against losing the disk: also copy
+`./data` (or a downloaded backup file) somewhere else now and then. If a copy cannot be
+written (disk full, permissions) the app keeps running, logs an error and shows a warning in
+the backup dialog.
+
+To go back to a copy (any kind), with Docker:
+
+1. Stop the container: `docker compose stop`.
+2. Copy the chosen file over the database, keeping the database's name:
+   `cp data/cociboard.db.bak-auto-20261120T031500Z data/cociboard.db` (use the copy from
+   `COCIBOARD_BACKUP_DIR` if you set one). Keep a copy of the current file first if unsure.
+3. Remove `data/cociboard.db-wal` and `data/cociboard.db-shm` if they exist.
+4. Start it again: `docker compose start`. Use the image version that matches the copy (for
+   a schema-upgrade copy, the version before the upgrade; automatic copies are of the version
+   that made them).
+
+### Foreign keys
+
+SQLite does not enforce foreign keys unless asked; since v0.19.0 the app does, so a planned
+meal can no longer point at a missing recipe. Migrations run with enforcement off (table
+rebuilds need it) and on start the app runs `PRAGMA quick_check` and `PRAGMA
+foreign_key_check`. Planned meals left over from earlier versions whose recipe no longer
+exists are removed after a `bak-integrity-` copy, and logged (count and weeks). Anything
+else unexpected is only logged as an error.
+
+### Without the UI
+
+Stop the container and copy `./data/cociboard.db` (the whole file) somewhere safe; to go
+back, copy it over the database and start the image version that matches it.
+
+Design: [ADR-0014](docs/adr/0014-archive-and-backups.md),
+[ADR-0022](docs/adr/0022-automatic-backups-and-foreign-keys.md).
 
 ## Languages
 
@@ -561,7 +605,8 @@ backend/
                         repository, planner (week plans), variety (analysis), suggest (auto-fill, candidates),
                         shopping (ingredient grouping), shopping_repo (ticks and extras),
                         backup (backup format and validation), backup_repo (export, restore),
-                        dbfiles (SQLite file copies and rotation),
+                        dbfiles (SQLite file copies and rotation), autobackup (automatic copies),
+                        integrity (startup check),
                         routers/, seed.py, migrate.py, migrations/
   alembic.ini           CLI configuration for `make migrate` / `make migration`
   tests/
@@ -571,7 +616,7 @@ frontend/
   src/features/planner/ week grid, slots, drag and drop, picker, week navigation, toolbar, optimistic updates, phone tab bar and Today view, pure logic
   src/features/variety/ variety summary and presentation helpers
   src/features/shopping/ shopping list (dialog and inline view), hooks with optimistic updates, pure logic
-  src/features/backup/  backup dialog (download, restore with confirmation), header button, pure checks
+  src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks
   src/i18n/             i18next setup, language detection and switcher, en/es catalogues
   src/styles/           design tokens and global CSS
   src/App.tsx           app shell

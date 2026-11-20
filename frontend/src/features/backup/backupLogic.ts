@@ -1,6 +1,11 @@
 import type { TFunction } from "i18next";
 import { ApiError } from "../../api/client";
-import { BACKUP_FORMAT, READABLE_BACKUP_VERSIONS, type BackupErrorDetail } from "../../api/types";
+import {
+  BACKUP_FORMAT,
+  READABLE_BACKUP_VERSIONS,
+  type BackupErrorCode,
+  type BackupErrorDetail,
+} from "../../api/types";
 import { formatLongDate } from "../planner/weekMath";
 
 /** Files above this size are not sent: the server would answer 413. */
@@ -123,4 +128,12 @@ export function describeRestoreError(error: unknown, t: TFunction): string {
 /** Whether trying the same restore again can help (the server was unreachable or failed). */
 export function isRetryable(error: unknown): boolean {
   return !(error instanceof ApiError) || error.status >= 500;
+}
+
+const AUTO_ERROR_CODES: readonly BackupErrorCode[] = ["disk_full", "permission_denied", "unknown"];
+
+/** Sentence for a failed automatic copy; codes this client does not know count as `unknown`. */
+export function describeAutoBackupError(code: string, t: TFunction): string {
+  const known = AUTO_ERROR_CODES.find((c) => c === code) ?? "unknown";
+  return t(`backup.autoErrors.${known}`);
 }

@@ -1,5 +1,6 @@
 import type {
   AuthStatus,
+  BackupStatus,
   Candidate,
   HealthResponse,
   LoginBody,
@@ -291,6 +292,10 @@ export async function downloadBackup(): Promise<BackupDownload> {
       "cociboard-backup.json",
     ),
   };
+}
+
+export function getBackupStatus(signal?: AbortSignal): Promise<BackupStatus> {
+  return request<BackupStatus>("/backup/status", { signal: signal ?? null });
 }
 
 /** Replace all data with the given backup document (already parsed from the file). */
