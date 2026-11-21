@@ -50,6 +50,6 @@ Solo se traduce la interfaz. Tus recetas se quedan tal y como las escribiste.
 
 ## Las recetas de partida
 
-Un Cociboard nuevo trae 33 recetas españolas y mediterráneas, cada una con sus ingredientes,
+Un Cociboard nuevo trae 33 recetas clásicas de la cocina española, cada una con sus ingredientes,
 raciones y pasos, para que puedas planificar desde el primer momento. Edítalas, archiva las
 que no cocinas y añade las tuyas.

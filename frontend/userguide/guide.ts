@@ -92,17 +92,17 @@ type Entry = { recipe: string; note?: string } | { special: "eating_out" | "left
 const THIS_WEEK: [Entry | null, Entry | null][] = [
   [{ recipe: "Fabada asturiana", note: "double batch" }, { recipe: "Tortilla de espinacas" }],
   [{ recipe: "Pollo al ajillo" }, { recipe: "Crema de verduras" }],
-  [{ recipe: "Merluza en salsa verde" }, { recipe: "Huevos rotos con jamón" }],
-  [{ recipe: "Potaje de calabaza y garbanzos" }, null],
-  [{ recipe: "Patatas a la riojana" }, { recipe: "Canelones de espinacas" }],
-  [{ recipe: "Arroz negro" }, { special: "eating_out", note: "Ana's birthday" }],
-  [{ recipe: "Rabo de toro estofado" }, { recipe: "Judías verdes con patatas" }],
+  [{ recipe: "Merluza en salsa verde" }, { recipe: "Croquetas de jamón" }],
+  [{ recipe: "Arroz negro" }, null],
+  [{ recipe: "Patatas a la riojana" }, { recipe: "Ensaladilla rusa" }],
+  [{ recipe: "Pisto manchego" }, { special: "eating_out", note: "Ana's birthday" }],
+  [{ recipe: "Rabo de toro estofado" }, { recipe: "Escalivada" }],
 ];
 
 const LAST_WEEK: [Entry | null, Entry | null][] = [
-  [{ recipe: "Fideuá" }, { recipe: "Pimientos del piquillo rellenos" }],
-  [{ recipe: "Fabada asturiana" }, { recipe: "Sardinas a la plancha" }],
-  [{ recipe: "Pollo al ajillo" }, { recipe: "Berenjenas rellenas" }],
+  [{ recipe: "Marmitako" }, { recipe: "Tortilla de espinacas" }],
+  [{ recipe: "Alubias blancas con verduras" }, { recipe: "Sardinas a la plancha" }],
+  [{ recipe: "Pollo al ajillo" }, { recipe: "Canelones de espinacas" }],
   [null, null],
   [null, null],
   [null, null],

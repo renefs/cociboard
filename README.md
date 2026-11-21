@@ -9,7 +9,7 @@ on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for sco
 **Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
 and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
 
-Current version: **0.28.0** (illustrated user guide).
+Current version: **0.28.1** (new starter recipes).
 
 ## Stack
 
@@ -546,13 +546,19 @@ never changes the score: it is a hint, not a fault.
 
 ### Starter recipes
 
-An empty database starts with 33 Spanish and Mediterranean recipes (Spain Spanish, like all
+An empty database starts with 33 classic Spanish recipes (Spain Spanish, like all
 recipe content), each with servings, ingredients and 4 to 8 numbered steps. They are only added
 on startup when there are no recipes at all (`COCIBOARD_SEED_ON_STARTUP`).
 
-**Upgrading from before v0.27.0:** the starter recipes you already have were created without
-steps and servings, and upgrading does not change them on its own. To fill them in, run the
-seed command once:
+**Warning, v0.28.1:** the starter catalogue was replaced by a new set of recipes with
+different names. On an existing installation `make seed` (or the container seed command) now
+**adds the 33 new recipes** next to yours. Skip it unless you want them; startup never changes
+an existing database.
+
+**Upgrading from before v0.27.0** (applies to recipes created from the earlier catalogue, which
+v0.28.1 replaced; the seed command only fills in recipes whose names are in the current
+catalogue): the starter recipes you already have were created without steps and servings, and
+upgrading does not change them on its own. To fill them in, run the seed command once:
 
 ```sh
 make seed                                                      # from a source checkout

@@ -53,7 +53,7 @@ test("drag and drop", async ({ page, t, slot, shot }) => {
   await openPlanner(page, t);
   // The first card of the list, a recipe for lunch or dinner, so every slot accepts it.
   const handle = page.getByRole("button", {
-    name: t("planner.dragRecipe", { name: "Migas" }),
+    name: t("planner.dragRecipe", { name: "Alubias blancas con verduras" }),
   });
   const source = await handle.boundingBox();
   const target = await slot(3, "dinner").boundingBox();
@@ -91,7 +91,7 @@ test("shopping list and pantry", async ({ page, t, shot }) => {
   await page.getByRole("button", { name: t("shopping.open") }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: t("shopping.toBuy") })).toBeVisible();
-  for (const item of ["Aguacate", "Apio", "Azafrán"]) {
+  for (const item of ["Azafrán", "Chorizo", "Laurel"]) {
     await dialog.getByRole("checkbox", { name: new RegExp(`^${item} `) }).check();
   }
   await page.waitForTimeout(300);

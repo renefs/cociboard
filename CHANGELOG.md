@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.1] - 2026-11-21
+
+A new set of starter recipes. No app, schema or API change.
+
+### Changed
+- The 33 starter recipes are replaced by a new set of 33 classic Spanish recipes (salmorejo
+  cordobés, fabada asturiana, marmitako, pollo al chilindrón, croquetas de jamón and so on),
+  with the same mix: 10 for lunch, 10 for dinner and 13 for either, with servings, ingredients
+  and 4 to 8 steps each. The user guide's demo week uses them.
+
+### Upgrading
+- Existing databases are not changed on startup: only an empty database is seeded.
+- Running `make seed` (or the container seed command) on an existing installation now **adds
+  the 33 new recipes**, because their names differ from the old ones. Skip it unless you want
+  them. Recipes you already have keep their names, steps and plans.
+
 ## [0.28.0] - 2026-11-20
 
 An illustrated user guide in English and Spanish, published to GitHub Pages

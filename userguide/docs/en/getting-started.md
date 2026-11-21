@@ -50,6 +50,6 @@ Only the interface is translated. Your recipes stay exactly as you wrote them.
 
 ## The starter recipes
 
-A new Cociboard comes with 33 Spanish and Mediterranean recipes (in Spanish), each with its
+A new Cociboard comes with 33 classic Spanish recipes (in Spanish), each with its
 ingredients, servings and cooking steps, so you can start planning straight away. Edit them,
 archive the ones you don't cook, and add your own.
