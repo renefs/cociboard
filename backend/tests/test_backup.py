@@ -1,6 +1,7 @@
 """Backup export and replace-all restore."""
 
 import copy
+import re
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -13,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, select
 
 from cociboard import __version__
-from cociboard.backup import parse_backup
+from cociboard.backup import READABLE_FORMAT_VERSIONS, SUPPORTED_FORMAT_VERSION, parse_backup
 from cociboard.backup_repo import restore_backup
 from cociboard.db import get_session
 from cociboard.main import create_app
@@ -570,3 +571,19 @@ def test_older_backups_restore_without_favourites(client: TestClient, version: i
         del recipe["favourite"]
     assert restore(client, old).status_code == 200
     assert [r["favourite"] for r in client.get("/api/recipes").json()] == [False, False]
+
+
+def test_frontend_reads_the_same_backup_versions() -> None:
+    """The browser checks a file before uploading it; its list must match the server's.
+
+    v0.24.0 raised the export to format 6 without updating the frontend, so the app could no
+    longer restore its own backups.
+    """
+    types_ts = (Path(__file__).parents[2] / "frontend/src/api/types.ts").read_text()
+    written = re.search(r"BACKUP_FORMAT_VERSION = (\d+);", types_ts)
+    readable = re.search(
+        r"READABLE_BACKUP_VERSIONS: readonly number\[\] = \[([\d, ]+)\];", types_ts
+    )
+    assert written is not None and readable is not None
+    assert int(written.group(1)) == SUPPORTED_FORMAT_VERSION
+    assert {int(v) for v in readable.group(1).split(",")} == READABLE_FORMAT_VERSIONS

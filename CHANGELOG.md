@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.2] - 2026-11-22
+
+### Fixed
+- Backups can be restored again from the Backup dialog. Since v0.24.0 the server has
+  exported backups in format version 6, but the browser still accepted only versions 1 to 5
+  and refused every new backup with "That backup was made by a newer version of Cociboard"
+  before uploading it. The server always accepted the file.
+
+### Added
+- A backend test that fails when the backup versions in `frontend/src/api/types.ts` and
+  `backup.py` disagree, and an end-to-end test that downloads a backup and restores it
+  through the dialog.
+
 ## [0.28.1] - 2026-11-21
 
 A new set of starter recipes. No app, schema or API change.

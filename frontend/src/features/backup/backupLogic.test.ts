@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../../api/client";
+import { BACKUP_FORMAT_VERSION } from "../../api/types";
 import i18n from "../../i18n";
 import {
   checkBackup,
@@ -39,19 +40,21 @@ describe("checkBackup", () => {
     }
   });
 
-  it("accepts format versions 1, 2 and 3", () => {
-    expect(checkBackup({ ...valid, format_version: 1 }).ok).toBe(true);
-    expect(checkBackup({ ...valid, format_version: 2 }).ok).toBe(true);
-    expect(checkBackup({ ...valid, format_version: 3 }).ok).toBe(true);
-    expect(checkBackup({ ...valid, format_version: 4 }).ok).toBe(true);
-    expect(checkBackup({ ...valid, format_version: 5 }).ok).toBe(true);
+  it("accepts format versions 1 to 6", () => {
+    for (const format_version of [1, 2, 3, 4, 5, 6]) {
+      expect(checkBackup({ ...valid, format_version }).ok).toBe(true);
+    }
+  });
+
+  it("accepts the version the server exports", () => {
+    expect(checkBackup({ ...valid, format_version: BACKUP_FORMAT_VERSION }).ok).toBe(true);
   });
 
   it("rejects what is not a backup of this format", () => {
     expect(checkBackup(null)).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup([valid])).toEqual({ ok: false, reason: "wrongFormat" });
     expect(checkBackup({ ...valid, format: "other" })).toEqual({ ok: false, reason: "wrongFormat" });
-    expect(checkBackup({ ...valid, format_version: 6 })).toEqual({ ok: false, reason: "unsupportedVersion" });
+    expect(checkBackup({ ...valid, format_version: 7 })).toEqual({ ok: false, reason: "unsupportedVersion" });
     expect(checkBackup({ ...valid, meals: undefined })).toEqual({ ok: false, reason: "incomplete" });
     expect(checkBackup({ ...valid, recipes: {} })).toEqual({ ok: false, reason: "incomplete" });
   });

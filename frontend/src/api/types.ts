@@ -408,9 +408,9 @@ export interface HouseholdSettings {
 
 /** Backup file written by `GET /api/backup` and read by `POST /api/backup/restore`. */
 export const BACKUP_FORMAT = "cociboard-backup";
-/** Version written by the server; versions 1 to 4 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link, v3 no pantry, v4 no household settings, which then reset to the defaults). */
-export const BACKUP_FORMAT_VERSION = 5;
-export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3, 4, 5];
+/** Version written by the server; versions 1 to 5 still restore (v1 has no special meals or notes, v2 no recipe steps, servings or source link, v3 no pantry, v4 no household settings, which then reset to the defaults, v5 no favourites). Keep both in step with `backup.py`. */
+export const BACKUP_FORMAT_VERSION = 6;
+export const READABLE_BACKUP_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6];
 
 /** Response of `POST /api/backup/restore`. */
 export interface RestoreResult {
