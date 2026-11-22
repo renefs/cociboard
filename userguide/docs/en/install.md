@@ -27,6 +27,20 @@ server, using Docker.
 The data lives in the `data` folder next to `docker-compose.yml`. To update Cociboard, run the
 same two commands again: the data is kept and upgraded automatically, after making a copy of it.
 
+### Updating on a Synology NAS without SSH
+
+In Container Manager, starting the project again or choosing **Action → Build** (**Create** in
+some languages) does not download a newer `latest` while the old image is still on the NAS.
+Either:
+
+- stop the project, delete the `ghcr.io/renefs/cociboard` image under **Image**, then choose
+  **Build** and **Start**; or
+- put a version number in `.env`, for example `COCIBOARD_TAG=0.28.2` (File Station can edit
+  the file), then choose **Build** and **Start**. Change the number for each update.
+
+The `data` folder is kept either way. `http://<your-server>:8000/api/health` shows the version
+that is running.
+
 ## Main settings
 
 Put these in the `.env` file. All are optional.

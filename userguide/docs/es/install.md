@@ -28,6 +28,19 @@ Los datos están en la carpeta `data`, junto a `docker-compose.yml`. Para actual
 repite los dos comandos: los datos se conservan y se actualizan solos, después de hacer una
 copia.
 
+### Actualizar en un NAS Synology sin SSH
+
+En Container Manager, volver a iniciar el proyecto o elegir **Acción → Crear** no descarga un
+`latest` más nuevo mientras la imagen antigua siga en el NAS. Elige una de estas dos opciones:
+
+- detén el proyecto, borra la imagen `ghcr.io/renefs/cociboard` en **Imagen** y después elige
+  **Crear** e **Iniciar**; o
+- pon un número de versión en `.env`, por ejemplo `COCIBOARD_TAG=0.28.2` (File Station puede
+  editar el archivo), y elige **Crear** e **Iniciar**. Cambia el número en cada actualización.
+
+La carpeta `data` se conserva en los dos casos. `http://<tu-servidor>:8000/api/health` muestra la
+versión que está funcionando.
+
 ## Ajustes principales
 
 Ponlos en el archivo `.env`. Todos son opcionales.

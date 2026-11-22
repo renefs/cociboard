@@ -254,7 +254,21 @@ the same folder, since both use `./data`.
    `docker-compose.yml` and pulls the image instead of building it.
 4. To update, run `sudo docker compose pull && sudo docker compose up -d` in the folder
    over SSH. Stopping and starting the project in Container Manager does not pull a
-   newer image.
+   newer image, and neither does **Action → Build** (labelled **Create** in some languages)
+   while an image with the same tag is already on the NAS.
+
+To update **without SSH**, from Container Manager only (the data in `./data` is kept):
+
+- **Keep `latest`:** stop the project, delete the `ghcr.io/renefs/cociboard` image under
+  **Image**, then **Project → Action → Build** and **Start**. With no local image left,
+  Build pulls the current `latest`.
+- **Or pin a version:** add `COCIBOARD_TAG=X.Y.Z` (e.g. `0.28.2`) to `.env` with File Station,
+  or change the `image:` line in the project's YAML, then **Build** and **Start**. A tag the
+  NAS doesn't have yet is always pulled. Change the number for each update.
+
+Check the running version at `http://<nas>:8000/api/health`. Both ways pull with the
+`docker login` from step 2; if that login is gone, Build fails with an authentication error
+until the image is public (see below) or you log in again.
 
 To make the image public later: GitHub → the package's page → Package settings → Change
 visibility. Then no login is needed.
