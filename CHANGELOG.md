@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.1] - 2026-11-23
+
+### Fixed
+- The phone end-to-end test of the week toolbar read the four buttons' positions one at a
+  time while the page was still scrolling smoothly to today's card, so on the slower CI
+  machines the buttons seemed to sit on different rows and the image for 0.30.0 and 0.31.0
+  was not published. The test now reads all positions at once. The app is unchanged.
+
 ## [0.31.0] - 2026-11-23
 
 Third and last phase of the visual refresh: recipes and the recipe picker (ADR-0033).

@@ -9,7 +9,7 @@ on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for sco
 **Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
 and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
 
-Current version: **0.31.0** (compact recipe rows, a Filters panel and a clearer recipe picker).
+Current version: **0.31.1** (compact recipe rows, a Filters panel and a clearer recipe picker).
 
 ## Stack
 

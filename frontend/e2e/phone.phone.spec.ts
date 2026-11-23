@@ -47,16 +47,22 @@ test.describe("the app on a phone", () => {
     // The toolbar: week navigation, then the actions on one row, all at least 44px.
     const actions = page.getByRole("group", { name: "Week actions" });
     await expect(actions).toBeVisible();
-    const buttons = await actions.getByRole("button").all();
-    expect(buttons).toHaveLength(4);
-    const rows = new Set<number>();
-    for (const button of buttons) {
-      const box = await button.boundingBox();
-      expect(box?.height ?? 0).toBeGreaterThanOrEqual(43.5);
-      expect(box?.width ?? 0).toBeGreaterThanOrEqual(43.5);
-      rows.add(Math.round(box?.y ?? 0));
+    // All boxes are read at once: on the current week the page scrolls smoothly to today's
+    // card, so boxes read one by one would come from different scroll positions.
+    const boxes = await actions
+      .getByRole("button")
+      .evaluateAll((buttons) =>
+        buttons.map((b) => {
+          const { y, width, height } = b.getBoundingClientRect();
+          return { y, width, height };
+        }),
+      );
+    expect(boxes).toHaveLength(4);
+    for (const box of boxes) {
+      expect(box.height).toBeGreaterThanOrEqual(43.5);
+      expect(box.width).toBeGreaterThanOrEqual(43.5);
     }
-    expect(rows.size).toBe(1);
+    expect(new Set(boxes.map((box) => Math.round(box.y))).size).toBe(1);
     // The days: the page is at the top, today's row and the next three are all on screen.
     await page.evaluate(() => window.scrollTo(0, 0));
     const tabTop = (await tabBar(page).boundingBox())?.y ?? 0;
