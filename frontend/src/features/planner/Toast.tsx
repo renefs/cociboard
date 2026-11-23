@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 
 export interface ToastAction {
   label: string;
@@ -60,7 +61,7 @@ function ToastBody({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
         </>
       )}
       <button type="button" className="icon-button" aria-label={t("common.dismiss")} onClick={onDismiss}>
-        <span aria-hidden="true">×</span>
+        <X aria-hidden="true" size={18} />
       </button>
     </div>
   );

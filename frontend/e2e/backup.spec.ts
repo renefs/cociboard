@@ -1,9 +1,11 @@
 import { expect, test } from "./fixtures";
+import { openSettings } from "./helpers";
 
 // v0.24.0 raised the export to format 6 while the browser still only accepted 1 to 5, so a
 // downloaded backup could not be restored. This round trip goes through the real dialog.
 test("a downloaded backup restores through the dialog", async ({ page }) => {
   await page.goto("/");
+  await openSettings(page);
   await page.getByRole("button", { name: "Backup" }).click();
   const dialog = page.getByRole("dialog", { name: "Backup" });
 

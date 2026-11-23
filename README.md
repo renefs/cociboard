@@ -9,7 +9,7 @@ on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for sco
 **Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
 and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
 
-Current version: **0.28.4** (screen readers read the whole meal card in the Today view).
+Current version: **0.29.0** (refreshed look, dark mode and a settings menu).
 
 ## Stack
 
@@ -298,7 +298,7 @@ Set **one** of these in `.env` (both docker-compose files pass them through):
 How it works:
 
 - Everyone shares one password. After signing in, a browser keeps a signed, HTTP-only cookie
-  for 90 days (`COCIBOARD_SESSION_DAYS`), renewed while the app is used. **Log out** is in the header.
+  for 90 days (`COCIBOARD_SESSION_DAYS`), renewed while the app is used. **Log out** is in the header's settings menu.
 - **Changing the password logs everyone out.**
 - Sessions are signed with `COCIBOARD_SECRET_KEY` if set; otherwise a random key is created
   once in `cociboard.secret` next to the database (`./data`, mode 0600) and reused, so sessions
@@ -669,7 +669,8 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
 
 ### Household preferences
 
-The ⚙️ button in the header opens **Household preferences** (a bottom sheet on phones).
+**Household preferences** in the header's settings menu (the gear button) opens them (a bottom
+sheet on phones).
 
 - **Diet**: vegetarian, vegan, gluten-free and dairy-free. Suggestions (the **Suggest** button
   and the recipe picker's "best for variety" order) only propose recipes tagged with all the
@@ -726,7 +727,7 @@ Ingredients you always have at home. The pantry is shared by all weeks.
 
 ## Backups
 
-The **Backup** button in the header opens the backup dialog (a full-screen sheet on phones).
+**Backup** in the header's settings menu opens the backup dialog (a full-screen sheet on phones).
 
 - **Download backup** saves one JSON file (format version 6) with all recipes (archived ones
   too, favourites included), weekly plans (special meals and notes included), shopping lists, the pantry and the
@@ -793,7 +794,7 @@ translated: recipe names, ingredients and descriptions stay as written.
 
 - On the first visit the language follows the browser (`navigator.languages`: any `es-*`
   gives Spanish, anything else English).
-- The **EN | ES | Auto** switcher in the header overrides it. The choice is saved in
+- The **EN | ES | Auto** switcher in the header's settings menu overrides it. The choice is saved in
   `localStorage` under `cociboard.language` (per device); **Auto** deletes it, so the
   browser language applies again.
 - Detection order: saved choice, browser languages, English.
@@ -836,8 +837,8 @@ frontend/
   src/features/share/ share menu, print views, share-or-copy, .ics export, pure text builders
   src/features/variety/ variety summary and presentation helpers
   src/features/shopping/ shopping list (dialog and inline view), pantry panel, hooks with optimistic updates, pure logic
-  src/features/settings/ household preferences dialog, header button, hook with optimistic save, pure form logic
-  src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), header button, pure checks
+  src/features/settings/ household preferences dialog, hook with optimistic save, pure form logic, header settings menu
+  src/features/backup/  backup dialog (download, restore with confirmation, automatic copies status), pure checks
   src/features/auth/    sign-in screen, log out, exposure banner, auth status hook
   src/pwa/              service worker registration, offline banner, update prompt, API cache rules
   src/sw/               the service worker itself (routing of cached API reads)

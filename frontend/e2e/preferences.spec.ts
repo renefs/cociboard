@@ -1,10 +1,11 @@
-import { showTab } from "./helpers";
+import { openSettings, showTab } from "./helpers";
 import { expect, test } from "./fixtures";
 
 const VEGAN = ["Lentil stew", "Tofu stir-fry", "Chickpea salad", "Vegetable curry"];
 
 test("Suggest respects the diet set in the household preferences", async ({ page, isMobile }) => {
   await page.goto("/");
+  await openSettings(page);
   await page.getByRole("button", { name: "Household preferences" }).click();
   const dialog = page.getByRole("dialog", { name: "Household preferences" });
   await dialog.getByRole("group", { name: "Diet" }).getByRole("checkbox", { name: "Vegan" }).check();
@@ -25,12 +26,14 @@ test("Suggest respects the diet set in the household preferences", async ({ page
 
   // The preference is remembered after a reload.
   await page.reload();
+  await openSettings(page);
   await page.getByRole("button", { name: "Household preferences" }).click();
   await expect(page.getByRole("group", { name: "Diet" }).getByRole("checkbox", { name: "Vegan" })).toBeChecked();
 });
 
 test("an avoided property is left out of the suggestions", async ({ page, isMobile }) => {
   await page.goto("/");
+  await openSettings(page);
   await page.getByRole("button", { name: "Household preferences" }).click();
   const dialog = page.getByRole("dialog", { name: "Household preferences" });
   await dialog.getByRole("group", { name: "Avoid" }).getByRole("checkbox", { name: "Vegetarian" }).check();

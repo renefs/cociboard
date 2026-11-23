@@ -20,6 +20,7 @@ import { useShareText } from "../share/useShareText";
 import { PantryPanel } from "./PantryPanel";
 import { usePantry, usePantryActions } from "./usePantry";
 import { useShoppingActions, useShoppingList, type ShoppingActions } from "./useShoppingList";
+import { X } from "lucide-react";
 
 export type Notify = (kind: "error" | "info", text: string) => void;
 
@@ -358,7 +359,7 @@ function Row({ row, onToggle, onRemove, onPantry }: { row: ShoppingRow } & Omit<
           aria-label={t("shopping.deleteItem", { name: row.name })}
           onClick={() => onRemove(row)}
         >
-          <span aria-hidden="true">×</span>
+          <X aria-hidden="true" size={18} />
         </button>
       )}
     </li>

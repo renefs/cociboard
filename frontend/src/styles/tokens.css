@@ -1,17 +1,54 @@
+/* Design tokens (ADR-0031): warm neutrals with terracotta as the accent only. Light is the
+   default; the dark theme follows the OS (`prefers-color-scheme`) and is screen-only, so paper
+   always gets the light colours. Every colour used by a stylesheet comes from here;
+   `features/recipes/contrast.test.ts` reads this file and checks WCAG AA in both themes. */
 :root {
-  /* Warm, food-friendly palette */
-  --color-bg: #fff8f0;
-  --color-surface: #ffffff;
-  --color-text: #3b2a20;
-  --color-text-muted: #7a6455;
-  --color-primary: #b9461f;
-  --color-primary-contrast: #ffffff;
-  --color-accent: #e0a526;
-  --color-fresh: #5c8a3a;
-  --color-border: #ecd9c6;
-  --color-focus: #1f6feb;
+  color-scheme: light;
 
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-bg: #f7f5f2;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f1eeea; /* slot wells, inputs, chips */
+  --color-border: #e4ded7;
+  --color-border-strong: #cfc6bc;
+  --color-text: #241c17;
+  --color-text-muted: #6b5f56;
+  --color-primary: #b4441d;
+  --color-primary-hover: #983915;
+  --color-primary-tint: #fbe9e1;
+  --color-primary-contrast: #ffffff;
+  --color-ok: #2f6b3a;
+  --color-ok-tint: #e3f1e4;
+  --color-today: #fff4ec;
+  --color-focus: #1f6feb;
+  --color-danger: #b42318;
+  --color-danger-tint: #fde8e6;
+  --color-warning: #8a5c00; /* text on surfaces */
+  --color-accent: #e0a526; /* warning borders */
+  --color-scrim: rgb(30 20 14 / 50%);
+
+  /* Aliases kept so components need few edits. */
+  --color-fresh: var(--color-ok);
+  --color-chip-bg: var(--color-surface-sunken);
+  --color-chip-active: var(--color-primary);
+  --color-slot-bg: var(--color-surface-sunken);
+  --color-drop-ok: var(--color-ok-tint);
+
+  /* Variety verdicts: tinted background, border, text and a strong fill with its own text. */
+  --variety-good-bg: #e3f1e4;
+  --variety-good-border: #5c8a3a;
+  --variety-good-text: #284c10;
+  --variety-good-strong: #3d6b1f;
+  --variety-fair-bg: #fdf0d0;
+  --variety-fair-border: #c88a00;
+  --variety-fair-text: #6b4600;
+  --variety-fair-strong: #8a5c00;
+  --variety-poor-bg: #fde8e6;
+  --variety-poor-border: #b42318;
+  --variety-poor-text: #7d1910;
+  --variety-poor-strong: #b42318;
+  --color-on-strong: #ffffff;
+
+  --font-sans: "Figtree Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -25,21 +62,58 @@
 
   --text-sm: 0.8125rem;
   --text-base: 1rem;
+  --text-lg: 1.125rem;
   --text-xl: 1.5rem;
 
-  --shadow-sm: 0 1px 2px rgb(59 42 32 / 12%);
-}
-
-:root {
-  --color-chip-bg: #fff1e0;
-  --color-chip-active: #b9461f;
-  --text-lg: 1.125rem;
   --tab-bar-height: 3.75rem;
   --sidebar-width: clamp(18rem, 25vw, 26rem);
-  --color-danger: #b42318;
-  --color-slot-bg: #fbf1e4;
-  --color-border-strong: #d2b99c;
-  --color-drop-ok: #e6f2dc;
-  --color-primary-tint: #fbe3d8;
-  --shadow-lg: 0 8px 24px rgb(59 42 32 / 28%);
+
+  --shadow-sm: 0 1px 2px rgb(36 28 23 / 8%);
+  --shadow-lg: 0 8px 24px rgb(36 28 23 / 22%);
+  --shadow-tab: 0 -2px 8px rgb(36 28 23 / 8%);
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --color-bg: #171311;
+    --color-surface: #221c19;
+    --color-surface-sunken: #1c1714;
+    --color-border: #3a312c;
+    --color-border-strong: #524640;
+    --color-text: #f3ece6;
+    --color-text-muted: #b5a79c;
+    --color-primary: #f08a5d;
+    --color-primary-hover: #f6a27d;
+    --color-primary-tint: #3d2419;
+    --color-primary-contrast: #1d0f09;
+    --color-ok: #8fd19a;
+    --color-ok-tint: #1f3323;
+    --color-today: #2a1d16;
+    --color-focus: #79a8ff;
+    --color-danger: #ff8d7e;
+    --color-danger-tint: #3a1f1b;
+    --color-warning: #e8b84a;
+    --color-accent: #e0a526;
+    --color-scrim: rgb(0 0 0 / 65%);
+
+    --variety-good-bg: #1f3323;
+    --variety-good-border: #5f9b6b;
+    --variety-good-text: #bfe6c5;
+    --variety-good-strong: #8fd19a;
+    --variety-fair-bg: #3a2e12;
+    --variety-fair-border: #b58a1f;
+    --variety-fair-text: #f0d58a;
+    --variety-fair-strong: #e8b84a;
+    --variety-poor-bg: #3a1f1b;
+    --variety-poor-border: #d9695a;
+    --variety-poor-text: #ffc2b8;
+    --variety-poor-strong: #ff8d7e;
+    --color-on-strong: #1d0f09;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 55%);
+    --shadow-tab: 0 -2px 8px rgb(0 0 0 / 40%);
+  }
 }

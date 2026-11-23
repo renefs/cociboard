@@ -12,7 +12,7 @@ que lo usas.
 
 ![La pantalla de entrada pide la contraseña de la casa](images/phone-sign-in.png){ .screenshot .phone }
 
-Usa **Cerrar sesión** en la cabecera para salir en un ordenador compartido. Si no hay
+Usa **Cerrar sesión** en el menú :material-cog: **Ajustes** de la cabecera para salir en un ordenador compartido. Si no hay
 contraseña, no aparece ninguna pantalla de entrada.
 
 ## Un recorrido por la pantalla
@@ -22,8 +22,9 @@ En el ordenador todo está en una sola pantalla:
 ![La cabecera, las recetas a la izquierda y el planificador semanal a la derecha](images/desktop-overview.png){ .screenshot }
 
 **Cabecera** (arriba)
-:   El botón :material-cog: abre las [preferencias del hogar](preferences.md), **Copia** abre
-    las [copias de seguridad](backups.md) y **EN | ES | Auto** elige el idioma.
+:   El botón :material-cog: **Ajustes** abre un menú con las
+    [preferencias del hogar](preferences.md), la [**Copia de seguridad**](backups.md),
+    la elección de idioma **EN | ES | Auto** y, si hay contraseña, **Cerrar sesión**.
 
 **Recetas** (izquierda)
 :   Tu catálogo de recetas, con buscador, filtros y orden. Arrastra una tarjeta a la semana o
@@ -40,10 +41,10 @@ parte de abajo. Consulta [En el móvil](phone.md).
 
 ## Idioma
 
-![El selector de idioma en la cabecera](images/header.png){ .screenshot }
+![El menú de ajustes: preferencias del hogar, copia de seguridad y selector de idioma](images/header.png){ .screenshot }
 
 La primera vez, Cociboard usa el idioma del navegador (español si el navegador está en
-cualquier variante de español; inglés en otro caso). Elige **EN** o **ES** en la cabecera para
+cualquier variante de español; inglés en otro caso). Abre :material-cog: **Ajustes** en la cabecera y elige **EN** o **ES** para
 cambiarlo en este dispositivo, o **Auto** para volver a seguir al navegador.
 
 Solo se traduce la interfaz. Tus recetas se quedan tal y como las escribiste.

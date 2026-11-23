@@ -1,6 +1,6 @@
 # Household preferences
 
-The :material-cog: button in the header opens the preferences of your household. They are
+**Household preferences** in the :material-cog: **Settings** menu in the header opens the preferences of your household. They are
 shared by everyone using the same Cociboard.
 
 ![The household preferences: diet, avoid, variety targets and meal times](images/household-preferences.png){ .screenshot .dialog }

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AUTH_URL, E2E_PASSWORD } from "../playwright.config";
+import { openSettings } from "./helpers";
 
 // The second backend (COCIBOARD_PASSWORD set) is only used here. These tests use Playwright's
 // own `test`, not ./fixtures: the data reset needs a signed-in session.
@@ -31,10 +32,12 @@ test.describe("password mode", () => {
     await password.fill(E2E_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("heading", { name: "Weekly planner" }).or(page.getByRole("heading", { name: "Today", level: 2 }))).toBeVisible();
+    await openSettings(page);
     await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 
     // The session survives a reload; logging out brings the sign-in page back.
     await page.reload();
+    await openSettings(page);
     await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
     await page.getByRole("button", { name: "Log out" }).click();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();

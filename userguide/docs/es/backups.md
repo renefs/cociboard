@@ -1,6 +1,6 @@
 # Copias de seguridad
 
-El botón **Copia** de la cabecera abre el cuadro de copias de seguridad.
+**Copia de seguridad** en el menú :material-cog: **Ajustes** de la cabecera abre el cuadro de copias de seguridad.
 
 ![El cuadro de copias de seguridad: descargar, restaurar desde un archivo y las copias automáticas](images/backup.png){ .screenshot .dialog }
 

@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight, Copy, ShoppingCart, Sparkles } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -293,13 +294,13 @@ export function Planner({ now: nowProp }: PlannerProps) {
             <h2 id="planner-heading">{t("planner.heading")}</h2>
             <nav className="week-nav" aria-label={t("planner.weekNav")}>
               <button type="button" className="icon-button week-step" aria-label={t("planner.previousWeek")} onClick={previous}>
-                <span aria-hidden="true">‹</span>
+                <ChevronLeft aria-hidden="true" size={20} />
               </button>
               <button type="button" className="btn week-today" disabled={isCurrentWeek} onClick={today}>
                 {t("planner.thisWeek")}
               </button>
               <button type="button" className="icon-button week-step" aria-label={t("planner.nextWeek")} onClick={next}>
-                <span aria-hidden="true">›</span>
+                <ChevronRight aria-hidden="true" size={20} />
               </button>
               <p className="week-range" aria-live="polite">
                 <span className="visually-hidden">{t("planner.weekOf")}</span>
@@ -317,7 +318,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
                 title={t("planner.suggestTitle")}
                 onClick={() => void tools.suggest()}
               >
-                <span aria-hidden="true">✨ </span>{t("planner.suggest")}
+                <Sparkles aria-hidden="true" size={18} className="icon" />{t("planner.suggest")}
               </button>
               <button
                 type="button"
@@ -326,7 +327,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
                 title={t("planner.copyLastWeekTitle")}
                 onClick={() => void tools.copyPrevious()}
               >
-                <span aria-hidden="true">📋 </span>
+                <Copy aria-hidden="true" size={18} className="icon" />
                 <span className="label-long">{t("planner.copyLastWeek")}</span>
                 <span className="label-short" aria-hidden="true">
                   {t("planner.copyLastWeekShort")}
@@ -347,7 +348,7 @@ export function Planner({ now: nowProp }: PlannerProps) {
                 title={t("shopping.openTitle")}
                 onClick={() => (narrow ? go("open-shopping") : setUi({ kind: "shopping" }))}
               >
-                <span aria-hidden="true">🛒 </span>{t("shopping.open")}
+                <ShoppingCart aria-hidden="true" size={18} className="icon" />{t("shopping.open")}
               </button>
               <ShareMenu plan={plan} onNotify={notify} mealTimes={mealTimes} />
             </div>

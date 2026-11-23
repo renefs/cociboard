@@ -151,6 +151,7 @@ describe("the language switcher", () => {
       vi.useRealTimers();
     }
     expect(await screen.findByRole("heading", { name: "Weekly planner" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Settings" }));
     const group = screen.getByRole("group", { name: "Language" });
     expect(within(group).getByRole("button", { name: "EN" })).toHaveAttribute("aria-pressed", "false");
     expect(within(group).getByRole("button", { name: "Auto" })).toHaveAttribute("aria-pressed", "true");
@@ -174,6 +175,7 @@ describe("the language switcher", () => {
       screen.getByText("Fabada asturiana se repite 2 veces esta semana."),
     ).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Ajustes" }));
     await user.click(screen.getByRole("button", { name: "EN" }));
     expect(await screen.findByRole("heading", { name: "Weekly planner" })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("en");

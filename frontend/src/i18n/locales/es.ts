@@ -9,6 +9,11 @@ const es = {
     backendVersion: "Servidor v{{version}}",
     backendOffline: "Servidor sin conexión",
   },
+  settings: {
+    button: "Ajustes",
+    buttonTitle: "Preferencias, copia de seguridad e idioma",
+    panelLabel: "Opciones de ajustes",
+  },
   language: {
     label: "Idioma",
     en: "EN",
@@ -341,7 +346,7 @@ const es = {
     reload: "Recargar",
   },
   backup: {
-    button: "Copia",
+    button: "Copia de seguridad",
     buttonTitle: "Descargar o restaurar una copia de seguridad de tus datos",
     title: "Copia de seguridad",
     downloadHeading: "Descargar una copia",

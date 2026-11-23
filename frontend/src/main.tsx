@@ -8,6 +8,7 @@ import { registerMutationDefaults } from "./offline/defaults";
 import { startOfflineEdits } from "./offline/start";
 import { syncOnlineStatus } from "./pwa/online";
 import { UpdatePrompt } from "./pwa/UpdatePrompt";
+import "@fontsource-variable/figtree/wght.css";
 import "./styles/tokens.css";
 import "./styles/global.css";
 import "./styles/auth.css";

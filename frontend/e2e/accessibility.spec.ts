@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { today } from "./dates";
 import { RECIPES } from "./data";
-import { showTab } from "./helpers";
+import { openSettings, showTab } from "./helpers";
 import { expect, test } from "./fixtures";
 
 /** Fails on serious and critical WCAG A/AA violations; lists them readably when it does. */
@@ -92,8 +92,30 @@ test.describe("accessibility (axe)", () => {
     await expectNoSeriousViolations(page);
     await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 
+    await openSettings(page);
     await page.getByRole("button", { name: "Household preferences" }).click();
     await expect(page.getByRole("dialog", { name: "Household preferences" })).toBeVisible();
+    await expectNoSeriousViolations(page);
+  });
+
+  test("the settings menu", async ({ page }) => {
+    await page.goto("/");
+    await openSettings(page);
+    await expectNoSeriousViolations(page);
+  });
+
+  test("the main view and the settings menu in the dark theme", async ({ page, isMobile }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    await showTab(page, isMobile, "Week");
+    // The plan has loaded once its meals show (the toolbar buttons are disabled until then).
+    await expect(page.getByRole("button", { name: /^Lentil stew, Monday lunch/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Suggest" })).toBeEnabled();
+    await expectNoSeriousViolations(page);
+    await showTab(page, isMobile, "Recipes");
+    await expect(page.getByRole("article", { name: "Baked salmon" })).toBeVisible();
+    await expectNoSeriousViolations(page);
+    await openSettings(page);
     await expectNoSeriousViolations(page);
   });
 });

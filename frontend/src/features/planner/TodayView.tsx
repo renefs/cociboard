@@ -9,6 +9,7 @@ import { mealName, mealOfDay, slotLabel, type SlotMeal } from "./slots";
 import { dayPlanFor, dayRefOf, hasMeals, tomorrowOf } from "./todayLogic";
 import { useWeekPlan } from "./useWeekPlan";
 import { dayName, formatShortDate } from "./weekMath";
+import { Clock } from "lucide-react";
 
 interface TodayViewProps {
   /** Current time; the view always reads the real current week, not the one being browsed. */
@@ -126,7 +127,7 @@ function MealCard({
             />{" "}
             {meal.recipe.prep_minutes !== null && (
               <span className="meal-card-prep">
-                <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: meal.recipe.prep_minutes })}
+                <Clock aria-hidden="true" size={14} className="icon" /> {t("recipes.minutes", { count: meal.recipe.prep_minutes })}
               </span>
             )}
           </button>

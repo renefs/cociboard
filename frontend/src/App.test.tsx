@@ -39,12 +39,14 @@ describe("App", () => {
     expect(await screen.findByText("Backend offline")).toBeInTheDocument();
   });
 
-  it("opens the backup dialog from the header", async () => {
+  it("opens the backup dialog from the settings menu", async () => {
     mockFetch(() =>
       Promise.resolve(new Response(JSON.stringify({ status: "ok", version: "0.11.0" }), { status: 200 })),
     );
     renderWithQuery(<App />);
-    await userEvent.setup().click(screen.getByRole("button", { name: /Backup/ }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: "Backup" }));
     const dialog = await screen.findByRole("dialog", { name: "Backup" });
     expect(dialog).toHaveTextContent("Download backup");
     expect(dialog).toHaveTextContent("Restore from a file");
@@ -64,6 +66,8 @@ describe("App", () => {
 
     withStatus({ enabled: true, authenticated: true, exposed: false });
     const first = renderWithQuery(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
     expect(await screen.findByRole("button", { name: /Log out/ })).toBeInTheDocument();
     expect(screen.queryByText(/Anyone who can reach this address/)).not.toBeInTheDocument();
     first.unmount();
@@ -71,6 +75,7 @@ describe("App", () => {
     withStatus({ enabled: false, authenticated: true, exposed: true });
     renderWithQuery(<App />);
     expect(await screen.findByText(/Anyone who can reach this address/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.queryByRole("button", { name: /Log out/ })).not.toBeInTheDocument();
   });
 });

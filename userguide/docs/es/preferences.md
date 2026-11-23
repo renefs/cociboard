@@ -1,6 +1,6 @@
 # Preferencias del hogar
 
-El botón :material-cog: de la cabecera abre las preferencias de tu casa. Las comparten todas las
+**Preferencias del hogar**, en el menú :material-cog: **Ajustes** de la cabecera, abre las preferencias de tu casa. Las comparten todas las
 personas que usan el mismo Cociboard.
 
 ![Las preferencias del hogar: dieta, evitar, objetivos de variedad y horarios](images/household-preferences.png){ .screenshot .dialog }

@@ -9,6 +9,11 @@ const en = {
     backendVersion: "Backend v{{version}}",
     backendOffline: "Backend offline",
   },
+  settings: {
+    button: "Settings",
+    buttonTitle: "Preferences, backup and language",
+    panelLabel: "Settings options",
+  },
   language: {
     label: "Language",
     en: "EN",

@@ -18,6 +18,7 @@ import {
   useToggleFavourite,
   useUpdateRecipe,
 } from "./useRecipeMutations";
+import { Archive, Clock } from "lucide-react";
 
 export type Notify = (kind: "error" | "info", text: string) => void;
 
@@ -110,7 +111,7 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
       <div className="details">
         {recipe.archived && (
           <p className="details-archived" role="note">
-            <span aria-hidden="true">🗄️</span> {t("recipes.details.archivedNote")}
+            <Archive aria-hidden="true" size={16} className="icon" /> {t("recipes.details.archivedNote")}
           </p>
         )}
         <dl className="details-facts">
@@ -130,7 +131,7 @@ export function RecipeDetailsModal({ recipe: initial, onClose, onNotify, footerS
             <div>
               <dt>{t("recipes.prepTime")}</dt>
               <dd>
-                <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
+                <Clock aria-hidden="true" size={14} className="icon" /> {t("recipes.minutes", { count: recipe.prep_minutes })}
               </dd>
             </div>
           )}

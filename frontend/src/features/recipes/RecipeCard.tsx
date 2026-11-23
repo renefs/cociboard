@@ -1,9 +1,10 @@
-import { useId, useState, type CSSProperties, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { lastMadeText } from "./historyLogic";
 import { MetaIcon } from "./MetaIcon";
-import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META, SERVINGS_ICON } from "./recipeMeta";
+import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META, SERVINGS_ICON, mealTypeBadgeStyle } from "./recipeMeta";
+import { Clock } from "lucide-react";
 
 export const COLLAPSED_INGREDIENTS = 4;
 /** Compact cards show a one-line summary; offer expansion beyond this many characters. */
@@ -157,7 +158,7 @@ function ComfortableCard({
         <CardTitle recipe={recipe} onOpen={onOpen} />
         <span
           className="badge"
-          style={{ "--badge-color": mealType.color } as CSSProperties}
+          style={mealTypeBadgeStyle(mealType)}
           data-testid="meal-type-badge"
         >
           <span aria-hidden="true">{mealType.icon}</span> {t(mealType.labelKey)}
@@ -169,7 +170,7 @@ function ComfortableCard({
       <p className="recipe-card-facts">
         {recipe.prep_minutes !== null && (
           <span className="fact">
-            <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
+            <Clock aria-hidden="true" size={14} className="icon" /> {t("recipes.minutes", { count: recipe.prep_minutes })}
           </span>
         )}
         <ServingsFact servings={recipe.servings} />
@@ -242,14 +243,14 @@ function CompactCard({
       <div className="recipe-card-meta">
         <span
           className="badge badge--small"
-          style={{ "--badge-color": mealType.color } as CSSProperties}
+          style={mealTypeBadgeStyle(mealType)}
           data-testid="meal-type-badge"
         >
           <span aria-hidden="true">{mealType.icon}</span> {t(mealType.labelKey)}
         </span>
         {recipe.prep_minutes !== null && (
           <span className="fact">
-            <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: recipe.prep_minutes })}
+            <Clock aria-hidden="true" size={14} className="icon" /> {t("recipes.minutes", { count: recipe.prep_minutes })}
           </span>
         )}
         <ServingsFact servings={recipe.servings} />

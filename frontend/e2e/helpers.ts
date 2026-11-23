@@ -5,6 +5,15 @@ export function slot(page: Page, day: string, meal: "lunch" | "dinner"): Locator
   return page.getByRole("group", { name: `${day} ${meal}`, exact: true });
 }
 
+/** Opens the header's settings menu (household preferences, backup, language, log out). */
+export async function openSettings(page: Page, name = "Settings"): Promise<Locator> {
+  const button = page.getByRole("button", { name, exact: true });
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  const panel = page.getByRole("group", { name: name === "Settings" ? "Settings options" : "Opciones de ajustes" });
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
 /** The dnd-kit live region: where drag and drop announcements are spoken. */
 export function dragAnnouncements(page: Page): Locator {
   return page.locator("[id^='DndLiveRegion']");

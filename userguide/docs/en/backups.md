@@ -1,6 +1,6 @@
 # Backups
 
-The **Backup** button in the header opens the backup dialog.
+**Backup** in the :material-cog: **Settings** menu in the header opens the backup dialog.
 
 ![The backup dialog: download, restore from a file and the automatic copies](images/backup.png){ .screenshot .dialog }
 

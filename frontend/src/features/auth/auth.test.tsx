@@ -8,7 +8,7 @@ import type { AuthStatus } from "../../api/types";
 import { renderWithQuery } from "../../test/utils";
 import { AuthGate } from "./AuthGate";
 import { ExposureBanner } from "./ExposureBanner";
-import { LogoutButton } from "./LogoutButton";
+import { SettingsMenu } from "../settings/SettingsMenu";
 import { useAuthStatus } from "./useAuthStatus";
 
 const json = (body: unknown, status = 200) =>
@@ -180,18 +180,20 @@ describe("LoginScreen", () => {
   });
 });
 
-describe("LogoutButton", () => {
+describe("logout from the settings menu", () => {
   it("logs out and returns to the login screen", async () => {
     mockServer(STATUS_IN);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
         <AuthGate>
-          <LogoutButton onError={() => undefined} />
+          <SettingsMenu canLogout onError={() => undefined} onOpenHousehold={() => undefined} onOpenBackup={() => undefined} />
         </AuthGate>
       </QueryClientProvider>,
     );
-    await userEvent.setup().click(await screen.findByRole("button", { name: /Log out/ }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: /Log out/ }));
     expect(await screen.findByLabelText("Password")).toBeInTheDocument();
   });
 
@@ -200,12 +202,14 @@ describe("LogoutButton", () => {
     const onError = vi.fn();
     renderWithQuery(
       <AuthGate>
-        <LogoutButton onError={onError} />
+        <SettingsMenu canLogout onError={onError} onOpenHousehold={() => undefined} onOpenBackup={() => undefined} />
       </AuthGate>,
     );
-    const button = await screen.findByRole("button", { name: /Log out/ });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    const button = screen.getByRole("button", { name: /Log out/ });
     fetchMock.mockImplementationOnce(() => Promise.reject(new TypeError("Failed to fetch")));
-    await userEvent.setup().click(button);
+    await user.click(button);
     await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.stringContaining("Couldn't log out")));
     expect(screen.getByRole("button", { name: /Log out/ })).toBeInTheDocument();
   });

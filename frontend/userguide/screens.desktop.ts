@@ -1,4 +1,4 @@
-import { expect, openPlanner, prepareDemo, test } from "./guide";
+import { expect, openPlanner, openSettings, prepareDemo, test } from "./guide";
 
 // Each test is one picture (or a few of the same screen) for the user guide. They only read
 // the demo data, except where a picture needs a change, which `prepareDemo` undoes.
@@ -105,6 +105,7 @@ test("shopping list and pantry", async ({ page, t, shot }) => {
 
 test("household preferences", async ({ page, t, shot }) => {
   await openPlanner(page, t);
+  await openSettings(page, t);
   await page.getByRole("button", { name: t("household.button"), exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("group", { name: t("household.dietHeading") })).toBeVisible();
@@ -113,13 +114,15 @@ test("household preferences", async ({ page, t, shot }) => {
 
 test("backup", async ({ page, t, shot }) => {
   await openPlanner(page, t);
+  await openSettings(page, t);
   await page.getByRole("button", { name: t("backup.button"), exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: t("backup.downloadHeading") })).toBeVisible();
   await shot("backup", dialog);
 });
 
-test("header", async ({ page, t, shot }) => {
+test("settings menu", async ({ page, t, shot }) => {
   await openPlanner(page, t);
-  await shot("header", page.getByRole("banner"));
+  // The file keeps the name "header": the guide's language section shows it.
+  await shot("header", await openSettings(page, t));
 });

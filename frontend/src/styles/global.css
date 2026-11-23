@@ -33,124 +33,168 @@ body {
   gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-brand {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.app-brand-mark {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
   color: var(--color-primary-contrast);
   background: var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-sm);
 }
 
 .app-title {
   margin: 0;
-  font-size: var(--text-xl);
-  letter-spacing: 0.02em;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
-.app-header-tools {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
+/* Lucide icons in the UI chrome: line icons that take the text colour. */
+.icon {
+  flex-shrink: 0;
+  vertical-align: -0.2em;
 }
 
-/* Backup button: an outlined pill that matches the language switcher. */
-.header-button {
-  min-height: 2.75rem;
-  min-width: 2.75rem; /* 44px touch target, also when only the icon shows */
-  padding: 0 var(--space-3);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-primary-contrast);
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--color-primary-contrast);
-  border-radius: 999px;
+/* ---------- Settings menu (header) ---------- */
+
+.settings-menu {
+  position: relative;
 }
 
-/* The household preferences button: a round icon-only button, 36px with a mouse and 44px on
-   touch (like .icon-button). */
-.header-button--icon {
+/* 36px with a mouse, 44px on touch (like .icon-button). */
+.settings-button {
   display: inline-grid;
   flex-shrink: 0;
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
-  min-width: 0;
-  min-height: 0;
   padding: 0;
-  font-size: 1.1rem;
-  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-border);
   border-radius: 50%;
 }
 
+.settings-button:hover,
+.settings-button[aria-expanded="true"] {
+  color: var(--color-text);
+  background: var(--color-surface-sunken);
+}
+
 @media (pointer: coarse) {
-  .header-button--icon {
+  .settings-button {
     width: 2.75rem;
     height: 2.75rem;
   }
 }
 
-@media (max-width: 479px) {
-  /* Icon only on phones; the accessible name stays through the label's visually-hidden style. */
-  .header-button-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+.settings-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: max-content;
+  min-width: 15rem;
+  max-width: calc(100vw - 1rem);
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
 }
 
-/* The narrowest phones: with the backup, logout and language controls the header would
-   overflow 375px, so tighten the spacing and the title (touch targets stay 44px). */
-@media (max-width: 419px) {
-  .app-header {
-    gap: var(--space-2);
-    padding-inline: var(--space-3);
-  }
-
-  .app-title {
-    font-size: var(--text-lg);
-  }
-
-  .app-header-tools {
-    gap: var(--space-1);
-  }
-
-  .language-switcher button {
-    padding-inline: var(--space-2);
-  }
+.settings-item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
 }
 
-/* Language switcher: a segmented control on the primary-coloured header. */
+.settings-item:hover:not(:disabled) {
+  background: var(--color-surface-sunken);
+}
+
+.settings-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.settings-language {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-language-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.settings-item--logout {
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+/* Language switcher: a segmented control on a light surface. */
 .language-switcher {
-  display: inline-flex;
-  flex-shrink: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-primary-contrast);
+  display: flex;
+  padding: 2px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
 }
 
 .language-switcher button {
+  flex: 1;
   min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-height: 2.5rem;
   padding: 0 var(--space-3);
   font: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--color-primary-contrast);
+  color: var(--color-text-muted);
   cursor: pointer;
   background: transparent;
   border: 0;
-}
-
-.language-switcher button + button {
-  border-inline-start: 1px solid var(--color-primary-contrast);
+  border-radius: 999px;
 }
 
 .language-switcher button[aria-pressed="true"] {
-  color: var(--color-primary);
-  background: var(--color-primary-contrast);
+  color: var(--color-primary-contrast);
+  background: var(--color-primary);
 }
 
 .app-main {
@@ -338,9 +382,20 @@ h2 {
   font-size: var(--text-sm);
   font-weight: 600;
   white-space: nowrap;
-  color: var(--badge-color);
-  border: 1px solid var(--badge-color);
+  color: var(--badge-fg);
+  border: 1px solid var(--badge-fg);
   border-radius: 999px;
+}
+
+/* Meal-type badges bring a lighter colour for the dark theme (`--badge-color-dark`). */
+.badge {
+  --badge-fg: var(--badge-color);
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  .badge {
+    --badge-fg: var(--badge-color-dark, var(--badge-color));
+  }
 }
 
 .recipe-card-facts {

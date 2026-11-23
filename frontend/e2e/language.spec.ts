@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { openSettings } from "./helpers";
 import type { Page } from "@playwright/test";
 
 /** The Spanish tab bar (on a phone) leads to the week; on a desktop it is already there. */
@@ -11,6 +12,7 @@ test.describe("language", () => {
   test("switching to Spanish translates the interface", async ({ page, isMobile }) => {
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await openSettings(page);
     await page.getByRole("group", { name: "Language" }).getByRole("button", { name: "ES" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("lang", "es");

@@ -1,3 +1,4 @@
+import { Share2 } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { WeekPlan } from "../../api/types";
@@ -61,7 +62,7 @@ export function ShareMenu({ plan, onNotify, mealTimes, now = () => new Date() }:
   if (!plan) {
     return (
       <button type="button" className="btn" disabled>
-        <span aria-hidden="true">📤 </span>
+        <Share2 aria-hidden="true" size={18} className="icon" />
         {t("share.menu")}
       </button>
     );
@@ -111,7 +112,7 @@ export function ShareMenu({ plan, onNotify, mealTimes, now = () => new Date() }:
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
       >
-        <span aria-hidden="true">📤 </span>
+        <Share2 aria-hidden="true" size={18} className="icon" />
         {t("share.menu")}
       </button>
       {open && (

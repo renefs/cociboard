@@ -181,3 +181,11 @@ export async function openPlanner(page: Page, t: TFunction): Promise<void> {
   await expect(page.getByRole("heading", { name: t("planner.heading") })).toBeVisible();
   await expect(page.getByText(t("planner.loadingWeek"))).toHaveCount(0);
 }
+
+/** Opens the header's settings menu and returns its panel. */
+export async function openSettings(page: Page, t: TFunction): Promise<Locator> {
+  await page.getByRole("button", { name: t("settings.button"), exact: true }).click();
+  const panel = page.getByRole("group", { name: t("settings.panelLabel") });
+  await expect(panel).toBeVisible();
+  return panel;
+}

@@ -8,3 +8,11 @@ export function clampShift(left: number, width: number, viewportWidth: number, m
   // Do not move further left than the margin allows.
   return -Math.min(overflow, Math.max(0, left - margin));
 }
+
+/**
+ * How far to move a popover that hangs from the right edge of its trigger to the right so
+ * that its left edge stays inside the viewport: positive when it would stick out on the left.
+ */
+export function clampShiftStart(left: number, margin = 8): number {
+  return left >= margin ? 0 : margin - left;
+}

@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-11-23
+
+First phase of the visual refresh (ADR-0031). Nothing changes in how planning works.
+
+### Added
+- Dark mode. The app follows the device's light or dark setting. Every colour keeps WCAG AA
+  contrast in both themes; a test reads the design tokens and checks them, and the
+  end-to-end suite runs an accessibility scan in dark mode.
+- A settings menu: the gear button in the header now holds Household preferences, Backup,
+  the language choice (EN | ES | Auto) and, when a password is set, Log out.
+
+### Changed
+- A lighter look: warm-neutral backgrounds with terracotta as the accent colour, a light
+  header with the Cociboard mark, and the Figtree typeface (bundled, so it works offline).
+- Line icons instead of emoji in the tab bar, the planner toolbar, the week navigation, the
+  share menu, close buttons and the preparation time. Recipe icons stay the same for now.
+- In Spanish, the backup item is called "Copia de seguridad" instead of "Copia".
+- The user guide describes the settings menu, and its screenshots are regenerated.
+
 ## [0.28.4] - 2026-11-23
 
 ### Fixed

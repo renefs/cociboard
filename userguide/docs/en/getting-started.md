@@ -12,7 +12,7 @@ use it.
 
 ![The sign-in screen asks for the household password](images/phone-sign-in.png){ .screenshot .phone }
 
-Use **Log out** in the header to sign out on a shared computer. Without a password set, there
+Use **Log out** in the :material-cog: **Settings** menu in the header to sign out on a shared computer. Without a password set, there
 is no sign-in screen at all.
 
 ## A tour of the screen
@@ -22,8 +22,9 @@ On a computer, everything is on one screen:
 ![The header, the recipe list on the left and the weekly planner on the right](images/desktop-overview.png){ .screenshot }
 
 **Header** (top)
-:   The :material-cog: button opens the [household preferences](preferences.md), **Backup**
-    opens the [backup](backups.md) dialog, and **EN | ES | Auto** chooses the language.
+:   The :material-cog: **Settings** button opens a menu with the
+    [household preferences](preferences.md), **Backup** (the [backup](backups.md) dialog),
+    the **EN | ES | Auto** language choice and, when a password is set, **Log out**.
 
 **Recipes** (left)
 :   Your recipe catalogue, with search, filters and sorting. Drag a card into the week, or use
@@ -40,10 +41,10 @@ screen. See [On your phone](phone.md).
 
 ## Language
 
-![The language switcher in the header](images/header.png){ .screenshot }
+![The settings menu: household preferences, backup and the language switcher](images/header.png){ .screenshot }
 
 The first time you open Cociboard it uses your browser's language (Spanish for any Spanish
-browser, English otherwise). Choose **EN** or **ES** in the header to change it on this device,
+browser, English otherwise). Open :material-cog: **Settings** in the header and choose **EN** or **ES** to change it on this device,
 or **Auto** to follow the browser again.
 
 Only the interface is translated. Your recipes stay exactly as you wrote them.

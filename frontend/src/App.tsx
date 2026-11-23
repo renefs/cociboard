@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChefHat } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getHealth } from "./api/client";
-import { LanguageSwitcher } from "./i18n/LanguageSwitcher";
 import { ExposureBanner } from "./features/auth/ExposureBanner";
-import { LogoutButton } from "./features/auth/LogoutButton";
 import { useAuthStatus } from "./features/auth/useAuthStatus";
-import { BackupButton } from "./features/backup/BackupButton";
 import { BackupDialog } from "./features/backup/BackupDialog";
-import { HouseholdButton } from "./features/settings/HouseholdButton";
+import { SettingsMenu } from "./features/settings/SettingsMenu";
 import { HouseholdDialog } from "./features/settings/HouseholdDialog";
 import { useSaveHousehold } from "./features/settings/useHouseholdSettings";
 import { Planner } from "./features/planner/Planner";
@@ -44,13 +42,18 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-title">{t("app.title")}</h1>
-        <div className="app-header-tools">
-          <HouseholdButton onClick={() => setHouseholdOpen(true)} />
-          <BackupButton onClick={() => setBackupOpen(true)} />
-          {auth.data?.enabled && <LogoutButton onError={(text) => notify("error", text)} />}
-          <LanguageSwitcher />
+        <div className="app-brand">
+          <span className="app-brand-mark" aria-hidden="true">
+            <ChefHat size={18} />
+          </span>
+          <h1 className="app-title">{t("app.title")}</h1>
         </div>
+        <SettingsMenu
+          onOpenHousehold={() => setHouseholdOpen(true)}
+          onOpenBackup={() => setBackupOpen(true)}
+          canLogout={auth.data?.enabled === true}
+          onError={(text) => notify("error", text)}
+        />
       </header>
       <OfflineBanner />
       {auth.data?.exposed && <ExposureBanner />}

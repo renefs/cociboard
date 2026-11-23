@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampShift } from "./popoverLogic";
+import { clampShift, clampShiftStart } from "./popoverLogic";
 
 describe("clampShift", () => {
   it("does not move a popover that fits", () => {
@@ -12,5 +12,15 @@ describe("clampShift", () => {
 
   it("never pushes the left edge past the margin", () => {
     expect(clampShift(10, 400, 375)).toBe(-2);
+  });
+});
+
+describe("clampShiftStart", () => {
+  it("does not move a popover that starts inside the viewport", () => {
+    expect(clampShiftStart(20)).toBe(0);
+  });
+
+  it("moves a popover that sticks out on the left back to the margin", () => {
+    expect(clampShiftStart(-30)).toBe(38);
   });
 });

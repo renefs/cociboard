@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 
 interface ModalProps {
   title: string;
@@ -82,7 +83,7 @@ export function Modal({
             {title}
           </h2>
           <button type="button" className="icon-button" aria-label={t("common.close")} onClick={onClose}>
-            <span aria-hidden="true">×</span>
+            <X aria-hidden="true" size={18} />
           </button>
         </header>
         <div className="modal-body">{children}</div>
