@@ -4,8 +4,9 @@ Each day has two slots, **lunch** and **dinner**. A slot holds one recipe, a spe
 (*Eating out*, *Leftovers*, *Free*) or nothing.
 
 On a computer the week is a grid: one column per day, a row for lunch (:material-weather-sunny:)
-and a row for dinner (:material-weather-night:). A planned recipe is a card with its name, a
-coloured dot with its main protein and its prep time. An empty slot is a dashed box with
+and a row for dinner (:material-weather-night:). A planned recipe is a card with its name, the
+icon and name of its main protein, its prep time and the icons of its properties (vegetarian,
+quick, spicy…). An empty slot is a dashed box with
 **Add lunch** or **Add dinner**. A :material-alert: mark on a card means it is part of a
 [variety warning](variety.md). Today's column is highlighted.
 

@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-11-23
+
+### Changed
+- The week's meal cards show icons again (ADR-0034): the main protein's icon next to its name,
+  the prep time and the icons of the recipe's properties (vegetarian, quick, spicy…), each with
+  its accessible name. On a phone, and in the compact week list, the icons sit under the meal's
+  name, so long names are no longer cut short.
+
 ## [0.31.1] - 2026-11-23
 
 ### Fixed

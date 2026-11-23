@@ -53,7 +53,11 @@ describe("WeekGrid", () => {
     const { onRemove, onActivate } = renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
     const slot = screen.getByRole("group", { name: "Tuesday lunch" });
     expect(within(slot).getByText("Fabada asturiana")).toBeInTheDocument();
-    expect(within(slot).queryByRole("img")).not.toBeInTheDocument();
+    // The property icons of the fixture recipe, each with its name.
+    expect(within(slot).getAllByRole("img").map((img) => img.getAttribute("aria-label"))).toEqual([
+      "Gluten-free",
+      "Batch cooking",
+    ]);
     expect(within(slot).queryByRole("button", { name: /^Add lunch/ })).not.toBeInTheDocument();
 
     await user.click(within(slot).getByRole("button", { name: "Remove Fabada asturiana from Tuesday lunch" }));
@@ -117,20 +121,30 @@ describe("WeekGrid", () => {
 });
 
 describe("WeekGrid layout", () => {
-  it("shows the protein as a coloured dot with its name, and the prep time, instead of emoji", () => {
-    const recipe = makeRecipe({ name: "Merluza a la vasca", protein: "fish", prep_minutes: 35, properties: ["quick"] });
+  it("shows the protein icon with its name, the prep time and the property icons", () => {
+    const recipe = makeRecipe({
+      name: "Merluza a la vasca",
+      protein: "fish",
+      prep_minutes: 35,
+      properties: ["quick", "gluten_free"],
+    });
     renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
     const slot = screen.getByRole("group", { name: "Tuesday lunch" });
     const meta = slot.querySelector(".slot-meta") as HTMLElement;
     expect(within(meta).getByText("Fish")).toBeInTheDocument();
     expect(within(meta).getByText("35 min")).toBeInTheDocument();
-    const dot = meta.querySelector<HTMLElement>(".protein-dot");
-    expect(dot).toHaveAttribute("aria-hidden", "true");
-    expect(dot?.style.getPropertyValue("--protein-color")).toBe(PROTEIN_META.fish.color);
-    expect(dot?.style.getPropertyValue("--protein-color-dark")).toBe(PROTEIN_META.fish.darkColor);
-    // Meal-type and property emoji stay in the recipe details only.
-    expect(slot).not.toHaveTextContent("⚡");
+    // The protein icon is decorative (its name follows); each property icon has a name.
+    expect(within(meta).getByText(PROTEIN_META.fish.icon)).toHaveAttribute("aria-hidden", "true");
+    expect(within(meta).getByRole("img", { name: "Quick (30 min or less)" })).toHaveTextContent("⚡");
+    expect(within(meta).getByRole("img", { name: "Gluten-free" })).toBeInTheDocument();
+    // The slot already says lunch or dinner, so the meal-type icon is not repeated.
     expect(slot).not.toHaveTextContent("☀");
+  });
+
+  it("shows no property icons for a recipe without properties", () => {
+    renderGrid(makePlan("2026-10-26", { "1:lunch": makeRecipe({ name: "Lentejas", properties: [] }) }));
+    const slot = screen.getByRole("group", { name: "Tuesday lunch" });
+    expect(slot.querySelector(".slot-props")).toBeNull();
   });
 
   it("uses the short protein label on the slot card, with the full one as its tooltip", () => {

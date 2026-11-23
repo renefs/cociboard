@@ -634,6 +634,20 @@ button.issue-button:hover {
   white-space: nowrap;
 }
 
+/* Protein and property emoji at the size of the meta text, so the line stays one row high. */
+.slot-protein-icon,
+.slot-props .meta-icon {
+  min-width: 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.slot-props {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+}
+
 .slot-warning {
   display: inline-grid;
   place-items: center;
@@ -794,12 +808,15 @@ button.issue-button:hover {
     color: var(--color-text-muted);
   }
 
+  /* The name takes the whole width; the protein and property icons go on a line under it, so
+     they never squeeze the name. */
   .slot-recipe {
     display: grid;
     flex: 1;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     min-width: 0;
+    min-height: 2.75rem;
   }
 
   .slot-body {
@@ -808,8 +825,13 @@ button.issue-button:hover {
     grid-column: 1;
     grid-row: 1;
     justify-content: center;
+    padding: var(--space-1) var(--space-1) 0;
+  }
+
+  .slot-recipe:not(:has(.slot-meta)) .slot-body {
+    grid-row: 1 / span 2;
     min-height: 2.75rem;
-    padding: var(--space-1);
+    padding-bottom: var(--space-1);
   }
 
   .slot-name {
@@ -818,20 +840,21 @@ button.issue-button:hover {
   }
 
   .slot-meta {
-    grid-column: 2;
-    grid-row: 1;
-    padding-inline: var(--space-1);
+    grid-column: 1;
+    grid-row: 2;
+    padding: 0 var(--space-1) var(--space-1);
+    line-height: 1.25rem;
   }
 
   .slot-warning {
-    grid-column: 3;
-    grid-row: 1;
+    grid-column: 2;
+    grid-row: 1 / span 2;
     padding-inline: var(--space-1);
   }
 
   .slot-remove {
-    grid-column: 4;
-    grid-row: 1;
+    grid-column: 3;
+    grid-row: 1 / span 2;
   }
 
   .slot-add {

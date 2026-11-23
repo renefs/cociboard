@@ -3,7 +3,8 @@ import { AlertTriangle, Clock, Moon, Plus, Sun, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
-import { PROTEIN_META, proteinDotStyle } from "../recipes/recipeMeta";
+import { MetaIcon } from "../recipes/MetaIcon";
+import { PROPERTY_META, PROTEIN_META } from "../recipes/recipeMeta";
 import {
   acceptsDrop,
   canDrop,
@@ -245,20 +246,33 @@ function RecipeName({ recipe }: { recipe: Recipe }) {
   );
 }
 
-/** The protein (a coloured dot and its name) and the prep time of a planned recipe. */
+/**
+ * The protein (its icon and short name), the prep time and the property icons of a planned
+ * recipe. The protein icon is decorative because its name follows; the property icons carry
+ * their own accessible names.
+ */
 function RecipeMeta({ recipe }: { recipe: Recipe }) {
   const { t } = useTranslation();
   const protein = PROTEIN_META[recipe.protein];
   return (
     <span className="slot-meta">
       <span className="slot-protein">
-        <span className="protein-dot" style={proteinDotStyle(protein)} aria-hidden="true" />{" "}
+        <span className="slot-protein-icon" aria-hidden="true">
+          {protein.icon}
+        </span>{" "}
         <span className="slot-meta-text" title={t(protein.labelKey)}>{t(protein.shortLabelKey)}</span>
       </span>
       {recipe.prep_minutes !== null && (
         <span className="slot-time">
           <Clock aria-hidden="true" size={13} className="icon" />{" "}
           <span className="slot-meta-text">{t("recipes.minutes", { count: recipe.prep_minutes })}</span>
+        </span>
+      )}
+      {recipe.properties.length > 0 && (
+        <span className="slot-props">
+          {recipe.properties.map((property) => (
+            <MetaIcon key={property} meta={PROPERTY_META[property]} />
+          ))}
         </span>
       )}
     </span>

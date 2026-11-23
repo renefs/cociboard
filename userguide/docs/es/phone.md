@@ -21,8 +21,9 @@ muestra una sección cada vez, que eliges en la barra de abajo:
 **Semana**
 :   El planificador, como una lista compacta: una fila por día, con el día de la semana a la
     izquierda y las líneas de comida (:material-weather-sunny:) y cena
-    (:material-weather-night:) a la derecha, cada una con un punto de su proteína principal. Caben
-    unos cuatro días en la pantalla. Se abre en la fila de hoy. Toca una línea para elegir una
+    (:material-weather-night:) a la derecha, cada una con el nombre de la comida y, debajo, los
+    iconos de su proteína principal y de sus propiedades. Caben unos cuatro días en la pantalla.
+    Se abre en la fila de hoy. Toca una línea para elegir una
     receta o, si ya tiene una comida, para ver sus acciones. También puedes arrastrar: mantén
     pulsada una comida un momento y muévela. Los botones de encima de la lista son
     **Completar semana**, **Lista de la compra** y **Compartir** (solo iconos) y **Más**, con

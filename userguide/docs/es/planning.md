@@ -5,8 +5,8 @@ especial (*Comemos fuera*, *Sobras*, *Libre*) o nada.
 
 En el ordenador la semana es una cuadrícula: una columna por día, una fila para la comida
 (:material-weather-sunny:) y otra para la cena (:material-weather-night:). Una receta planificada
-es una tarjeta con su nombre, un punto de color con su proteína principal y su tiempo de
-preparación. Un hueco vacío es un recuadro de rayas con **Añadir comida** o **Añadir cena**. Una
+es una tarjeta con su nombre, el icono y el nombre de su proteína principal, su tiempo de
+preparación y los iconos de sus propiedades (vegetariana, rápida, picante…). Un hueco vacío es un recuadro de rayas con **Añadir comida** o **Añadir cena**. Una
 marca :material-alert: en una tarjeta indica que forma parte de un [aviso de
 variedad](variety.md). La columna de hoy aparece resaltada.
 

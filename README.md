@@ -9,7 +9,7 @@ on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for sco
 **Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
 and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
 
-Current version: **0.31.1** (compact recipe rows, a Filters panel and a clearer recipe picker).
+Current version: **0.32.0** (protein and property icons back on the week's meal cards).
 
 ## Stack
 
@@ -42,7 +42,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0030](docs/adr/0030-user-guide-site.md),
 [ADR-0031](docs/adr/0031-visual-refresh-tokens-dark-mode.md),
 [ADR-0032](docs/adr/0032-planner-layout-refresh.md),
-[ADR-0033](docs/adr/0033-recipe-rows-and-filters.md).
+[ADR-0033](docs/adr/0033-recipe-rows-and-filters.md),
+[ADR-0034](docs/adr/0034-meal-card-icons.md).
 
 ## Architecture
 
