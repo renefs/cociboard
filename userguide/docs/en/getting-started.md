@@ -27,8 +27,8 @@ On a computer, everything is on one screen:
     the **EN | ES | Auto** language choice and, when a password is set, **Log out**.
 
 **Recipes** (left)
-:   Your recipe catalogue, with search, filters and sorting. Drag a card into the week, or use
-    **Add**. See [Recipes](recipes.md).
+:   Your recipe catalogue, with search, filters and sorting. Drag a recipe into the week, or use
+    its **+** button. See [Recipes](recipes.md).
 
 **Weekly planner** (right)
 :   Seven days, each with a lunch and a dinner slot. Above it are the week navigation, the

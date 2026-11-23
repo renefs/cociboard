@@ -1,28 +1,21 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  RECIPE_PROPERTIES,
-  type MealSlot,
-  type Protein,
-  type RecipeProperty,
-} from "../../api/types";
+import type { Protein, RecipeProperty } from "../../api/types";
 import { Legend } from "./Legend";
 import type { Recipe } from "../../api/types";
 import { sortByVariety } from "../variety/varietyLogic";
 import { sortByNotMadeLately } from "./historyLogic";
-import { RecipeCard, type CardDensity } from "./RecipeCard";
+import { RecipeCard } from "./RecipeCard";
+import { RecipeFilterBar, type MealFilter } from "./RecipeFilterBar";
+import type { SortMode } from "./filterLogic";
 import { RecipeDetailsModal, type Notify } from "./RecipeDetailsModal";
 import { RecipeFormModal, savedMessage } from "./RecipeFormModal";
 import { useSharedLink } from "./useSharedLink";
 import { RecipeListSkeleton } from "./RecipeListSkeleton";
 import { ArchivedRow } from "./ArchivedRow";
-import { PROPERTY_META } from "./recipeMeta";
 import { useRecipes } from "./useRecipes";
 import { useToggleFavourite } from "./useRecipeMutations";
-
-type MealFilter = MealSlot | "all";
-
-const MEAL_FILTERS: MealFilter[] = ["all", "lunch", "dinner"];
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -36,8 +29,7 @@ function useDebounced<T>(value: T, delay: number): T {
 }
 
 interface RecipePanelProps {
-  density?: CardDensity;
-  /** Custom card rendering (the planner adds drag handles and an "Add" button). */
+  /** Custom card rendering (the planner adds a drag handle and a round "Add" button). */
   renderCard?: (
     recipe: Recipe,
     open: (recipe: Recipe) => void,
@@ -53,10 +45,7 @@ interface RecipePanelProps {
   proteinCounts?: Partial<Record<Protein, number>>;
 }
 
-type SortMode = "name" | "variety" | "lately";
-
 export function RecipePanel({
-  density = "comfortable",
   renderCard,
   usage,
   proteinCounts,
@@ -113,112 +102,34 @@ export function RecipePanel({
 
   return (
     <section
-      className={density === "compact" ? "recipe-panel recipe-panel--compact" : "recipe-panel"}
+      className="recipe-panel"
       aria-labelledby="recipes-heading">
       <div className="panel-head">
         <h2 id="recipes-heading">{t("recipes.heading")}</h2>
-        <button type="button" className="btn btn-primary" onClick={() => setDialog({ kind: "new" })}>
-          <span aria-hidden="true">+ </span>{t("recipes.newRecipe")}
+        <button type="button" className="btn btn-new-recipe" onClick={() => setDialog({ kind: "new" })}>
+          <Plus aria-hidden="true" size={16} className="icon" />
+          {t("recipes.newRecipe")}
         </button>
       </div>
 
-      <div className="recipe-controls">
-        <label className="search-field">
-          <span className="visually-hidden">{t("recipes.searchLabel")}</span>
-          <input
-            type="search"
-            placeholder={t("recipes.searchPlaceholder")}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-
-        <div className="chip-group" role="group" aria-label={t("recipes.mealType")}>
-          {MEAL_FILTERS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              className="chip"
-              aria-pressed={meal === value}
-              onClick={() => setMeal(value)}
-            >
-              {value === "all" ? t("recipes.filterAll") : t(`meta.mealType.${value}`)}
-            </button>
-          ))}
-        </div>
-
-        <div className="chip-group" role="group" aria-label={t("recipes.sort")}>
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={sort === "name"}
-            onClick={() => setSort("name")}
-          >
-            {t("recipes.sortName")}
-          </button>
-          {usage && (
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={sort === "variety"}
-              onClick={() => setSort("variety")}
-              title={t("recipes.sortVarietyTitle")}
-            >
-              {t("recipes.sortVariety")}
-            </button>
-          )}
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={sort === "lately"}
-            onClick={() => setSort("lately")}
-            title={t("recipes.sortLatelyTitle")}
-          >
-            {t("recipes.sortLately")}
-          </button>
-        </div>
-
-        <div className="chip-group">
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={favouritesOnly}
-            onClick={() => setFavouritesOnly((value) => !value)}
-          >
-            <span aria-hidden="true">{favouritesOnly ? "★" : "☆"}</span> {t("recipes.filterFavourites")}
-          </button>
-        </div>
-
-        <details className="property-filter">
-          <summary>
-            {properties.length > 0
-              ? t("recipes.propertiesSelected", { count: properties.length })
-              : t("recipes.properties")}
-          </summary>
-          <div className="chip-group" role="group" aria-label={t("recipes.filterByProperty")}>
-            {RECIPE_PROPERTIES.map((property) => {
-              const meta = PROPERTY_META[property];
-              return (
-                <button
-                  key={property}
-                  type="button"
-                  className="chip"
-                  aria-pressed={properties.includes(property)}
-                  onClick={() => toggleProperty(property)}
-                >
-                  <span aria-hidden="true">{meta.icon}</span> {t(meta.labelKey)}
-                </button>
-              );
-            })}
-          </div>
-        </details>
-      </div>
-
-      {/* Only the count is announced; the list itself must not be a live region, or every
-          change to a card (such as its "this week" badge) would be read out. */}
-      <p className="visually-hidden" role="status" data-testid="recipe-results-count">
-        {recipes ? t("recipes.resultsCount", { count: recipes.length }) : ""}
-      </p>
+      <RecipeFilterBar
+        search={search}
+        onSearch={setSearch}
+        meal={meal}
+        onMeal={setMeal}
+        favouritesOnly={favouritesOnly}
+        onFavouritesOnly={setFavouritesOnly}
+        sort={sort}
+        onSort={setSort}
+        varietyAvailable={usage !== undefined}
+        properties={properties}
+        onToggleProperty={toggleProperty}
+        onClearPanel={() => {
+          setSort("name");
+          setProperties([]);
+        }}
+        resultCount={recipes?.length}
+      />
 
       <div className="recipe-list" aria-busy={isPending}>
         {isPending && (
@@ -260,7 +171,6 @@ export function RecipePanel({
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              density={density}
               usageCount={usage?.get(recipe.id) ?? 0}
               onOpen={openDetails}
               onToggleFavourite={toggleFavourite}

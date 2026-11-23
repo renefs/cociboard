@@ -389,7 +389,6 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
         <RecipeArea hidden={!shows("recipes")}>
           <RecipePanel
-            density="compact"
             {...(usage ? { usage } : {})}
             proteinCounts={plan?.variety.protein_counts ?? {}}
             onNotify={(kind, text) => notify(kind, text)}

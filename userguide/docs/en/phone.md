@@ -5,7 +5,7 @@ section at a time, chosen in the bar at the bottom:
 
 <div class="phones" markdown>
 
-![Today: today's and tomorrow's meals with their ingredients](images/phone-today.png){ .screenshot .phone }
+![Today: today's and tomorrow's meals with their protein, time and number of ingredients](images/phone-today.png){ .screenshot .phone }
 
 ![Week: the planner, one compact row per day](images/phone-week.png){ .screenshot .phone }
 
@@ -14,8 +14,8 @@ section at a time, chosen in the bar at the bottom:
 </div>
 
 **Today**
-:   Today's and tomorrow's lunch and dinner, with the ingredients and notes. Tap a recipe to
-    see its steps while you cook.
+:   Today's and tomorrow's lunch and dinner, with the main protein, the prep time, the number of
+    ingredients and the notes. Tap a recipe to see its ingredients and steps while you cook.
 
 **Week**
 :   The planner, as a compact list: one row per day, with the weekday on the left and the lunch
@@ -27,7 +27,7 @@ section at a time, chosen in the bar at the bottom:
     *Copy last week* and *Clear week*.
 
 **Recipes**
-:   The catalogue. **Add** on a recipe takes you to the week to pick a slot.
+:   The catalogue. The round **+** button on a recipe takes you to the week to pick a slot.
 
 **Shopping**
 :   The shopping list of the week you are looking at, ready to tick off in the shop.

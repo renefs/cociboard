@@ -117,7 +117,7 @@ test.describe("the app on a phone", () => {
     await expect(todayRegion.getByRole("button", { name: "View details of Lentil stew" })).toBeVisible();
     await expect(todayRegion.getByRole("button", { name: "View details of Baked salmon" })).toBeVisible();
     await expect(todayRegion.getByText("Note: with rice")).toBeVisible();
-    await expect(todayRegion.getByText("200 g lentils")).toBeVisible();
+    await expect(todayRegion.getByText("3 ingredients").first()).toBeVisible();
     await expectNoHorizontalScroll(page);
 
     // The recipe details open from the meal.

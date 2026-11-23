@@ -27,8 +27,8 @@ En el ordenador todo está en una sola pantalla:
     la elección de idioma **EN | ES | Auto** y, si hay contraseña, **Cerrar sesión**.
 
 **Recetas** (izquierda)
-:   Tu catálogo de recetas, con buscador, filtros y orden. Arrastra una tarjeta a la semana o
-    usa **Añadir**. Consulta [Recetas](recipes.md).
+:   Tu catálogo de recetas, con buscador, filtros y orden. Arrastra una receta a la semana o
+    usa su botón **+**. Consulta [Recetas](recipes.md).
 
 **Planificador semanal** (derecha)
 :   Siete días, cada uno con un hueco de comida y otro de cena. Encima están la navegación

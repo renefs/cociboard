@@ -10,6 +10,7 @@ import { dayPlanFor, dayRefOf, hasMeals, tomorrowOf } from "./todayLogic";
 import { useWeekPlan } from "./useWeekPlan";
 import { dayName, formatShortDate } from "./weekMath";
 import { Clock } from "lucide-react";
+import { PROTEIN_META, proteinDotStyle } from "../recipes/recipeMeta";
 
 interface TodayViewProps {
   /** Current time; the view always reads the real current week, not the one being browsed. */
@@ -112,8 +113,7 @@ function MealCard({
       {meal === null ? (
         <p className="today-muted">{t("today.nothingSlot")}</p>
       ) : meal.kind === "recipe" ? (
-        <>
-          <button
+        <button
             type="button"
             className="meal-card-title"
             onClick={() => onOpen(meal.recipe)}
@@ -125,20 +125,26 @@ function MealCard({
               values={{ name: meal.recipe.name }}
               components={{ hidden: <span className="visually-hidden" />, name: <span className="meal-card-name" /> }}
             />{" "}
-            {meal.recipe.prep_minutes !== null && (
-              <span className="meal-card-prep">
-                <Clock aria-hidden="true" size={14} className="icon" /> {t("recipes.minutes", { count: meal.recipe.prep_minutes })}
-              </span>
-            )}
+            <span className="meal-card-meta">
+              <span className="meal-card-fact">
+                <span className="protein-dot" style={proteinDotStyle(PROTEIN_META[meal.recipe.protein])} aria-hidden="true" />{" "}
+                <span className="visually-hidden">{t("recipes.mainProtein")}:</span>{" "}
+                {t(PROTEIN_META[meal.recipe.protein].shortLabelKey)}
+              </span>{" "}
+              {meal.recipe.prep_minutes !== null && (
+                <>
+                  <span className="meal-card-fact">
+                    <Clock aria-hidden="true" size={14} className="icon" /> {t("recipes.minutes", { count: meal.recipe.prep_minutes })}
+                  </span>{" "}
+                </>
+              )}
+              {meal.recipe.ingredients.length > 0 && (
+                <span className="meal-card-fact">
+                  {t("recipes.ingredientCount", { count: meal.recipe.ingredients.length })}
+                </span>
+              )}
+            </span>
           </button>
-          {meal.recipe.ingredients.length > 0 && (
-            <ul className="meal-card-ingredients" aria-label={t("recipes.ingredients")}>
-              {meal.recipe.ingredients.map((ingredient, index) => (
-                <li key={`${index}:${ingredient}`}>{ingredient}</li>
-              ))}
-            </ul>
-          )}
-        </>
       ) : (
         <p className="meal-card-special">
           <span aria-hidden="true">{SPECIAL_META[meal.special].icon}</span> {mealName(meal, t)}

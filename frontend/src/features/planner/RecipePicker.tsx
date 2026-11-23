@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, Search, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCandidates } from "../../api/client";
@@ -69,6 +70,7 @@ export function RecipePicker({
       </div>
       <label className="search-field">
         <span className="visually-hidden">{t("recipes.searchLabel")}</span>
+        <Search aria-hidden="true" size={16} className="search-icon" />
         <input
           type="search"
           placeholder={t(`planner.pickerSearch.${slot}`)}
@@ -97,12 +99,19 @@ export function RecipePicker({
           <RecipeCard
             key={candidate.recipe.id}
             recipe={candidate.recipe}
-            density="compact"
+            highlight={candidate.good_pick}
+            nameTag={
+              candidate.good_pick && (
+                <span className="good-pick-tag">
+                  <Star aria-hidden="true" size={12} fill="currentColor" /> {t("planner.goodPick")}
+                </span>
+              )
+            }
             extra={<PickHint candidate={candidate} />}
             actions={
               <button
                 type="button"
-                className="btn btn-primary"
+                className={candidate.good_pick ? "btn btn-primary btn-choose" : "btn btn-choose"}
                 onClick={() => onPick(candidate.recipe)}
               >
                 {t("planner.choose")} <span className="visually-hidden">{candidate.recipe.name}</span>
@@ -120,15 +129,8 @@ function PickHint({ candidate }: { candidate: Candidate }) {
   const negative = candidate.score_delta < 0;
   return (
     <p className={negative ? "pick-hint pick-hint--warn" : "pick-hint"}>
-      {candidate.good_pick && (
-        <span className="badge badge--small good-pick">
-          <span aria-hidden="true">★</span> {t("planner.goodPick")}
-        </span>
-      )}
-      <span className="pick-reason">
-        {negative && <span aria-hidden="true">⚠ </span>}
-        {reasonText(candidate, t)}
-      </span>
+      {negative && <AlertTriangle aria-hidden="true" size={13} className="icon" />}
+      <span className="pick-reason">{reasonText(candidate, t)}</span>
     </p>
   );
 }

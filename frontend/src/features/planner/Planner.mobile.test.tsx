@@ -200,7 +200,9 @@ describe("Today view", () => {
     const lunchCard = within(lunches[0]?.closest("article") as HTMLElement);
     expect(lunchCard.getByText("Fabada asturiana")).toBeVisible();
     expect(lunchCard.getByText("60 min")).toBeVisible();
-    expect(lunchCard.getByRole("list", { name: "Ingredients" })).toHaveTextContent("Chorizo");
+    expect(lunchCard.getByText("Legumes")).toBeVisible();
+    expect(lunchCard.getByText("6 ingredients")).toBeVisible();
+    expect(lunchCard.queryByRole("list", { name: "Ingredients" })).not.toBeInTheDocument();
     expect(lunchCard.getByText("Note: Double batch")).toBeVisible();
 
     const dinners = todayView().getAllByRole("heading", { name: "Dinner", level: 3 });
@@ -214,7 +216,7 @@ describe("Today view", () => {
     expect(todayView().getByText("Nothing planned yet.")).toBeVisible();
 
     // Tapping a recipe opens the details.
-    await user.click(todayView().getByRole("button", { name: "View details of Fabada asturiana 60 min" }));
+    await user.click(todayView().getByRole("button", { name: "View details of Fabada asturiana Main protein: Legumes 60 min 6 ingredients" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 

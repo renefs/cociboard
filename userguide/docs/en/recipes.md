@@ -2,22 +2,33 @@
 
 The recipe list is your catalogue: everything you can put into the week.
 
-![The recipe list: search, meal-type filter, sorting, favourites and the recipe cards](images/recipe-panel.png){ .screenshot .dialog }
+![The recipe list: search, meal-type filter, favourites, the Filters button and the recipe rows](images/recipe-panel.png){ .screenshot .dialog }
 
 ## Finding a recipe
 
 - **Search** by name or ingredient. Upper and lower case and accents don't matter:
   "pimenton" finds "Pimentón".
 - **All / Lunch / Dinner** shows the recipes that fit that meal.
-- **Properties** filters by vegetarian, vegan, gluten-free, quick and so on (a recipe must have
-  all the ones you tick).
 - :star: **Favourites** shows only your favourites, together with the other filters.
-- Sort **A–Z**, by **Best for variety**, or by **Not made lately** (recipes never planned
-  first, then the ones planned longest ago).
+- **Filters** (:material-tune-variant:) opens a panel under the row with the **Sort** options
+  (**A–Z**, **Best for variety** and **Not made lately**, which puts the recipes never planned
+  first, then the ones planned longest ago) and the **Properties** (vegetarian, vegan,
+  gluten-free, quick and so on; a recipe must have all the ones you tick). A number on the
+  button tells you how many of these are active, and **Clear filters** in the panel resets
+  them.
 
-Each card shows the meal type, prep time, servings, main protein and properties as icons (open
-**Legend** below the list to see what each icon means), when you last made it ("Last made 3
-days ago", "Never planned") and how many times it is in the current week.
+![The Filters panel: sorting and properties, with the number of active filters on the button](images/recipe-filters.png){ .screenshot .dialog }
+
+A line under the filters says how many recipes are shown and how they are sorted ("33 recipes
+· A–Z").
+
+Each recipe is one compact row: its name (press it to open the details), a ghost star to mark
+it as a favourite and a round **+** button to add it to the week. Under the name a quiet line
+shows the main protein (with its colour dot), the prep time, "Lunch only" or "Dinner only"
+when it doesn't fit both meals, and either how many times it is in the current week ("×1 this
+week") or when you last made it ("Last made 3 days ago", "Never planned" in green). The
+servings, ingredients and properties are in the details. On a computer, a grip appears at the
+right of the row when you point at it: that is the handle you can drag.
 
 ## Recipe details
 

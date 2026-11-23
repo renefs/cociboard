@@ -9,7 +9,7 @@ on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for sco
 **Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
 and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
 
-Current version: **0.30.0** (a calmer weekly planner: flat grid, compact phone list, More menu).
+Current version: **0.31.0** (compact recipe rows, a Filters panel and a clearer recipe picker).
 
 ## Stack
 
@@ -41,7 +41,8 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0028](docs/adr/0028-end-to-end-tests.md), [ADR-0029](docs/adr/0029-persisted-offline-edits.md),
 [ADR-0030](docs/adr/0030-user-guide-site.md),
 [ADR-0031](docs/adr/0031-visual-refresh-tokens-dark-mode.md),
-[ADR-0032](docs/adr/0032-planner-layout-refresh.md).
+[ADR-0032](docs/adr/0032-planner-layout-refresh.md),
+[ADR-0033](docs/adr/0033-recipe-rows-and-filters.md).
 
 ## Architecture
 
@@ -513,7 +514,7 @@ never changes the score: it is a hint, not a fault.
    by meal type or property, and click a recipe's name for its full details. No recipes yet?
    Use **New recipe** (or **Add your first recipe**).
 2. **Fill slots by hand.** Drag a recipe onto a lunch or dinner slot, or tap: tap an empty slot
-   and choose from the recipes that fit, or tap **Add** on a recipe and then a highlighted slot.
+   and choose from the recipes that fit, or tap the round **+** on a recipe and then a highlighted slot.
    Dinner-only recipes never fit lunch slots and vice versa.
    **Not cooking?** The picker starts with three chips: **Eating out**, **Leftovers** and
    **Free**. Special meals fill the slot so Fill the week leaves it alone, they break a run of the
@@ -545,7 +546,7 @@ never changes the score: it is a hint, not a fault.
 - Click a recipe name (or choose **View details** on a planned meal) to see everything, including
   servings, the steps, a link to the original recipe and its **History** (how often it was
   planned, the next time, and the latest meals), then **Edit**, **Archive** or **Delete**.
-- **Favourites**: the star on a recipe card (or in its details) marks a favourite. The
+- **Favourites**: the star on a recipe row (or in its details) marks a favourite. The
   **Favourites** chip above the list shows only those, together with the other filters. A star
   is only a shortcut: Fill the week does not prefer favourites ([ADR-0027](docs/adr/0027-favourites-and-history.md)).
 - Each card says when the recipe was last made ("Last made 3 weeks ago", "Never planned"; a
@@ -643,19 +644,19 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
   **Free** above the recipe list; tap a filled slot for **Replace**, **Add note** / **Edit
   note** and **Remove**. Special meals are dragged, swapped and removed like recipes; a note
   stays on its slot when you replace the content (edit or remove it from the same actions).
-- **Desktop:** drag a recipe card (or an assigned recipe) onto a slot. Dragging an assigned
+- **Desktop:** drag a recipe (or an assigned recipe) onto a slot. Dragging an assigned
   recipe onto another slot moves it or swaps the two; dropping it on the recipe list
   removes it. Compatible slots light up, incompatible ones are dimmed ("Not for lunch").
 - **Touch:** press and hold a card for about 0.2 s to drag. Or just tap: tap an empty slot
   to pick a recipe from a list of the ones that fit, tap a filled slot for Replace, Remove
   and View details (plus **Save leftovers for the next meal** on a batch-cooking recipe whose
   next slot is empty: it plans "Leftovers" there with the recipe name as the note; nothing is
-  offered after Sunday dinner), or tap **Add** on a recipe and then tap a highlighted slot (Esc or
+  offered after Sunday dinner), or tap the round **+** on a recipe and then tap a highlighted slot (Esc or
   Cancel to leave).
 - **Phone (below 900 px):** one view at a time, chosen in the bar at the bottom: **Today**
   (today's and tomorrow's lunch and dinner with ingredients and notes; tap a recipe for its
   details), **Week** (the planner; it opens on today's card), **Recipes** and **Shopping**
-  (the shopping list of the week you are browsing, inline). **Add** on a recipe takes you to
+  (the shopping list of the week you are browsing, inline). The round **+** on a recipe takes you to
   the Week tab to pick a slot. The tab is kept in the address as `?view=today|week|recipes|shopping`.
   On desktop everything stays on one screen.
 - **Share** (planner toolbar) opens a small menu: **Print the menu** (a clean A4 table of the
@@ -682,7 +683,7 @@ sheet on phones).
   they are: a recipe tagged only *vegan* does not count as *vegetarian*.
 - Preferences never block you: any recipe can still be put in a slot by hand. The slot picker
   lists the recipes your preferences leave out at the end, marked "Outside your household
-  preferences" and never as a good pick; the recipe panel (drag, or **Add**) offers them as
+  preferences" and never as a good pick; the recipe panel (drag, or the round **+**) offers them as
   always. When preferences leave slots empty, **Fill the week** says so.
 - **Variety targets**: the most meals with the same main protein (1-14), and the fewest
   vegetable-forward and fish or seafood meals (0-14; **0 switches that tip off**). The variety

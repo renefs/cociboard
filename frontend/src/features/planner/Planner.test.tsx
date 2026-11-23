@@ -556,6 +556,7 @@ describe("Planner variety", () => {
 
     const order = () => screen.getAllByRole("article").map((a) => a.getAttribute("aria-label"));
     expect(order()).toEqual(["Fabada asturiana", "Tortilla de espinacas", "Ensalada mixta"]);
+    await user.click(screen.getByRole("button", { name: "Filters" }));
     await user.click(screen.getByRole("button", { name: "Best for variety" }));
     expect(order()).toEqual(["Tortilla de espinacas", "Ensalada mixta", "Fabada asturiana"]);
   });

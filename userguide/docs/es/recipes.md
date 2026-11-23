@@ -2,23 +2,34 @@
 
 La lista de recetas es tu catálogo: todo lo que puedes poner en la semana.
 
-![La lista de recetas: buscador, filtro por tipo de comida, orden, favoritas y las tarjetas](images/recipe-panel.png){ .screenshot .dialog }
+![La lista de recetas: buscador, filtro por tipo de comida, favoritas, el botón Filtros y las filas de recetas](images/recipe-panel.png){ .screenshot .dialog }
 
 ## Encontrar una receta
 
 - **Busca** por nombre o ingrediente. Mayúsculas, minúsculas y tildes dan igual: «pimenton»
   encuentra «Pimentón».
 - **Todas / Comida / Cena** muestra las recetas que caben en esa comida.
-- **Propiedades** filtra por vegetariana, vegana, sin gluten, rápida, etc. (la receta debe
-  tener todas las que marques).
 - :star: **Favoritas** muestra solo tus favoritas, combinado con los demás filtros.
-- Ordena **A–Z**, por **Mejor variedad** o por **Hace tiempo que no** (primero las que nunca
-  has planificado y después las que planificaste hace más tiempo).
+- **Filtros** (:material-tune-variant:) abre un panel bajo la fila con las opciones de
+  **Ordenar** (**A–Z**, **Mejor variedad** y **Hace tiempo que no**, que pone primero las
+  recetas que nunca has planificado y después las que planificaste hace más tiempo) y las
+  **Propiedades** (vegetariana, vegana, sin gluten, rápida, etc.; la receta debe tener todas
+  las que marques). Un número en el botón indica cuántas de estas opciones están activas, y
+  **Quitar filtros**, dentro del panel, las restablece.
 
-Cada tarjeta muestra el tipo de comida, el tiempo, las raciones, la proteína principal y las
-propiedades como iconos (abre **Leyenda**, debajo de la lista, para ver qué significa cada
-uno), cuándo la preparaste por última vez («Preparada hace 3 días», «Nunca planificada») y
-cuántas veces está en la semana actual.
+![El panel de filtros: orden y propiedades, con el número de filtros activos en el botón](images/recipe-filters.png){ .screenshot .dialog }
+
+Una línea bajo los filtros indica cuántas recetas se muestran y cómo están ordenadas («33
+recetas · A–Z»).
+
+Cada receta es una fila compacta: su nombre (púlsalo para abrir los detalles), una estrella
+discreta para marcarla como favorita y un botón redondo **+** para añadirla a la semana. Bajo
+el nombre, una línea tenue muestra la proteína principal (con su punto de color), el tiempo,
+«Solo comida» o «Solo cena» si no vale para ambas, y o bien cuántas veces está en la semana
+actual («×1 esta semana») o cuándo la preparaste por última vez («Preparada hace 3 días»,
+«Nunca planificada» en verde). Las raciones, los ingredientes y las propiedades están en los
+detalles. En el ordenador, al pasar el ratón por una fila aparece a su derecha un asa para
+arrastrarla.
 
 ## Detalles de una receta
 

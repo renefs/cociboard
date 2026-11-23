@@ -253,7 +253,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     <span className="slot-meta">
       <span className="slot-protein">
         <span className="protein-dot" style={proteinDotStyle(protein)} aria-hidden="true" />{" "}
-        <span className="slot-meta-text">{t(protein.labelKey)}</span>
+        <span className="slot-meta-text" title={t(protein.labelKey)}>{t(protein.shortLabelKey)}</span>
       </span>
       {recipe.prep_minutes !== null && (
         <span className="slot-time">

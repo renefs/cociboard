@@ -22,7 +22,7 @@ Hay tres formas; usa la que te resulte más cómoda.
 
 ### Arrastrar y soltar (ordenador)
 
-Arrastra una tarjeta de receta de la lista a un hueco. Mientras arrastras, los huecos que
+Arrastra una receta de la lista a un hueco. Mientras arrastras, los huecos que
 admiten la receta se resaltan y los demás se atenúan: una receta solo para cenas nunca cabe en
 un hueco de comida, y al revés.
 
@@ -35,15 +35,15 @@ de la semana.
 ### Tocar un hueco y elegir
 
 Toca (o haz clic en) un hueco vacío. Se abre una lista solo con las recetas que caben en ese
-hueco, primero las mejores para la variedad; la marca **Buena opción** y un motivo breve
-(«Añade pescado o marisco», «Proteína nueva esta semana») te ayudan a decidir. Escribe para
-buscar y pulsa **Elegir**.
+hueco, primero las mejores para la variedad; las mejores tienen fondo verde y la etiqueta **Buena opción**, y cada fila muestra un motivo
+breve («Añade pescado o marisco», «Proteína nueva esta semana»; un aviso con su icono si
+perjudicaría la variedad) para ayudarte a decidir. Escribe para buscar y pulsa **Elegir**.
 
 ![El selector de recetas para la cena del jueves, con las comidas especiales arriba](images/slot-picker.png){ .screenshot .dialog }
 
 ### Añadir y luego elegir el hueco
 
-Pulsa **Añadir** en una tarjeta de receta y luego toca uno de los huecos resaltados. Pulsa
+Pulsa el botón redondo **+** de una receta y luego toca uno de los huecos resaltados. Pulsa
 **Esc** o **Cancelar** para dejarlo.
 
 !!! info "Con el teclado"

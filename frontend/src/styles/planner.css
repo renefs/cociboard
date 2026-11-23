@@ -481,29 +481,6 @@ button.issue-button:hover {
   color: var(--color-text);
 }
 
-/* Usage badge, picker hints */
-.usage-badge {
-  --badge-color: var(--color-primary);
-}
-
-.pick-hint {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-2);
-  align-items: center;
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.pick-hint--warn {
-  color: var(--color-warning);
-}
-
-.good-pick {
-  --badge-color: var(--color-ok);
-}
-
 .confirm-body p {
   margin: 0;
 }
@@ -1217,14 +1194,6 @@ button.issue-button:hover {
   border-radius: var(--radius-sm);
 }
 
-.recipe-panel--compact {
-  gap: var(--space-2);
-}
-
-.recipe-panel--compact .recipe-list {
-  gap: var(--space-2);
-}
-
 .draggable-card {
   cursor: grab;
   user-select: none;
@@ -1237,100 +1206,10 @@ button.issue-button:hover {
 
 .draggable-card.is-selected .recipe-card {
   outline: 3px solid var(--color-primary);
+  outline-offset: -3px;
 }
 
-.recipe-card--compact {
-  gap: 0.125rem;
-  padding: var(--space-2) var(--space-3);
-}
 
-.recipe-card--compact .recipe-card-header {
-  align-items: center;
-}
-
-.recipe-card--compact .recipe-card-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.9375rem;
-  line-height: 1.25;
-}
-
-.card-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: var(--space-1);
-  align-items: center;
-}
-
-.recipe-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-2);
-  align-items: center;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.badge--small {
-  font-size: 0.75rem;
-}
-
-.property-icons--small {
-  gap: 0;
-}
-
-.property-icons--small .meta-icon {
-  min-width: 1.25rem;
-  font-size: 1rem;
-  line-height: 1.25rem;
-}
-
-.ingredients-summary {
-  margin: 0;
-  overflow: hidden;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ingredients-summary.is-expanded {
-  white-space: normal;
-}
-
-.ingredients-row {
-  display: flex;
-  gap: var(--space-2);
-  align-items: baseline;
-}
-
-.ingredients-row .ingredients-summary {
-  flex: 1;
-  min-width: 0;
-}
-
-.ingredients-row:has(.is-expanded) {
-  align-items: flex-start;
-}
-
-.link-button--inline {
-  flex-shrink: 0;
-  min-height: 1.5rem;
-  white-space: nowrap;
-}
-
-@media (pointer: coarse) {
-  .link-button--inline {
-    min-height: 2.25rem;
-  }
-}
-
-/* The drag handle exists for keyboard users; touch users press and hold the card. */
-@media (pointer: coarse) and (hover: none) {
-  .drag-handle {
-    display: none;
-  }
-}
 
 /* ---------- Modal / bottom sheet ---------- */
 
@@ -1393,12 +1272,6 @@ button.issue-button:hover {
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4) var(--space-6);
   overflow-y: auto;
-}
-
-.picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 .action-list {
@@ -1710,23 +1583,19 @@ button.issue-button:hover {
   overflow-wrap: anywhere;
 }
 
-.meal-card-prep {
+.meal-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 400;
   color: var(--color-text-muted);
 }
 
-.meal-card-ingredients {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.meal-card-ingredients li {
-  padding: 0 var(--space-2);
-  background: var(--color-chip-bg);
-  border-radius: 999px;
+.meal-card-fact {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
 }
 
 .meal-card-special {

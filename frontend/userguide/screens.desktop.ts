@@ -21,7 +21,16 @@ test("week actions menu", async ({ page, t, shot }) => {
 
 test("recipe panel and details", async ({ page, t, shot }) => {
   await openPlanner(page, t);
-  await shot("recipe-panel", page.getByRole("complementary").first());
+  const panel = page.getByRole("complementary").first();
+  await shot("recipe-panel", panel);
+  // The Filters panel open, with a property and a sort chosen so the count badge shows.
+  await page.getByRole("button", { name: t("recipes.filters"), exact: true }).click();
+  await page.getByRole("button", { name: t("recipes.sortLately") }).click();
+  await page.getByRole("button", { name: t("meta.property.vegetarian") }).click();
+  await expect(page.getByRole("group", { name: t("recipes.filtersPanel") })).toBeVisible();
+  await shot("recipe-filters", panel);
+  await page.getByRole("button", { name: t("recipes.clearFilters") }).click();
+  await page.getByRole("button", { name: t("recipes.filters"), exact: true }).click();
   // A tall window, so the whole dialog (steps and history) fits in one picture.
   await page.setViewportSize({ width: 1440, height: 1700 });
   await page.getByRole("button", { name: "Fabada asturiana", exact: true }).first().click();

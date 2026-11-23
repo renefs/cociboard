@@ -133,6 +133,15 @@ describe("WeekGrid layout", () => {
     expect(slot).not.toHaveTextContent("☀");
   });
 
+  it("uses the short protein label on the slot card, with the full one as its tooltip", () => {
+    const recipe = makeRecipe({ name: "Risotto", protein: "none" });
+    renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
+    const meta = screen.getByRole("group", { name: "Tuesday lunch" }).querySelector(".slot-meta") as HTMLElement;
+    const label = within(meta).getByText("No protein");
+    expect(label).toHaveAttribute("title", "No main protein");
+    expect(within(meta).queryByText("No main protein")).not.toBeInTheDocument();
+  });
+
   it("leaves the time out when the recipe has none, and keeps the meta line out of the button name", () => {
     const recipe = makeRecipe({ name: "Gazpacho", prep_minutes: null });
     renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));

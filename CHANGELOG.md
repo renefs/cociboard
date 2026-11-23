@@ -5,6 +5,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-11-23
+
+Third and last phase of the visual refresh: recipes and the recipe picker (ADR-0033).
+
+### Changed
+- Recipes are compact rows: the name, then a coloured dot with the main protein, the
+  preparation time, "Lunch only" / "Dinner only" when it fits just one meal, and either how
+  often it is planned this week or when it was last planned ("Never planned" in green). The
+  property icons, ingredients and servings moved to the recipe details; search still finds
+  recipes by ingredient. A round **+** button replaces **Add**, and the drag handle appears
+  when you point at a row with a mouse.
+- Filters fit in one row: All / Lunch / Dinner, Favourites and a **Filters** button that
+  opens the sort order and the properties and shows how many are active. A line under it
+  says how many recipes are listed and in which order.
+- The recipe picker uses the same rows. Good picks are tinted green with a "Good pick" tag,
+  and the reason for each recipe is one line underneath (a warning icon when it hurts
+  variety).
+- The Today view shows the protein, time and number of ingredients instead of the full
+  ingredient list.
+- "No main protein" is shortened to "No protein" in rows and week cards.
+- User guide text and screenshots updated, with a new picture of the Filters panel.
+
 ## [0.30.0] - 2026-11-23
 
 Second phase of the visual refresh: the weekly planner (ADR-0032). Planning works as before.

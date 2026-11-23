@@ -114,6 +114,31 @@ test.describe("recipes", () => {
     await list.getByRole("group", { name: "Meal type" }).getByRole("button", { name: "All" }).click();
     await expect(list.getByRole("article", { name: "Baked salmon" })).toBeVisible();
   });
+
+  test("the Filters panel holds the sort and the properties, with a count and a way to clear", async ({ page }) => {
+    const list = page.getByRole("region", { name: "Recipes" });
+    const filters = list.getByRole("button", { name: /^Filters/ });
+    await expect(list.getByRole("button", { name: "Not made lately" })).toHaveCount(0);
+
+    await filters.click();
+    await list.getByRole("button", { name: /Vegan/ }).click();
+    await list.getByRole("button", { name: "Not made lately" }).click();
+    await expect(list.getByRole("button", { name: "Filters 2 active" })).toBeVisible();
+    await expect(list.getByRole("status")).toContainText("Not made lately");
+    await expect(list.getByRole("article", { name: "Baked salmon" })).toHaveCount(0);
+
+    await list.getByRole("button", { name: "Clear filters" }).click();
+    await expect(list.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+    await expect(list.getByRole("status")).toContainText("A–Z");
+    await expect(list.getByRole("article", { name: "Baked salmon" })).toBeVisible();
+  });
+
+  test("a row shows protein, time and the meal type only when it is not both", async ({ page }) => {
+    const list = page.getByRole("region", { name: "Recipes" });
+    await expect(list.getByRole("article", { name: "Baked salmon" })).toContainText("Dinner only");
+    await expect(list.getByRole("article", { name: "Lentil stew" })).not.toContainText("only");
+    await expect(list.getByRole("article", { name: "Mushroom risotto" })).toContainText("No protein");
+  });
 });
 
 test.describe("history", () => {
@@ -128,8 +153,10 @@ test.describe("history", () => {
     await page.getByRole("button", { name: `Add lunch on ${weekday}` }).click();
     await expect(page.getByRole("button", { name: `Remove Veggie omelette from ${weekday} lunch` })).toBeVisible();
 
+    // Planned this week, the row says so instead of when it was last made.
     await showTab(page, isMobile, "Recipes");
-    await expect(card).toContainText("Last made today");
+    await expect(card).toContainText("×1 this week");
+    await expect(card).not.toContainText("Never planned");
     await page.getByRole("region", { name: "Recipes" }).getByRole("button", { name: "Veggie omelette", exact: true }).click();
     const details = page.getByRole("dialog", { name: "Veggie omelette" });
     await expect(details.getByRole("heading", { name: "History" })).toBeVisible();

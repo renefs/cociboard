@@ -58,6 +58,21 @@ test.describe("accessibility (axe)", () => {
     await expectNoSeriousViolations(page);
   });
 
+  test("the Filters panel of the recipes view, light and dark", async ({ page, isMobile }) => {
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/");
+      await showTab(page, isMobile, "Recipes");
+      await page.getByRole("button", { name: "Filters", exact: true }).click();
+      await expect(page.getByRole("group", { name: "Sort and property filters" })).toBeVisible();
+      // With a selection, so the count badge and the pressed chips are scanned too.
+      await page.getByRole("button", { name: "Not made lately" }).click();
+      await page.getByRole("button", { name: /Vegan/ }).click();
+      await expect(page.getByRole("button", { name: "Filters 2 active" })).toBeVisible();
+      await expectNoSeriousViolations(page);
+    }
+  });
+
   test("the shopping list", async ({ page, isMobile }) => {
     await page.goto("/");
     if (isMobile) await showTab(page, isMobile, "Shopping");

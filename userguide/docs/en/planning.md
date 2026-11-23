@@ -21,7 +21,7 @@ There are three ways; use whichever suits you.
 
 ### Drag and drop (computer)
 
-Drag a recipe card from the list onto a slot. While you drag, the slots that accept the recipe
+Drag a recipe from the list onto a slot. While you drag, the slots that accept the recipe
 are highlighted and the others are dimmed: a dinner-only recipe never fits a lunch slot, and
 vice versa.
 
@@ -33,14 +33,15 @@ occupied slot to **swap** the two, or back on the recipe list to **remove** it f
 ### Tap a slot and choose
 
 Tap (or click) an empty slot. A list opens with only the recipes that fit that slot, the best
-choices for variety first; a **Good pick** mark and a short reason ("Adds fish or seafood",
-"New protein this week") help you choose. Type to search, then press **Choose**.
+choices for variety first; the best ones get a green background and a **Good pick** tag, and each row has a short reason
+("Adds fish or seafood", "New protein this week"; a warning with its icon when it would hurt
+the variety) to help you choose. Type to search, then press **Choose**.
 
 ![The recipe picker for Thursday dinner, with the special meals at the top](images/slot-picker.png){ .screenshot .dialog }
 
 ### Add, then pick a slot
 
-Press **Add** on a recipe card, then tap one of the highlighted slots. Press **Esc** or
+Press the round **+** button on a recipe, then tap one of the highlighted slots. Press **Esc** or
 **Cancel** to stop.
 
 !!! info "Using the keyboard"

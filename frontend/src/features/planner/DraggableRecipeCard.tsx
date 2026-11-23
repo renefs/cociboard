@@ -1,4 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
+import { GripVertical, Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Recipe } from "../../api/types";
 import { RecipeCard } from "../recipes/RecipeCard";
@@ -17,7 +18,7 @@ interface DraggableRecipeCardProps {
   onToggleFavourite?: (recipe: Pick<Recipe, "id" | "name">, favourite: boolean) => void;
 }
 
-/** A compact recipe card for the panel: draggable, with an "Add" button for tap-to-place. */
+/** A compact recipe row for the panel: draggable, with a round "Add" button for tap-to-place. */
 export function DraggableRecipeCard({
   recipe,
   selected,
@@ -41,34 +42,34 @@ export function DraggableRecipeCard({
     >
       <RecipeCard
         recipe={recipe}
-        density="compact"
         usageCount={usageCount}
         onOpen={onOpen}
         onToggleFavourite={onToggleFavourite}
         showHistory
+        leading={
+          <button
+            type="button"
+            className="icon-button drag-handle"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            aria-pressed={undefined}
+            aria-label={t("planner.dragRecipe", { name: recipe.name })}
+          >
+            <GripVertical aria-hidden="true" size={18} />
+          </button>
+        }
         actions={
-          <span className="card-actions">
-            <button
-              type="button"
-              className="icon-button drag-handle"
-              ref={setActivatorNodeRef}
-              {...attributes}
-              aria-pressed={undefined}
-              aria-label={t("planner.dragRecipe", { name: recipe.name })}
-            >
-              <span aria-hidden="true">⠿</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              aria-pressed={selected}
-              onClick={() => onAdd(recipe)}
-            >
-              {selected ? t("common.cancel") : t("planner.addToPlan")}
-              {" "}
-              <span className="visually-hidden">{t("planner.addToPlanTo", { name: recipe.name })}</span>
-            </button>
-          </span>
+          <button
+            type="button"
+            className="round-button"
+            aria-pressed={selected}
+            onClick={() => onAdd(recipe)}
+          >
+            {selected ? <X aria-hidden="true" size={18} /> : <Plus aria-hidden="true" size={18} />}
+            <span className="visually-hidden">
+              {selected ? t("common.cancel") : t("planner.addToPlan")} {t("planner.addToPlanTo", { name: recipe.name })}
+            </span>
+          </button>
         }
       />
     </div>

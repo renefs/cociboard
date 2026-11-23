@@ -21,8 +21,13 @@ export interface MealTypeMeta extends Meta {
   darkColor: string;
 }
 
-/** Same shape as a meal type: a colour for each theme. */
-export type ProteinMeta = MealTypeMeta;
+/**
+ * Same shape as a meal type (a colour for each theme), plus a short name for narrow places
+ * (recipe rows, slot cards): only "No main protein" differs from its full label.
+ */
+export interface ProteinMeta extends MealTypeMeta {
+  shortLabelKey: MetaLabelKey | "meta.proteinShort.none";
+}
 
 export const MEAL_TYPE_META: Record<MealType, MealTypeMeta> = {
   lunch: { icon: "☀️", labelKey: "meta.mealType.lunch", color: "#8a5a0b", darkColor: "#e5b45c" },
@@ -35,15 +40,69 @@ export const MEAL_TYPE_META: Record<MealType, MealTypeMeta> = {
  * colour too (non-text: at least 3:1 on the card surfaces in both themes).
  */
 export const PROTEIN_META: Record<Protein, ProteinMeta> = {
-  meat: { icon: "🥩", labelKey: "meta.protein.meat", color: "#9b2c2c", darkColor: "#f28b82" },
-  poultry: { icon: "🍗", labelKey: "meta.protein.poultry", color: "#8a5a0b", darkColor: "#e5b45c" },
-  fish: { icon: "🐟", labelKey: "meta.protein.fish", color: "#2b6cb0", darkColor: "#7fb2f0" },
-  seafood: { icon: "🦐", labelKey: "meta.protein.seafood", color: "#a8481a", darkColor: "#f4a06b" },
-  eggs: { icon: "🥚", labelKey: "meta.protein.eggs", color: "#975a16", darkColor: "#f2d66b" },
-  legumes: { icon: "🫘", labelKey: "meta.protein.legumes", color: "#744210", darkColor: "#c19a6b" },
-  dairy: { icon: "🧀", labelKey: "meta.protein.dairy", color: "#8a5a0b", darkColor: "#ece3b4" },
-  tofu: { icon: "🥡", labelKey: "meta.protein.tofu", color: "#4a5568", darkColor: "#a9b4c6" },
-  none: { icon: "🥬", labelKey: "meta.protein.none", color: "#276749", darkColor: "#8fd19a" },
+  meat: {
+    icon: "🥩",
+    labelKey: "meta.protein.meat",
+    shortLabelKey: "meta.protein.meat",
+    color: "#9b2c2c",
+    darkColor: "#f28b82",
+  },
+  poultry: {
+    icon: "🍗",
+    labelKey: "meta.protein.poultry",
+    shortLabelKey: "meta.protein.poultry",
+    color: "#8a5a0b",
+    darkColor: "#e5b45c",
+  },
+  fish: {
+    icon: "🐟",
+    labelKey: "meta.protein.fish",
+    shortLabelKey: "meta.protein.fish",
+    color: "#2b6cb0",
+    darkColor: "#7fb2f0",
+  },
+  seafood: {
+    icon: "🦐",
+    labelKey: "meta.protein.seafood",
+    shortLabelKey: "meta.protein.seafood",
+    color: "#a8481a",
+    darkColor: "#f4a06b",
+  },
+  eggs: {
+    icon: "🥚",
+    labelKey: "meta.protein.eggs",
+    shortLabelKey: "meta.protein.eggs",
+    color: "#975a16",
+    darkColor: "#f2d66b",
+  },
+  legumes: {
+    icon: "🫘",
+    labelKey: "meta.protein.legumes",
+    shortLabelKey: "meta.protein.legumes",
+    color: "#744210",
+    darkColor: "#c19a6b",
+  },
+  dairy: {
+    icon: "🧀",
+    labelKey: "meta.protein.dairy",
+    shortLabelKey: "meta.protein.dairy",
+    color: "#8a5a0b",
+    darkColor: "#ece3b4",
+  },
+  tofu: {
+    icon: "🥡",
+    labelKey: "meta.protein.tofu",
+    shortLabelKey: "meta.protein.tofu",
+    color: "#4a5568",
+    darkColor: "#a9b4c6",
+  },
+  none: {
+    icon: "🥬",
+    labelKey: "meta.protein.none",
+    shortLabelKey: "meta.proteinShort.none",
+    color: "#276749",
+    darkColor: "#8fd19a",
+  },
 };
 
 export const PROPERTY_META: Record<RecipeProperty, Meta> = {

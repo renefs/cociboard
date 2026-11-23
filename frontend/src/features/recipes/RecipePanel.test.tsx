@@ -68,7 +68,7 @@ describe("RecipePanel", () => {
     const user = userEvent.setup();
     renderWithQuery(<RecipePanel />);
     await screen.findByRole("heading", { name: "Fabada asturiana" });
-    await user.click(screen.getByText("Properties", { selector: "summary" }));
+    await user.click(screen.getByRole("button", { name: "Filters" }));
     const group = screen.getByRole("group", { name: "Filter by property" });
     await user.click(within(group).getByRole("button", { name: /Vegan/ }));
     await user.click(within(group).getByRole("button", { name: /Quick/ }));
@@ -173,6 +173,7 @@ describe("RecipePanel variety features", () => {
     const user = userEvent.setup();
     const { unmount } = renderWithQuery(<RecipePanel />);
     await screen.findByRole("heading", { name: "Fabada asturiana" });
+    await user.click(screen.getByRole("button", { name: "Filters" }));
     expect(screen.queryByRole("button", { name: "Best for variety" })).not.toBeInTheDocument();
     unmount();
 
@@ -181,6 +182,7 @@ describe("RecipePanel variety features", () => {
     expect(screen.getByTitle("Planned 2 times this week")).toBeInTheDocument();
     const order = () => screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     expect(order()).toEqual(["Fabada asturiana", "Tortilla de espinacas"]);
+    await user.click(screen.getByRole("button", { name: "Filters" }));
     await user.click(screen.getByRole("button", { name: "Best for variety" }));
     expect(order()).toEqual(["Tortilla de espinacas", "Fabada asturiana"]);
     await user.click(screen.getByRole("button", { name: "A–Z" }));
@@ -307,10 +309,103 @@ describe("RecipePanel history", () => {
     const order = () => screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     expect(order()).toEqual(["Arroz", "Bocata", "Zarzuela"]);
 
+    await user.click(screen.getByRole("button", { name: "Filters" }));
     await user.click(screen.getByRole("button", { name: "Not made lately" }));
 
     expect(order()).toEqual(["Zarzuela", "Bocata", "Arroz"]);
     expect(screen.getByRole("button", { name: "Not made lately" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("Never planned")).toBeInTheDocument();
+  });
+});
+
+describe("RecipePanel filters panel", () => {
+  async function renderPanel(usage?: Map<number, number>) {
+    const user = userEvent.setup();
+    renderWithQuery(usage ? <RecipePanel usage={usage} /> : <RecipePanel />);
+    await screen.findByRole("heading", { name: "Fabada asturiana" });
+    return user;
+  }
+
+  it("is closed at first and keeps sort and properties inside, behind a Filters button", async () => {
+    const user = await renderPanel();
+    const button = screen.getByRole("button", { name: "Filters" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("group", { name: "Filter by property" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Not made lately" })).not.toBeInTheDocument();
+
+    await user.click(button);
+
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(button).toHaveAttribute("aria-controls", screen.getByRole("group", { name: "Sort and property filters" }).id);
+    expect(screen.getByRole("group", { name: "Sort recipes" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Filter by property" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the meal type segmented control and the favourites chip in the bar", async () => {
+    await renderPanel();
+    const meal = screen.getByRole("group", { name: "Meal type" });
+    expect(within(meal).getAllByRole("button").map((b) => b.textContent)).toEqual(["All", "Lunch", "Dinner"]);
+    expect(screen.getByRole("button", { name: "Favourites" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("shows a count badge, part of the accessible name, for a sort and for properties", async () => {
+    const user = await renderPanel();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByRole("button", { name: "Not made lately" }));
+    expect(screen.getByRole("button", { name: "Filters 1 active" })).toHaveTextContent("1");
+
+    await user.click(screen.getByRole("button", { name: /Vegan/ }));
+    await user.click(screen.getByRole("button", { name: /Quick/ }));
+    expect(screen.getByRole("button", { name: "Filters 3 active" })).toHaveTextContent("3");
+  });
+
+  it("does not count search, meal type or favourites in the badge", async () => {
+    const user = await renderPanel();
+    await user.click(screen.getByRole("button", { name: "Lunch" }));
+    await user.click(screen.getByRole("button", { name: "Favourites" }));
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+  });
+
+  it("clears the sort and the properties from the panel", async () => {
+    const user = await renderPanel();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByRole("button", { name: "Not made lately" }));
+    await user.click(screen.getByRole("button", { name: /Vegan/ }));
+    await waitFor(() => expect(lastFilters()?.properties).toEqual(["vegan"]));
+
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    await waitFor(() => expect(lastFilters()?.properties).toEqual([]));
+    expect(screen.getByRole("button", { name: "A–Z" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("closes on Escape and gives the focus back to the button", async () => {
+    const user = await renderPanel();
+    const button = screen.getByRole("button", { name: "Filters" });
+    await user.click(button);
+    await user.click(screen.getByRole("button", { name: "Not made lately" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("group", { name: "Sort and property filters" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters 1 active" })).toHaveFocus();
+  });
+
+  it("shows one results line with the count and the sort, as the only status", async () => {
+    const user = await renderPanel();
+    const status = await screen.findByText("2 recipes · A–Z");
+    expect(status).toHaveAttribute("role", "status");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByRole("button", { name: "Not made lately" }));
+    expect(screen.getByRole("status")).toHaveTextContent("2 recipes · Not made lately");
+  });
+
+  it("offers 'Best for variety' inside the panel only with usage", async () => {
+    const user = await renderPanel(new Map());
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByRole("button", { name: "Best for variety" })).toBeInTheDocument();
   });
 });

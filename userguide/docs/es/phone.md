@@ -5,7 +5,7 @@ muestra una sección cada vez, que eliges en la barra de abajo:
 
 <div class="phones" markdown>
 
-![Hoy: las comidas de hoy y de mañana con sus ingredientes](images/phone-today.png){ .screenshot .phone }
+![Hoy: las comidas de hoy y de mañana con su proteína, tiempo y número de ingredientes](images/phone-today.png){ .screenshot .phone }
 
 ![Semana: el planificador, una fila compacta por día](images/phone-week.png){ .screenshot .phone }
 
@@ -14,8 +14,9 @@ muestra una sección cada vez, que eliges en la barra de abajo:
 </div>
 
 **Hoy**
-:   La comida y la cena de hoy y de mañana, con los ingredientes y las notas. Toca una receta
-    para ver los pasos mientras cocinas.
+:   La comida y la cena de hoy y de mañana, con la proteína principal, el tiempo, el número de
+    ingredientes y las notas. Toca una receta para ver los ingredientes y los pasos mientras
+    cocinas.
 
 **Semana**
 :   El planificador, como una lista compacta: una fila por día, con el día de la semana a la
@@ -28,7 +29,7 @@ muestra una sección cada vez, que eliges en la barra de abajo:
     *Copiar semana anterior* y *Vaciar semana*.
 
 **Recetas**
-:   El catálogo. **Añadir** en una receta te lleva a la semana para elegir el hueco.
+:   El catálogo. El botón redondo **+** de una receta te lleva a la semana para elegir el hueco.
 
 **Compra**
 :   La lista de la compra de la semana que estás viendo, lista para ir marcando en la tienda.

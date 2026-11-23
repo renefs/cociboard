@@ -26,4 +26,18 @@ describe("recipeMeta", () => {
       expect(new Set(metas.map((m) => m.icon)).size).toBe(metas.length);
     }
   });
+
+  it("gives every protein a short label; only 'none' differs from the full one", () => {
+    for (const protein of PROTEINS) {
+      const meta = PROTEIN_META[protein];
+      const short = i18n.t(meta.shortLabelKey);
+      expect(short, protein).not.toBe(meta.shortLabelKey);
+      if (protein === "none") {
+        expect(short).toBe("No protein");
+        expect(short).not.toBe(i18n.t(meta.labelKey));
+      } else {
+        expect(short, protein).toBe(i18n.t(meta.labelKey));
+      }
+    }
+  });
 });
