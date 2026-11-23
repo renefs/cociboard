@@ -206,11 +206,15 @@ h2 {
     align-items: start;
   }
 
+  /* The scroll container clips horizontally too, so it gets padding (cancelled by a
+     negative margin) wide enough for the focus outline: 3px plus a 2px offset. */
   .recipe-area {
     grid-area: recipes;
     position: sticky;
-    top: var(--space-4);
-    max-height: calc(100vh - 2 * var(--space-4));
+    top: calc(var(--space-4) - var(--space-2));
+    max-height: calc(100vh - 2 * var(--space-4) + 2 * var(--space-2));
+    margin: calc(-1 * var(--space-2));
+    padding: var(--space-2);
     overflow-y: auto;
   }
 
