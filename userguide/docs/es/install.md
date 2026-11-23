@@ -19,16 +19,15 @@ un NAS o un pequeño servidor, con Docker.
 
 4. Abre `http://<tu-servidor>:8000`.
 
-!!! note "Imagen privada"
-    Mientras la imagen del GitHub Container Registry sea privada, `docker compose pull` necesita
-    un `docker login ghcr.io` previo con un token que pueda leer paquetes. El README explica
-    cómo.
-
 Los datos están en la carpeta `data`, junto a `docker-compose.yml`. Para actualizar Cociboard,
 repite los dos comandos: los datos se conservan y se actualizan solos, después de hacer una
 copia.
 
-### Actualizar en un NAS Synology sin SSH
+### NAS Synology sin SSH
+
+Todo se hace desde DSM. Sube la carpeta con `docker-compose.yml` (y `.env`, si lo has creado) con
+File Station y, en Container Manager, elige **Proyecto → Crear** y selecciona la carpeta: descarga
+la imagen sin necesidad de iniciar sesión.
 
 En Container Manager, volver a iniciar el proyecto o elegir **Acción → Crear** no descarga un
 `latest` más nuevo mientras la imagen antigua siga en el NAS. Elige una de estas dos opciones:

@@ -214,18 +214,9 @@ run Cociboard on a NAS. Tags:
 The workflow can also be started by hand (Actions → Publish Docker image → Run
 workflow). [ADR-0011](docs/adr/0011-container-registry-image.md) explains the setup.
 
-**The image is private** (it inherits the visibility of the private repository), so every
-host that pulls it has to log in first:
+The image is public, so no `docker login` is needed.
 
-1. On GitHub, create a personal access token (classic) with only the `read:packages`
-   scope: Settings → Developer settings → Personal access tokens → Tokens (classic).
-2. On the host, log in once; Docker stores the credentials:
-
-   ```sh
-   echo <token> | docker login ghcr.io -u <github-user> --password-stdin
-   ```
-
-Then, in an empty folder, copy `docker-compose.ghcr.yml` as `docker-compose.yml`
+In an empty folder, copy `docker-compose.ghcr.yml` as `docker-compose.yml`
 (optionally with a `.env`, see `.env.example`) and start it:
 
 ```sh
@@ -242,40 +233,28 @@ the same folder, since both use `./data`.
 
 ### Synology NAS with the prebuilt image
 
+Everything is done from DSM; SSH is not needed.
+
 1. Create a folder, e.g. `/volume1/docker/cociboard`, and put `docker-compose.ghcr.yml`
    in it renamed to `docker-compose.yml` (plus an optional `.env` with `PUID`/`PGID` and
-   `TZ`, as in the steps above).
-2. Enable SSH (Control Panel → Terminal & SNMP), connect, and log in as root so Container
-   Manager can use the credentials:
+   `TZ`, as in the steps above). File Station can upload and edit both files.
+2. Container Manager → **Project** → **Create**: pick the folder; it finds
+   `docker-compose.yml` and pulls the image instead of building it. There is no need to
+   add ghcr.io under **Registry**.
+3. Stopping and starting the project in Container Manager does not pull a newer image,
+   and neither does **Action → Build** (labelled **Create** in some languages) while an
+   image with the same tag is already on the NAS. To update (the data in `./data` is kept):
 
-   ```sh
-   echo <token> | sudo docker login ghcr.io -u <github-user> --password-stdin
-   ```
+   - **Keep `latest`:** stop the project, delete the `ghcr.io/renefs/cociboard` image under
+     **Image**, then **Project → Action → Build** and **Start**. With no local image left,
+     Build pulls the current `latest`.
+   - **Or pin a version:** add `COCIBOARD_TAG=X.Y.Z` (e.g. `0.28.2`) to `.env` with File
+     Station, or change the `image:` line in the project's YAML, then **Build** and
+     **Start**. A tag the NAS doesn't have yet is always pulled. Change the number for each
+     update.
+   - **With SSH:** `sudo docker compose pull && sudo docker compose up -d` in the folder.
 
-   Adding ghcr.io under Container Manager → Registry has been reported to fail with
-   GitHub, so the command line is the reliable way to log in.
-3. Container Manager → **Project** → **Create**: pick the folder; it finds
-   `docker-compose.yml` and pulls the image instead of building it.
-4. To update, run `sudo docker compose pull && sudo docker compose up -d` in the folder
-   over SSH. Stopping and starting the project in Container Manager does not pull a
-   newer image, and neither does **Action → Build** (labelled **Create** in some languages)
-   while an image with the same tag is already on the NAS.
-
-To update **without SSH**, from Container Manager only (the data in `./data` is kept):
-
-- **Keep `latest`:** stop the project, delete the `ghcr.io/renefs/cociboard` image under
-  **Image**, then **Project → Action → Build** and **Start**. With no local image left,
-  Build pulls the current `latest`.
-- **Or pin a version:** add `COCIBOARD_TAG=X.Y.Z` (e.g. `0.28.2`) to `.env` with File Station,
-  or change the `image:` line in the project's YAML, then **Build** and **Start**. A tag the
-  NAS doesn't have yet is always pulled. Change the number for each update.
-
-Check the running version at `http://<nas>:8000/api/health`. Both ways pull with the
-`docker login` from step 2; if that login is gone, Build fails with an authentication error
-until the image is public (see below) or you log in again.
-
-To make the image public later: GitHub → the package's page → Package settings → Change
-visibility. Then no login is needed.
+Check the running version at `http://<nas>:8000/api/health`.
 
 ## Security (password)
 
