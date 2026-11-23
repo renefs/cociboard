@@ -3,6 +3,12 @@
 Each day has two slots, **lunch** and **dinner**. A slot holds one recipe, a special meal
 (*Eating out*, *Leftovers*, *Free*) or nothing.
 
+On a computer the week is a grid: one column per day, a row for lunch (:material-weather-sunny:)
+and a row for dinner (:material-weather-night:). A planned recipe is a card with its name, a
+coloured dot with its main protein and its prep time. An empty slot is a dashed box with
+**Add lunch** or **Add dinner**. A :material-alert: mark on a card means it is part of a
+[variety warning](variety.md). Today's column is highlighted.
+
 ## Moving between weeks
 
 Use **‹** and **›** to go to the previous or next week, and **This week** to come back. The
@@ -53,7 +59,7 @@ At the top of the picker, under **Or plan something else**, you'll find:
 | :recycle: **Leftovers** | Eating what's left from an earlier meal |
 | :palm_tree: **Free** | A slot you deliberately leave open |
 
-A special meal fills the slot, so **Suggest** leaves it alone. It also breaks a run of the
+A special meal fills the slot, so **Fill the week** leaves it alone. It also breaks a run of the
 same protein and adds nothing to the shopping list.
 
 ## Changing a planned meal
@@ -66,7 +72,8 @@ Tap a planned meal to see what you can do with it:
 - **View details** shows the full recipe.
 - **Add note** / **Edit note**: a short note of up to 120 characters ("double batch",
   "Ana's birthday"). The note stays on the slot when you replace the meal.
-- **Remove** empties the slot. The small **×** on the meal does the same.
+- **Remove** empties the slot. The small **×** on the meal does the same (with a mouse it
+  appears when you point at the meal; on a touch screen it is always there).
 - **Save leftovers for the next meal** appears for *batch cooking* recipes when the next slot
   is empty: it plans *Leftovers* there, with the recipe name as the note.
 
@@ -75,23 +82,27 @@ week that uses it shows the change.
 
 ## Let Cociboard fill the week
 
-The buttons above the grid work on the whole week:
+The buttons above the grid work on the whole week. **Fill the week** is the main one; the
+other two are in the :material-dots-horizontal: **More** menu (*More week actions*).
 
-**Suggest**
+![The More menu: Copy last week and Clear week](images/week-more-menu.png){ .screenshot }
+
+**Fill the week**
 :   Fills only the **empty** slots with varied recipes that fit them, preferring ones you
     haven't cooked recently and respecting your [household preferences](preferences.md). Your
     own choices are never replaced. Run it again after emptying a few slots to get other ideas.
+    It is greyed out when every slot is already filled.
 
-**Copy last week**
+**Copy last week** (in **More**)
 :   Fills the empty slots with last week's meals (special meals and notes included). Archived
     recipes are skipped.
 
-**Clear week**
+**Clear week** (in **More**)
 :   Empties the whole week, after asking you to confirm.
 
 After any of the three, a message with **Undo** appears for a few seconds. Press it to put the
 week back exactly as it was.
 
 !!! tip
-    A good routine: plan the meals you really want first, then press **Suggest** to fill the
-    gaps.
+    A good routine: plan the meals you really want first, then press **Fill the week** to fill
+    the gaps.

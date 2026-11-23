@@ -32,9 +32,11 @@ En el ordenador todo está en una sola pantalla:
 
 **Planificador semanal** (derecha)
 :   Siete días, cada uno con un hueco de comida y otro de cena. Encima están la navegación
-    entre semanas, las acciones para toda la semana y el indicador de variedad.
+    entre semanas, las acciones para toda la semana (**Completar semana**, **Lista de la
+    compra**, **Compartir** y un menú **Más** con *Copiar semana anterior* y *Vaciar semana*) y
+    el indicador de variedad.
 
-![La barra del planificador: navegación, Sugerir, Copiar semana anterior, Vaciar semana, Lista de la compra, Compartir y la variedad](images/planner-toolbar.png){ .screenshot }
+![La barra del planificador: navegación entre semanas a la izquierda; Completar semana, Lista de la compra, Compartir y Más a la derecha](images/planner-toolbar.png){ .screenshot }
 
 En el móvil las mismas secciones se muestran de una en una, y se eligen en una barra en la
 parte de abajo. Consulta [En el móvil](phone.md).

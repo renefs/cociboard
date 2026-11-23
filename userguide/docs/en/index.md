@@ -49,7 +49,7 @@ helps you keep the week varied, builds the shopping list and lets you share the 
 3. Open the [shopping list](shopping.md) and you are ready to cook.
 
 !!! tip "In a hurry?"
-    Press **Suggest** on an empty week, look at the result, change what you don't fancy, and
+    Press **Fill the week** on an empty week, look at the result, change what you don't fancy, and
     open **Shopping list**. That's a week planned in two minutes.
 
 The interface is available in English and Spanish, and so is this guide: use the

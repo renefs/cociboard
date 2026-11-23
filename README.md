@@ -9,7 +9,7 @@ on touch devices) into the slots. See [docs/ROADMAP.md](docs/ROADMAP.md) for sco
 **Using Cociboard?** The illustrated [user guide](https://renefs.github.io/cociboard/) (English
 and Spanish) explains every feature step by step. Its sources are in [`userguide/`](userguide/).
 
-Current version: **0.29.0** (refreshed look, dark mode and a settings menu).
+Current version: **0.30.0** (a calmer weekly planner: flat grid, compact phone list, More menu).
 
 ## Stack
 
@@ -39,7 +39,9 @@ Rationale: [ADR-0001](docs/adr/0001-tech-stack.md),
 [ADR-0026](docs/adr/0026-household-preferences.md),
 [ADR-0027](docs/adr/0027-favourites-and-history.md),
 [ADR-0028](docs/adr/0028-end-to-end-tests.md), [ADR-0029](docs/adr/0029-persisted-offline-edits.md),
-[ADR-0030](docs/adr/0030-user-guide-site.md).
+[ADR-0030](docs/adr/0030-user-guide-site.md),
+[ADR-0031](docs/adr/0031-visual-refresh-tokens-dark-mode.md),
+[ADR-0032](docs/adr/0032-planner-layout-refresh.md).
 
 ## Architecture
 
@@ -409,7 +411,7 @@ A week is keyed by the date of its Monday (`week_start`). `day` is 0 (Monday) to
 where `lunch`/`dinner` are recipes or `null`, `*_special` is `eating_out`, `leftovers`, `free` or
 `null` (a slot holds a recipe **or** a special meal, never both), `*_note` is the slot's note
 (at most 120 characters) or `null`, and `variety` is the variety report (see below). Special
-meals are filled slots without a recipe: Suggest leaves them alone, and variety and the shopping
+meals are filled slots without a recipe: Fill the week leaves them alone, and variety and the shopping
 list ignore them ([ADR-0016](docs/adr/0016-special-slots-and-notes.md)).
 
 | Method and path | Description |
@@ -471,7 +473,7 @@ Behind the login when a password is set. Until the first save the defaults apply
 | `PUT /api/settings/household` | Replace the settings with the full object; answers the stored object (lists are de-duplicated and sorted). `422` with `detail: { code }` for `invalid_time`, `not_dietary` (a required property outside the dietary four) or `required_and_avoided`; ordinary `422` validation errors for values out of range |
 
 The targets change the variety report (`params.max` / `params.min`, the score and the tips). The required
-and avoided properties only narrow what **Suggest** and the **candidates** list propose; assigning a
+and avoided properties only narrow what **Fill the week** and the **candidates** list propose; assigning a
 recipe by hand (`PUT /api/weeks/{week_start}/days/{day}/{slot}`) is never blocked by them.
 
 ### Backup
@@ -514,11 +516,11 @@ never changes the score: it is a hint, not a fault.
    and choose from the recipes that fit, or tap **Add** on a recipe and then a highlighted slot.
    Dinner-only recipes never fit lunch slots and vice versa.
    **Not cooking?** The picker starts with three chips: **Eating out**, **Leftovers** and
-   **Free**. Special meals fill the slot so Suggest leaves it alone, they break a run of the
+   **Free**. Special meals fill the slot so Fill the week leaves it alone, they break a run of the
    same protein and add nothing to the shopping list. Use **Add note** in a filled slot's
    actions for a short note (up to 120 characters, "double batch", "Ana's birthday").
-3. **Start from last week, or let Cociboard suggest.** **Copy last week** fills the empty slots
-   with the previous week's meals (archived recipes are skipped). **Suggest** fills only the
+3. **Start from last week, or let Cociboard suggest.** **Copy last week** (in the **More** menu) fills
+   the empty slots with the previous week's meals (archived recipes are skipped). **Fill the week** fills only the
    empty slots with varied recipes, preferring ones you have not cooked recently; use
    **Undo** in the toast if you do not like the result, or run it again after clearing some
    slots. Your own picks are never replaced.
@@ -545,7 +547,7 @@ never changes the score: it is a hint, not a fault.
   planned, the next time, and the latest meals), then **Edit**, **Archive** or **Delete**.
 - **Favourites**: the star on a recipe card (or in its details) marks a favourite. The
   **Favourites** chip above the list shows only those, together with the other filters. A star
-  is only a shortcut: Suggest does not prefer favourites ([ADR-0027](docs/adr/0027-favourites-and-history.md)).
+  is only a shortcut: Fill the week does not prefer favourites ([ADR-0027](docs/adr/0027-favourites-and-history.md)).
 - Each card says when the recipe was last made ("Last made 3 weeks ago", "Never planned"; a
   meal counts as made on or before today), and the sort **Not made lately** puts recipes never
   planned first, then the ones planned longest ago.
@@ -627,8 +629,8 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
 
 - **Weeks:** use the ‹ and › buttons or **This week** in the planner header; the address bar
   shows `?week=YYYY-MM-DD`, so weeks can be bookmarked and Back/Forward work.
-- **Suggest** fills the empty slots with varied recipes (existing meals stay) and **Copy last
-  week** fills them with the previous week's meals. **Clear week** asks for confirmation. All
+- **Fill the week** fills the empty slots with varied recipes (existing meals stay). In the
+  **More** menu, **Copy last week** fills them with the previous week's meals. **Clear week** asks for confirmation. All
   three show a toast with **Undo** for a few seconds.
 - **Variety:** the badge shows the week's score (green, amber, red). Open it to read the issues;
   click one to highlight its slots. A ⚠ on a slot means it takes part in a warning. In the
@@ -672,7 +674,7 @@ Reasoning and alternatives: [ADR-0024](docs/adr/0024-recipe-import.md).
 **Household preferences** in the header's settings menu (the gear button) opens them (a bottom
 sheet on phones).
 
-- **Diet**: vegetarian, vegan, gluten-free and dairy-free. Suggestions (the **Suggest** button
+- **Diet**: vegetarian, vegan, gluten-free and dairy-free. Suggestions (the **Fill the week** button
   and the recipe picker's "best for variety" order) only propose recipes tagged with all the
   ones you tick.
 - **Avoid**: any recipe property (for example spicy). Suggestions skip recipes carrying any of
@@ -681,7 +683,7 @@ sheet on phones).
 - Preferences never block you: any recipe can still be put in a slot by hand. The slot picker
   lists the recipes your preferences leave out at the end, marked "Outside your household
   preferences" and never as a good pick; the recipe panel (drag, or **Add**) offers them as
-  always. When preferences leave slots empty, **Suggest** says so.
+  always. When preferences leave slots empty, **Fill the week** says so.
 - **Variety targets**: the most meals with the same main protein (1-14), and the fewest
   vegetable-forward and fish or seafood meals (0-14; **0 switches that tip off**). The variety
   tips, their wording and the score follow these numbers.

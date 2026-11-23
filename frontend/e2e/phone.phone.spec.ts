@@ -41,6 +41,40 @@ test.describe("the app on a phone", () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test("the week is a compact list: four days and the whole toolbar fit on the screen", async ({ page }) => {
+    await page.goto("/");
+    await tabBar(page).getByRole("button", { name: "Week" }).tap();
+    // The toolbar: week navigation, then the actions on one row, all at least 44px.
+    const actions = page.getByRole("group", { name: "Week actions" });
+    await expect(actions).toBeVisible();
+    const buttons = await actions.getByRole("button").all();
+    expect(buttons).toHaveLength(4);
+    const rows = new Set<number>();
+    for (const button of buttons) {
+      const box = await button.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(43.5);
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(43.5);
+      rows.add(Math.round(box?.y ?? 0));
+    }
+    expect(rows.size).toBe(1);
+    // The days: the page is at the top, today's row and the next three are all on screen.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const tabTop = (await tabBar(page).boundingBox())?.y ?? 0;
+    const days = page.getByRole("region", { name: /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \d/ });
+    expect(await days.count()).toBe(7);
+    let visible = 0;
+    for (const day of await days.all()) {
+      const box = await day.boundingBox();
+      if (box && box.y + box.height <= tabTop) visible++;
+    }
+    expect(visible).toBeGreaterThanOrEqual(4);
+    // Every meal line is at least 44px tall.
+    for (const line of await page.getByRole("group", { name: /^(Monday|Tuesday) (lunch|dinner)$/ }).all()) {
+      expect((await line.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(43.5);
+    }
+    await expectNoHorizontalScroll(page);
+  });
+
   test("tap a slot, pick a recipe in the slot picker", async ({ page }) => {
     await page.goto("/");
     await tabBar(page).getByRole("button", { name: "Week" }).tap();

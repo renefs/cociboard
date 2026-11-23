@@ -7,7 +7,7 @@ muestra una sección cada vez, que eliges en la barra de abajo:
 
 ![Hoy: las comidas de hoy y de mañana con sus ingredientes](images/phone-today.png){ .screenshot .phone }
 
-![Semana: el planificador, un día por tarjeta](images/phone-week.png){ .screenshot .phone }
+![Semana: el planificador, una fila compacta por día](images/phone-week.png){ .screenshot .phone }
 
 ![Elegir una receta para un hueco en el móvil](images/phone-picker.png){ .screenshot .phone }
 
@@ -18,9 +18,14 @@ muestra una sección cada vez, que eliges en la barra de abajo:
     para ver los pasos mientras cocinas.
 
 **Semana**
-:   El planificador. Se abre en la tarjeta de hoy. Toca un hueco para elegir una receta y una
-    comida para ver sus acciones. También puedes arrastrar: mantén pulsada una comida un
-    momento y muévela.
+:   El planificador, como una lista compacta: una fila por día, con el día de la semana a la
+    izquierda y las líneas de comida (:material-weather-sunny:) y cena
+    (:material-weather-night:) a la derecha, cada una con un punto de su proteína principal. Caben
+    unos cuatro días en la pantalla. Se abre en la fila de hoy. Toca una línea para elegir una
+    receta o, si ya tiene una comida, para ver sus acciones. También puedes arrastrar: mantén
+    pulsada una comida un momento y muévela. Los botones de encima de la lista son
+    **Completar semana**, **Lista de la compra** y **Compartir** (solo iconos) y **Más**, con
+    *Copiar semana anterior* y *Vaciar semana*.
 
 **Recetas**
 :   El catálogo. **Añadir** en una receta te lleva a la semana para elegir el hueco.

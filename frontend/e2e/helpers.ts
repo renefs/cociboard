@@ -14,6 +14,15 @@ export async function openSettings(page: Page, name = "Settings"): Promise<Locat
   return panel;
 }
 
+/** Opens the planner's "More" menu (copy last week, clear week) and returns its panel. */
+export async function openWeekActions(page: Page, name = "More week actions"): Promise<Locator> {
+  const button = page.getByRole("button", { name, exact: true });
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  const panel = page.getByRole("group", { name: name === "More week actions" ? "Other week actions" : "Otras acciones de la semana" });
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
 /** The dnd-kit live region: where drag and drop announcements are spoken. */
 export function dragAnnouncements(page: Page): Locator {
   return page.locator("[id^='DndLiveRegion']");

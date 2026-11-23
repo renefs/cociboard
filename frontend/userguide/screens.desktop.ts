@@ -12,6 +12,13 @@ test("overview", async ({ page, t, shot }) => {
   await shot("planner-toolbar", page.getByRole("region", { name: t("planner.heading") }).locator("header").first());
 });
 
+test("week actions menu", async ({ page, t, shot }) => {
+  await openPlanner(page, t);
+  await page.getByRole("button", { name: t("planner.moreActions"), exact: true }).click();
+  await expect(page.getByRole("button", { name: t("planner.copyLastWeek") })).toBeVisible();
+  await shot("week-more-menu", page.getByRole("region", { name: t("planner.heading") }));
+});
+
 test("recipe panel and details", async ({ page, t, shot }) => {
   await openPlanner(page, t);
   await shot("recipe-panel", page.getByRole("complementary").first());

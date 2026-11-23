@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { makePlan, makeRecipe } from "../../test/fixtures";
+import { PROTEIN_META } from "../recipes/recipeMeta";
 import { MouseAndPenSensor, POINTER_ACTIVATION } from "./sensors";
 import { WeekGrid } from "./WeekGrid";
 
@@ -46,13 +47,13 @@ describe("WeekGrid", () => {
     expect(screen.getAllByText("Today")).toHaveLength(1);
   });
 
-  it("shows assigned recipes with icons and a remove button", async () => {
+  it("shows assigned recipes with a meta line and a remove button", async () => {
     const user = userEvent.setup();
     const recipe = makeRecipe({ name: "Fabada asturiana" });
     const { onRemove, onActivate } = renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
     const slot = screen.getByRole("group", { name: "Tuesday lunch" });
     expect(within(slot).getByText("Fabada asturiana")).toBeInTheDocument();
-    expect(within(slot).getByRole("img", { name: "Batch cooking" })).toBeInTheDocument();
+    expect(within(slot).queryByRole("img")).not.toBeInTheDocument();
     expect(within(slot).queryByRole("button", { name: /^Add lunch/ })).not.toBeInTheDocument();
 
     await user.click(within(slot).getByRole("button", { name: "Remove Fabada asturiana from Tuesday lunch" }));
@@ -112,6 +113,96 @@ describe("WeekGrid", () => {
     const plan = makePlan("2026-10-26", { "0:dinner": makeRecipe({ id: 2, name: "Tortilla", meal_type: "dinner" }) });
     renderGrid(plan, { selecting: makeRecipe({ meal_type: "dinner" }) });
     expect(screen.getAllByRole("group", { name: "Monday dinner" })[0]).toHaveAttribute("data-select-target", "true");
+  });
+});
+
+describe("WeekGrid layout", () => {
+  it("shows the protein as a coloured dot with its name, and the prep time, instead of emoji", () => {
+    const recipe = makeRecipe({ name: "Merluza a la vasca", protein: "fish", prep_minutes: 35, properties: ["quick"] });
+    renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
+    const slot = screen.getByRole("group", { name: "Tuesday lunch" });
+    const meta = slot.querySelector(".slot-meta") as HTMLElement;
+    expect(within(meta).getByText("Fish")).toBeInTheDocument();
+    expect(within(meta).getByText("35 min")).toBeInTheDocument();
+    const dot = meta.querySelector<HTMLElement>(".protein-dot");
+    expect(dot).toHaveAttribute("aria-hidden", "true");
+    expect(dot?.style.getPropertyValue("--protein-color")).toBe(PROTEIN_META.fish.color);
+    expect(dot?.style.getPropertyValue("--protein-color-dark")).toBe(PROTEIN_META.fish.darkColor);
+    // Meal-type and property emoji stay in the recipe details only.
+    expect(slot).not.toHaveTextContent("⚡");
+    expect(slot).not.toHaveTextContent("☀");
+  });
+
+  it("leaves the time out when the recipe has none, and keeps the meta line out of the button name", () => {
+    const recipe = makeRecipe({ name: "Gazpacho", prep_minutes: null });
+    renderGrid(makePlan("2026-10-26", { "1:lunch": recipe }));
+    const slot = screen.getByRole("group", { name: "Tuesday lunch" });
+    expect(slot.querySelector(".slot-time")).toBeNull();
+    const button = within(slot).getByRole("button", { name: /^Gazpacho, Tuesday lunch/ });
+    expect(button).not.toHaveTextContent("Legumes");
+  });
+
+  it("shows no meta line for a special meal", () => {
+    renderGrid(makePlan("2026-10-26", {}, undefined, { specials: { "0:dinner": "eating_out" } }));
+    expect(screen.getByRole("group", { name: "Monday dinner" }).querySelector(".slot-meta")).toBeNull();
+  });
+
+  it("has a presentational row-label column, aria-hidden, with Lunch and Dinner", () => {
+    const { container } = render(
+      <Harness>
+        <WeekGrid plan={makePlan()} now={NOW} onActivate={vi.fn()} onRemove={vi.fn()} />
+      </Harness>,
+    );
+    const rows = container.querySelector(".week-rows");
+    expect(rows).toHaveAttribute("aria-hidden", "true");
+    expect(rows).toHaveTextContent("Lunch");
+    expect(rows).toHaveTextContent("Dinner");
+  });
+
+  it("keeps the day section order: row labels first, then each day with its lunch and dinner", () => {
+    const { container } = render(
+      <Harness>
+        <WeekGrid plan={makePlan()} now={NOW} onActivate={vi.fn()} onRemove={vi.fn()} />
+      </Harness>,
+    );
+    const grid = container.querySelector(".week-grid") as HTMLElement;
+    expect(Array.from(grid.children).map((child) => child.tagName)).toEqual(["DIV", ...Array(7).fill("SECTION")]);
+    const first = grid.querySelector("section") as HTMLElement;
+    expect(Array.from(first.children).map((child) => child.tagName + "." + child.className.split(" ")[0])).toEqual([
+      "H3.day-head",
+      "DIV.slot",
+      "DIV.slot",
+    ]);
+  });
+
+  it("gives the day heading an abbreviated weekday and the day number for the phone list, hidden from assistive technology", () => {
+    renderGrid();
+    const heading = screen.getByRole("heading", { name: /Wednesday 28 Oct/ });
+    expect(heading.querySelector(".day-abbr")).toHaveTextContent("Wed");
+    expect(heading.querySelector(".day-abbr")).toHaveAttribute("aria-hidden", "true");
+    expect(heading.querySelector(".day-num")).toHaveTextContent("28");
+    expect(heading.querySelector(".day-num")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("marks a slot with a Sun or Moon icon for the phone list", () => {
+    renderGrid();
+    const lunch = screen.getByRole("group", { name: "Monday lunch" });
+    expect(lunch.querySelector(".slot-icon")).toHaveAttribute("aria-hidden", "true");
+    expect(lunch).toHaveClass("slot--lunch");
+    expect(screen.getByRole("group", { name: "Monday dinner" })).toHaveClass("slot--dinner");
+  });
+
+  it("shows a variety warning as an icon with the same accessible text, inside the card", () => {
+    const recipe = makeRecipe({ name: "Paella" });
+    const warnings = new Map([["0:lunch", ["Meat three days in a row."]]]);
+    renderGrid(makePlan("2026-10-26", { "0:lunch": recipe }), { warnings });
+    const slot = screen.getByRole("group", { name: "Monday lunch" });
+    expect(slot).toHaveClass("slot--warning");
+    const marker = slot.querySelector(".slot-warning") as HTMLElement;
+    expect(marker).toHaveAttribute("title", "Meat three days in a row.");
+    expect(marker).toHaveTextContent("Variety warning: Meat three days in a row.");
+    expect(marker.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(slot.querySelector(".slot-recipe")).toContainElement(marker);
   });
 });
 

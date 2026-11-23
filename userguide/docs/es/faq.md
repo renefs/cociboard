@@ -4,16 +4,16 @@
 :   Su tipo de comida es **Cena**. Abre la receta, pulsa **Editar** y pon el tipo **Ambas** si
     vale para las dos.
 
-**Sugerir no ha rellenado algunos huecos.**
-:   Sugerir solo usa recetas que caben en el hueco y respetan las
+**Completar semana no ha rellenado algunos huecos.**
+:   Completar semana solo usa recetas que caben en el hueco y respetan las
     [preferencias del hogar](preferences.md). Si ninguna encaja, deja el hueco vacío y te lo
     dice. Relaja las preferencias, añade recetas o rellena el hueco tú.
 
-**¡Sugerir ha cambiado una comida que yo había elegido!**
+**¡Completar semana ha cambiado una comida que yo había elegido!**
 :   Nunca lo hace: solo rellena huecos vacíos. Si no te gustó el resultado, pulsa **Deshacer**
     en el mensaje que aparece.
 
-**¿Marcar una receta como favorita hace que Sugerir la elija más?**
+**¿Marcar una receta como favorita hace que Completar semana la elija más?**
 :   No. Las favoritas son un atajo para encontrar recetas; las sugerencias solo miran la
     variedad y tus preferencias.
 

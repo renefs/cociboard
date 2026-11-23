@@ -3,15 +3,16 @@
 Cociboard mira la semana mientras la planificas y te dice cómo de variada es. Nunca te impide
 planificar lo que quieras: solo te aconseja.
 
-## El indicador de variedad
+## La barra de variedad
 
-Junto a los botones de la semana, un indicador muestra una **puntuación sobre 100** y cuántos
-avisos y consejos hay. Es verde si la semana es variada, ámbar si hay algo que mirar y rojo si
-es muy repetitiva.
+Debajo de los botones de la semana, una barra muestra una **puntuación sobre 100**, cuántos
+avisos y consejos hay y una franja fina de colores con las proteínas principales de la semana,
+un color para cada una. La puntuación es verde si la semana es variada, ámbar si hay algo
+que mirar y roja si es muy repetitiva.
 
-Haz clic en él para ver los detalles:
+Haz clic en la barra para ver los detalles:
 
-![El indicador de variedad abierto: un consejo y el número de comidas por proteína principal](images/variety-open.png){ .screenshot }
+![La barra de variedad abierta: un consejo y el número de comidas por proteína principal](images/variety-open.png){ .screenshot }
 
 - Cada línea es un **aviso** o un **consejo**. Haz clic en ella para resaltar en la cuadrícula
   las comidas implicadas; una marca :warning: en un hueco indica que forma parte de un aviso.
@@ -41,4 +42,4 @@ en las [preferencias del hogar](preferences.md#objetivos-de-variedad).
   **×1 esta semana**.
 - En el selector de un hueco, las que mejor encajan van primero, con la marca **Buena opción**
   y un motivo.
-- **Sugerir** siempre busca una semana variada.
+- **Completar semana** siempre busca una semana variada.

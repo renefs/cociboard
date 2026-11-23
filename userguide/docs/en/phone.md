@@ -7,7 +7,7 @@ section at a time, chosen in the bar at the bottom:
 
 ![Today: today's and tomorrow's meals with their ingredients](images/phone-today.png){ .screenshot .phone }
 
-![Week: the planner, one day per card](images/phone-week.png){ .screenshot .phone }
+![Week: the planner, one compact row per day](images/phone-week.png){ .screenshot .phone }
 
 ![Choosing a recipe for a slot on a phone](images/phone-picker.png){ .screenshot .phone }
 
@@ -18,8 +18,13 @@ section at a time, chosen in the bar at the bottom:
     see its steps while you cook.
 
 **Week**
-:   The planner. It opens on today's card. Tap a slot to choose a recipe, tap a meal for its
-    actions. You can also drag: press and hold a meal for a moment, then move it.
+:   The planner, as a compact list: one row per day, with the weekday on the left and the lunch
+    (:material-weather-sunny:) and dinner (:material-weather-night:) lines on the right, each
+    with a dot for its main protein. About four days fit on the screen. It opens on today's row.
+    Tap a line to choose a recipe or, if it has a meal, for the meal's actions. You can also
+    drag: press and hold a meal for a moment, then move it. The buttons above the list are
+    **Fill the week**, **Shopping list** and **Share** (icons only) and **More**, with
+    *Copy last week* and *Clear week*.
 
 **Recipes**
 :   The catalogue. **Add** on a recipe takes you to the week to pick a slot.

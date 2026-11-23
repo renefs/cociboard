@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-11-23
+
+Second phase of the visual refresh: the weekly planner (ADR-0032). Planning works as before.
+
+### Changed
+- On a wide screen the week is a flat table: Lunch and Dinner rows, one card per meal. Each
+  card shows the whole recipe name (no more split words), a coloured dot with the main protein
+  and the preparation time; the row of emoji is gone from the week (it is still in the recipe
+  details). Today's column is highlighted, empty slots are outlined, and the remove button
+  appears when you point at a card.
+- On a phone the week is a compact list: one row per day with lunch and dinner underneath, so
+  four to five days fit on the screen instead of one.
+- The toolbar fits in one row: the week navigation, **Fill the week** (formerly **Suggest**),
+  **Shopping list**, **Share** and a new **More** menu with **Copy last week** and
+  **Clear week**. A disabled **Fill the week** (the week is full) now looks clearly disabled.
+- The variety bar shows how the week's main proteins are spread, as a coloured strip; the
+  counts in its panel use the same dots.
+- Below about 1190px of window width the desktop layout uses the compact list too, as seven
+  columns would be too narrow to read.
+- User guide text and screenshots updated, with a new picture of the More menu.
+
+### Fixed
+- Variety warnings and highlighted issue slots are drawn again: a stylesheet ordering problem
+  let the plain slot style override them.
+
 ## [0.29.0] - 2026-11-23
 
 First phase of the visual refresh (ADR-0031). Nothing changes in how planning works.

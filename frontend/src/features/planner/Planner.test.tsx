@@ -70,6 +70,13 @@ function serverReturns(plan: WeekPlan) {
   return plan;
 }
 
+/** An item of the "More" menu (copy last week, clear week), opening the menu when it is closed. */
+async function moreItem(user: ReturnType<typeof userEvent.setup>, name: string): Promise<HTMLElement> {
+  const trigger = screen.getByRole("button", { name: "More week actions" });
+  if (trigger.getAttribute("aria-expanded") !== "true") await user.click(trigger);
+  return within(screen.getByRole("group", { name: "Other week actions" })).getByRole("button", { name });
+}
+
 /** The toast (the drag-and-drop live region also has role "status"). */
 async function findToast(): Promise<HTMLElement> {
   return waitFor(() => {
@@ -308,7 +315,7 @@ describe("Planner suggest, clear and undo", () => {
     await waitFor(() => expect(client.getHouseholdSettings).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    await user.click(screen.getByRole("button", { name: "Suggest" }));
+    await user.click(screen.getByRole("button", { name: "Fill the week" }));
     expect(await findToast()).toHaveTextContent(
       "Filled 1 slot. Some slots stayed empty: no recipe matches your household preferences.",
     );
@@ -322,7 +329,7 @@ describe("Planner suggest, clear and undo", () => {
     vi.mocked(client.replaceWeek).mockResolvedValue(serverPlan);
     await renderPlanner();
 
-    await user.click(screen.getByRole("button", { name: "Suggest" }));
+    await user.click(screen.getByRole("button", { name: "Fill the week" }));
     expect(client.suggestWeek).toHaveBeenCalledWith(WEEK);
     const toast = await findToast();
     expect(toast).toHaveTextContent("Filled 2 slots");
@@ -350,7 +357,7 @@ describe("Planner suggest, clear and undo", () => {
     vi.mocked(client.replaceWeek).mockResolvedValue(before);
     await renderPlanner();
 
-    await user.click(screen.getByRole("button", { name: "Copy last week" }));
+    await user.click(await moreItem(user, "Copy last week"));
     expect(client.copyWeek).toHaveBeenCalledWith(WEEK, "2026-10-19");
     const toast = await findToast();
     expect(toast).toHaveTextContent("Copied 2 meals from last week.");
@@ -370,7 +377,7 @@ describe("Planner suggest, clear and undo", () => {
     const user = userEvent.setup();
     vi.mocked(client.copyWeek).mockResolvedValue({ plan: makePlan(WEEK), ...result });
     await renderPlanner();
-    await user.click(screen.getByRole("button", { name: "Copy last week" }));
+    await user.click(await moreItem(user, "Copy last week"));
     const toast = await findToast();
     expect(toast).toHaveTextContent(message);
     expect(within(toast).queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
@@ -380,11 +387,12 @@ describe("Planner suggest, clear and undo", () => {
     const user = userEvent.setup();
     vi.mocked(client.copyWeek).mockRejectedValue(new client.ApiError(500, "boom"));
     await renderPlanner();
-    await user.click(screen.getByRole("button", { name: "Copy last week" }));
+    await user.click(await moreItem(user, "Copy last week"));
     expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't update the week/);
   });
 
   it("disables Copy last week when every slot is filled", async () => {
+    const user = userEvent.setup();
     const placements: Record<string, Recipe> = {};
     for (let day = 0; day < 7; day++) {
       placements[`${day}:lunch`] = salad;
@@ -392,24 +400,26 @@ describe("Planner suggest, clear and undo", () => {
     }
     serverPlan = makePlan(WEEK, placements);
     await renderPlanner();
-    expect(screen.getByRole("button", { name: "Copy last week" })).toBeDisabled();
+    expect(await moreItem(user, "Copy last week")).toBeDisabled();
   });
 
   it("says so when nothing could be filled", async () => {
     const user = userEvent.setup();
     vi.mocked(client.suggestWeek).mockResolvedValue(makePlan(WEEK));
     await renderPlanner();
-    await user.click(screen.getByRole("button", { name: "Suggest" }));
+    await user.click(screen.getByRole("button", { name: "Fill the week" }));
     expect(await screen.findByText("No empty slots could be filled.")).toBeInTheDocument();
   });
 
   it("disables Clear week when the week is empty and Suggest when it is full", async () => {
+    const user = userEvent.setup();
     await renderPlanner();
-    expect(screen.getByRole("button", { name: "Clear week" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Suggest" })).toBeEnabled();
+    expect(await moreItem(user, "Clear week")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Fill the week" })).toBeEnabled();
   });
 
   it("disables Suggest when every slot is filled", async () => {
+    const user = userEvent.setup();
     const placements: Record<string, Recipe> = {};
     for (let day = 0; day < 7; day++) {
       placements[`${day}:lunch`] = salad;
@@ -417,8 +427,8 @@ describe("Planner suggest, clear and undo", () => {
     }
     serverPlan = makePlan(WEEK, placements);
     await renderPlanner();
-    expect(screen.getByRole("button", { name: "Suggest" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Clear week" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Fill the week" })).toBeDisabled();
+    expect(await moreItem(user, "Clear week")).toBeEnabled();
   });
 
   it("asks for confirmation before clearing and supports Undo", async () => {
@@ -429,13 +439,13 @@ describe("Planner suggest, clear and undo", () => {
     vi.mocked(client.replaceWeek).mockResolvedValue(before);
     await renderPlanner();
 
-    await user.click(screen.getByRole("button", { name: "Clear week" }));
+    await user.click(await moreItem(user, "Clear week"));
     const dialog = await screen.findByRole("dialog", { name: "Clear this week?" });
     expect(dialog).toHaveTextContent("2 meals");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(client.clearWeek).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Clear week" }));
+    await user.click(await moreItem(user, "Clear week"));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Clear week" }));
     expect(client.clearWeek).toHaveBeenCalledWith(WEEK);
     const toast = await findToast();
@@ -454,8 +464,49 @@ describe("Planner suggest, clear and undo", () => {
     const user = userEvent.setup();
     vi.mocked(client.suggestWeek).mockRejectedValue(new client.ApiError(500, "boom"));
     await renderPlanner();
-    await user.click(screen.getByRole("button", { name: "Suggest" }));
+    await user.click(screen.getByRole("button", { name: "Fill the week" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't update the week/);
+  });
+});
+
+describe("Planner toolbar", () => {
+  it("keeps the 'Weekly planner' heading for landmarks, visually hidden", async () => {
+    await renderPlanner();
+    const heading = screen.getByRole("heading", { name: "Weekly planner", level: 2 });
+    expect(heading).toHaveClass("visually-hidden");
+    expect(screen.getByRole("region", { name: "Weekly planner" })).toBeInTheDocument();
+  });
+
+  it("has the week navigation, then 'Fill the week', Shopping list, Share and More", async () => {
+    await renderPlanner();
+    const nav = screen.getByRole("navigation", { name: "Week navigation" });
+    expect(within(nav).getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
+      "Previous week",
+      "Next week",
+      "This week",
+    ]);
+    const actions = screen.getByRole("group", { name: "Week actions" });
+    expect(within(actions).getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
+      "Fill the week",
+      "Shopping list",
+      "Share",
+      "More week actions",
+    ]);
+    expect(within(actions).getByRole("button", { name: "Fill the week" })).toHaveClass("btn-primary");
+    expect(within(actions).getByRole("button", { name: "Fill the week" })).toHaveAttribute(
+      "title",
+      "Fill the empty slots with varied recipes",
+    );
+  });
+
+  it("moves copy and clear into the More menu, closed at first", async () => {
+    const user = userEvent.setup();
+    await renderPlanner();
+    expect(screen.queryByRole("button", { name: "Copy last week" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear week" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More week actions" }));
+    expect(screen.getByRole("button", { name: "Copy last week" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Clear week" })).toBeDisabled();
   });
 });
 
@@ -729,9 +780,10 @@ describe("Planner special meals and notes", () => {
     const before = makePlan(WEEK, {}, undefined, { specials: all, notes: { "0:lunch": "hi" } });
     vi.mocked(client.replaceWeek).mockResolvedValue(before);
     await renderPlanner();
-    expect(screen.getByRole("button", { name: /Suggest/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Fill the week/ })).toBeDisabled();
+    expect(await moreItem(user, "Copy last week")).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Clear week" }));
+    await user.click(await moreItem(user, "Clear week"));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Clear week" }));
     await user.click(within(await findToast()).getByRole("button", { name: "Undo" }));
     const fills = vi.mocked(client.replaceWeek).mock.calls[0]?.[1] ?? [];

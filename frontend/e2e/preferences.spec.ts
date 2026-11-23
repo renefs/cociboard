@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 
 const VEGAN = ["Lentil stew", "Tofu stir-fry", "Chickpea salad", "Vegetable curry"];
 
-test("Suggest respects the diet set in the household preferences", async ({ page, isMobile }) => {
+test("Fill the week respects the diet set in the household preferences", async ({ page, isMobile }) => {
   await page.goto("/");
   await openSettings(page);
   await page.getByRole("button", { name: "Household preferences" }).click();
@@ -14,7 +14,7 @@ test("Suggest respects the diet set in the household preferences", async ({ page
   await expect(dialog).toHaveCount(0);
 
   await showTab(page, isMobile, "Week");
-  await page.getByRole("button", { name: "Suggest" }).click();
+  await page.getByRole("button", { name: "Fill the week" }).click();
   await expect(page.getByText(/^Filled \d+ slots?/)).toBeVisible();
 
   const meals = page.getByRole("button", { name: /^Remove .+ from \w+ (lunch|dinner)$/ });
@@ -41,7 +41,7 @@ test("an avoided property is left out of the suggestions", async ({ page, isMobi
   await expect(page.getByText("Household preferences saved.")).toBeVisible();
 
   await showTab(page, isMobile, "Week");
-  await page.getByRole("button", { name: "Suggest" }).click();
+  await page.getByRole("button", { name: "Fill the week" }).click();
   await expect(page.getByText(/^Filled \d+ slots?/)).toBeVisible();
   const vegetarian = ["Lentil stew", "Veggie omelette", "Tofu stir-fry", "Chickpea salad", "Cheese pasta", "Vegetable curry", "Mushroom risotto"];
   for (const name of vegetarian) {

@@ -9,6 +9,7 @@ export function WeekGridSkeleton() {
       <p className="visually-hidden" role="status">
         {t("planner.loadingWeek")}
       </p>
+      <div className="week-rows" aria-hidden="true" />
       {Array.from({ length: 7 }, (_, day) => (
         <div key={day} className="day skeleton-day" aria-hidden="true">
           <span className="skeleton-line skeleton-line--title" />

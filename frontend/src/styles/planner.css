@@ -90,16 +90,11 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-  margin-bottom: var(--space-2);
-}
-
-.planner-head h2 {
-  margin: 0;
+  margin-bottom: var(--space-3);
 }
 
 .week-nav {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
   align-items: center;
 }
@@ -112,51 +107,148 @@
 }
 
 .week-range {
-  margin: 0 0 0 var(--space-1);
+  margin: 0 var(--space-1);
   font-weight: 600;
   white-space: nowrap;
   color: var(--color-text);
 }
 
-@media (max-width: 420px) {
+.week-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* A disabled primary action must not look like a faded brand button: it goes flat and grey. */
+.week-actions .btn-primary:disabled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+  opacity: 1;
+}
+
+/* "More": the week actions that are used less often, in a small panel (like the share menu). */
+.more-menu {
+  position: relative;
+}
+
+.more-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  padding: 0;
+}
+
+.more-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: max-content;
+  min-width: 14rem;
+  max-width: calc(100vw - 1rem);
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.more-item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.more-item:hover:not(:disabled) {
+  background: var(--color-surface-sunken);
+}
+
+.more-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (pointer: coarse) {
+  .more-button {
+    width: 2.75rem;
+  }
+}
+
+/* Phone: the week navigation on one row (range centred, chevrons at the sides), the actions
+   on the next one; Shopping list and Share shrink to icons (their names stay for assistive
+   technology), and "Fill the week" takes the remaining width. */
+@media (max-width: 599px) {
+  .planner-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
   .week-nav {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem auto;
     gap: var(--space-1);
   }
 
+  .week-step {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
   .week-range {
-    margin-left: 0;
+    margin: 0;
     font-size: var(--text-sm);
-  }
-}
-
-.planner-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
-  align-items: flex-start;
-  margin-bottom: var(--space-3);
-}
-
-.toolbar-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* A shorter label on phones; the full one stays as the accessible name. */
-.label-short {
-  display: none;
-}
-
-@media (max-width: 479px) {
-  .label-short {
-    display: inline;
+    text-align: center;
   }
 
-  .label-long {
+  .week-today {
+    min-height: 2.75rem;
+    padding-inline: var(--space-2);
+  }
+
+  .week-actions .btn {
+    min-height: 2.75rem;
+  }
+
+  .week-fill {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .week-actions .btn:not(.week-fill) {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 2.75rem;
+    padding: 0;
+  }
+
+  .week-actions .btn:not(.week-fill) > .icon {
+    margin: 0;
+  }
+
+  .week-actions .btn-label {
     position: absolute;
     width: 1px;
     height: 1px;
+    margin: -1px;
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
@@ -166,64 +258,55 @@
 /* ---------- Variety summary ---------- */
 
 .variety {
-  flex: 1 1 16rem;
-  min-width: 0;
+  margin-bottom: var(--space-3);
 }
 
+/* One quiet row: the score, the verdict text, a thin bar of the week's proteins, a chevron. */
 .variety-badge {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: center;
   width: 100%;
-  min-height: 2.25rem;
-  padding: 0.125rem var(--space-3) 0.125rem 0.125rem;
+  min-height: 3rem;
+  padding: var(--space-1) var(--space-4);
   font: inherit;
-  color: var(--badge-text);
+  color: var(--color-text);
   text-align: left;
   cursor: pointer;
-  background: var(--badge-bg);
-  border: 1px solid var(--badge-border);
-  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.variety-badge:hover {
+  border-color: var(--color-border-strong);
 }
 
 .variety-badge--none {
-  --badge-bg: var(--color-surface);
-  --badge-border: var(--color-border-strong);
-  --badge-text: var(--color-text-muted);
-  --badge-strong: var(--color-text-muted);
+  --score-color: var(--color-text-muted);
 }
 
 .variety-badge--good {
-  --badge-bg: var(--variety-good-bg);
-  --badge-border: var(--variety-good-border);
-  --badge-text: var(--variety-good-text);
-  --badge-strong: var(--variety-good-strong);
+  --score-color: var(--color-ok);
 }
 
 .variety-badge--fair {
-  --badge-bg: var(--variety-fair-bg);
-  --badge-border: var(--variety-fair-border);
-  --badge-text: var(--variety-fair-text);
-  --badge-strong: var(--variety-fair-strong);
+  --score-color: var(--color-warning);
 }
 
 .variety-badge--poor {
-  --badge-bg: var(--variety-poor-bg);
-  --badge-border: var(--variety-poor-border);
-  --badge-text: var(--variety-poor-text);
-  --badge-strong: var(--variety-poor-strong);
+  --score-color: var(--color-danger);
 }
 
 .variety-score {
-  display: grid;
   flex-shrink: 0;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
+  min-width: 2ch;
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
-  color: var(--color-on-strong);
-  background: var(--badge-strong);
-  border-radius: 50%;
+  line-height: 1;
+  text-align: center;
+  color: var(--score-color);
 }
 
 .variety-text {
@@ -240,18 +323,75 @@
   font-weight: 700;
 }
 
-/* Drawn by CSS so the glyph is not text: the button's accessible name has to contain all of
-   its visible text (WCAG 2.5.3), and a chevron is not part of it. */
+.variety-summary {
+  color: var(--color-text-muted);
+}
+
+/* The proteins of the week, one segment each, as wide as their share. */
+.variety-bar {
+  display: flex;
+  flex: 0 0 clamp(6rem, 25%, 16rem);
+  height: 0.5rem;
+  overflow: hidden;
+  background: var(--color-surface-sunken);
+  border-radius: 999px;
+}
+
+.variety-segment {
+  height: 100%;
+  background: var(--protein-color);
+}
+
+.variety-segment + .variety-segment {
+  border-inline-start: 2px solid var(--color-surface);
+}
+
 .variety-chevron {
   flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.12s;
 }
 
-.variety-chevron::before {
-  content: "▾";
+.variety-badge[aria-expanded="true"] .variety-chevron {
+  transform: rotate(180deg);
 }
 
-.variety-badge[aria-expanded="true"] .variety-chevron::before {
-  content: "▴";
+/* Phone: score, bar and chevron on one line; the verdict text is in the button's name and the panel. */
+@media (max-width: 599px) {
+  .variety-badge {
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+  }
+
+  .variety-summary {
+    display: none;
+  }
+
+  .variety-text {
+    flex: 0 0 auto;
+  }
+
+  .variety-bar {
+    flex: 1;
+  }
+}
+
+/* A protein as a colour dot (slot cards, the variety panel); the dark theme has its own colour. */
+.protein-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.625rem;
+  height: 0.625rem;
+  vertical-align: baseline;
+  background: var(--protein-color);
+  border-radius: 50%;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  .protein-dot,
+  .variety-segment {
+    background: var(--protein-color-dark, var(--protein-color));
+  }
 }
 
 .variety-panel {
@@ -341,34 +481,6 @@ button.issue-button:hover {
   color: var(--color-text);
 }
 
-/* Slot warning marker and issue highlight */
-.slot-head {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-  justify-content: space-between;
-}
-
-.slot-warning {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.25rem;
-  font-size: 0.875rem;
-  line-height: 1;
-  color: var(--color-warning);
-  cursor: help;
-}
-
-.slot--warning {
-  border-color: var(--color-accent);
-}
-
-.slot--highlight {
-  background: var(--color-primary-tint);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-tint);
-}
-
 /* Usage badge, picker hints */
 .usage-badge {
   --badge-color: var(--color-primary);
@@ -432,145 +544,48 @@ button.issue-button:hover {
   box-shadow: var(--shadow-lg);
 }
 
-/* Narrow: a vertical list of day cards, two slots side by side when there is room. */
+/* ---------- Week grid (ADR-0032) ----------
+   Narrow containers (phones, tablets): a compact list, one row card per day: the weekday on
+   the left, a lunch and a dinner line on the right. Wide containers: a flat matrix, a row-label
+   column then seven day columns, with lunch and dinner rows aligned through subgrid. The DOM is
+   the same in both (day section, then its two slots), so keyboard order and drag ids do not
+   change. */
+
 .week-grid {
   display: grid;
-  gap: var(--space-3);
+}
+
+.week-rows {
+  display: none;
 }
 
 .day {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: var(--space-2);
   align-content: start;
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.day--today {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-tint);
 }
 
 .day-head {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-2);
-  align-items: baseline;
   margin: 0;
-  font-size: var(--text-base);
 }
-
-.day-date {
-  font-size: var(--text-sm);
-  font-weight: 400;
-  color: var(--color-text-muted);
-}
-
-.day-today {
-  padding: 0 var(--space-2);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-primary-contrast);
-  background: var(--color-primary);
-  border-radius: 999px;
-}
-
-@container planner (min-width: 40rem) {
-  .week-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* Wide: seven day columns with aligned lunch and dinner rows. */
-@container planner (min-width: 52rem) {
-  .week-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-template-rows: auto auto auto;
-    gap: var(--space-2);
-  }
-
-  .day {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: subgrid;
-    grid-row: span 3;
-    padding: var(--space-2);
-  }
-
-  .day-head {
-    flex-direction: column;
-    gap: 0;
-    font-size: var(--text-sm);
-  }
-
-  .day-name {
-    font-size: var(--text-base);
-  }
-}
-
-/* ---------- Slots ---------- */
 
 .slot {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
   min-width: 0;
-  min-height: 6rem;
-  padding: var(--space-2);
   scroll-margin-top: 4.5rem;
-  background: var(--color-slot-bg);
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
   transition:
     background-color 0.12s,
     border-color 0.12s;
 }
 
-.slot-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.slot-add {
-  flex: 1;
-  width: 100%;
-  min-height: 3.5rem;
-  padding: var(--space-2);
-  font: inherit;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  background: transparent;
-  border: 2px dashed var(--color-border-strong);
-  border-radius: var(--radius-sm);
-}
-
-.slot-add:hover:not(:disabled) {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.slot-add:disabled {
-  cursor: not-allowed;
+.slot-icon {
+  display: none;
 }
 
 .slot-recipe {
   position: relative;
-  flex: 1;
   cursor: grab;
   user-select: none;
   -webkit-touch-callout: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
 }
 
 .slot-recipe.is-dragging {
@@ -578,13 +593,6 @@ button.issue-button:hover {
 }
 
 .slot-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  width: 100%;
-  height: 100%;
-  min-height: 3.5rem;
-  padding: var(--space-2) 2rem var(--space-2) var(--space-2);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -594,6 +602,23 @@ button.issue-button:hover {
   border-radius: inherit;
 }
 
+/* The whole card is the button's target, including the meta line below it. */
+.slot-body::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+/* The focus ring goes around the whole card, not around the part of it that is the button. */
+.slot-body:focus-visible {
+  outline: none;
+}
+
+.slot--filled:has(.slot-body:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .slot-name {
   display: -webkit-box;
   overflow: hidden;
@@ -601,42 +626,52 @@ button.issue-button:hover {
   font-weight: 600;
   line-height: 1.25;
 
-  /* Never break inside a word: hyphenate at syllables (the name carries lang) and clamp
-     to three lines; the full name is in the title attribute. */
-  overflow-wrap: normal;
+  /* The name is shown in full: no automatic hyphenation (it looked like "Judías ver-des"),
+     only a break inside a very long word as a last resort, and a three-line clamp; the full
+     name is in the title attribute. */
+  overflow-wrap: break-word;
   word-break: normal;
-  hyphens: auto;
+  hyphens: manual;
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
-.slot-icons {
+.slot-meta {
   display: flex;
   flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.slot-protein,
+.slot-time {
+  display: inline-flex;
+  gap: 0.25rem;
   align-items: center;
 }
 
-.slot-icons .meta-icon,
-.slot-protein {
-  min-width: 1.25rem;
-  font-size: 1rem;
-  line-height: 1.4rem;
-  text-align: center;
+.slot-time {
+  white-space: nowrap;
+}
+
+.slot-warning {
+  display: inline-grid;
+  place-items: center;
+  color: var(--color-warning);
+  cursor: help;
 }
 
 .slot-remove {
-  position: absolute;
-  top: 0.125rem;
-  right: 0.125rem;
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
-  font: inherit;
-  font-size: 1.25rem;
-  line-height: 1;
   color: var(--color-text-muted);
   cursor: pointer;
   background: transparent;
@@ -646,55 +681,445 @@ button.issue-button:hover {
 
 .slot-remove:hover:not(:disabled) {
   color: var(--color-danger);
-  background: var(--color-slot-bg);
+  background: var(--color-danger-tint);
+}
+
+.slot-remove:disabled {
+  cursor: not-allowed;
+}
+
+/* A mouse shows the remove button when the card is hovered or has the focus; touch always. */
+@media (hover: hover) and (pointer: fine) {
+  .slot-remove {
+    opacity: 0;
+  }
+
+  .slot-recipe:hover .slot-remove,
+  .slot-recipe:focus-within .slot-remove {
+    opacity: 1;
+  }
 }
 
 @media (pointer: coarse) {
   .slot-remove {
-    top: 0;
-    right: 0;
     width: 2.75rem;
     height: 2.75rem;
   }
-
-  .slot-body {
-    padding-right: 2.75rem;
-  }
 }
 
-/* Wide layout, seven narrow columns: the full column width goes to the name and the
-   remove button gets its own strip above it instead of sitting beside it. These rules
-   come after the base slot rules on purpose. */
-@container planner (min-width: 52rem) {
+.slot-add {
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.slot-add:disabled {
+  cursor: not-allowed;
+}
+
+/* ----- Narrow: the list ----- */
+@container planner (width < 52rem) {
+  .week-grid {
+    gap: var(--space-2);
+  }
+
+  .day {
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .day--today {
+    background: var(--color-today);
+  }
+
+  .day-head {
+    display: flex;
+    grid-row: 1 / span 2;
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-1) 0;
+    border-inline-end: 1px solid var(--color-border);
+    border-radius: calc(var(--radius-md) - 1px) 0 0 calc(var(--radius-md) - 1px);
+  }
+
+  .day--today .day-head {
+    color: var(--color-primary-contrast);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+  /* The full weekday and date stay for assistive technology. */
+  .day-name,
+  .day-date,
+  .day-today,
+  .slot-time,
+  .slot-protein .slot-meta-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .day-abbr {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .day--today .day-abbr {
+    color: inherit;
+  }
+
+  .day-num {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
   .slot {
+    display: flex;
+    grid-column: 2;
+    gap: var(--space-1);
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline-start: var(--space-2);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+  }
+
+  /* A thin line between lunch and dinner. */
+  .slot--dinner::before {
+    position: absolute;
+    top: -2px;
+    inset-inline: var(--space-2) 0;
+    height: 1px;
+    content: "";
+    background: var(--color-border);
+  }
+
+  .slot-icon {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 1.5rem;
+    color: var(--color-text-muted);
+  }
+
+  .slot-recipe {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .slot-body {
+    display: flex;
+    flex-direction: column;
+    grid-column: 1;
+    grid-row: 1;
+    justify-content: center;
+    min-height: 2.75rem;
     padding: var(--space-1);
   }
 
-  .slot-head {
+  .slot-name {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .slot-meta {
+    grid-column: 2;
+    grid-row: 1;
     padding-inline: var(--space-1);
   }
 
-  .slot-body {
-    padding: 1.5rem var(--space-2) var(--space-2);
+  .slot-warning {
+    grid-column: 3;
+    grid-row: 1;
+    padding-inline: var(--space-1);
   }
 
   .slot-remove {
-    top: 0;
-    right: 0;
-    width: 1.5rem;
-    height: 1.5rem;
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .slot-add {
+    display: flex;
+    flex: 1;
+    gap: var(--space-1);
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 var(--space-2) 0 var(--space-1);
+    color: var(--color-primary);
+    text-align: left;
+    border-radius: var(--radius-sm);
+  }
+
+  .slot-add--blocked {
+    justify-content: center;
+    cursor: not-allowed;
+  }
+
+  .slot-hint--overlay {
+    position: absolute;
+    inset: 50% var(--space-1) auto;
+    transform: translateY(-50%);
+  }
+}
+
+@container planner (40rem <= width < 52rem) {
+  .week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ----- Wide: the matrix ----- */
+@container planner (width >= 52rem) {
+  .week-grid {
+    grid-template-columns: auto repeat(7, minmax(0, 1fr));
+    grid-template-rows: auto auto auto;
+    gap: var(--space-2);
+  }
+
+  .week-rows {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    padding-inline-end: var(--space-1);
+  }
+
+  .week-row-label {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  .day {
+    grid-row: span 3;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: subgrid;
+  }
+
+  .day-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-2);
+    align-items: baseline;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+  }
+
+  .day--today .day-head {
+    color: var(--color-primary-contrast);
+    background: var(--color-primary);
+  }
+
+  .day-abbr,
+  .day-num {
+    display: none;
+  }
+
+  .day-name {
+    flex-basis: 100%;
+    font-size: var(--text-base);
+  }
+
+  .day-date {
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+
+  .day--today .day-date {
+    color: inherit;
+  }
+
+  .day-today {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .slot {
+    display: flex;
+    flex-direction: column;
+    min-height: 7rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  :where(.day--today) .slot--filled {
+    background: var(--color-today);
+  }
+
+  .slot--empty {
+    background: transparent;
+    border: 1.5px dashed var(--color-border-strong);
+    box-shadow: none;
+  }
+
+  .slot--filled:where(.slot--special) {
+    background: var(--color-surface-sunken);
+    border-style: dashed;
+    box-shadow: none;
+  }
+
+  .slot-recipe {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .slot-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.125rem;
+    align-items: flex-start;
+    width: 100%;
+    padding: var(--space-3) var(--space-3) var(--space-1);
+  }
+
+  .slot--warning .slot-name {
+    padding-inline-end: 1.25rem;
+  }
+
+  .slot-meta {
+    padding: 0 var(--space-3) var(--space-3);
+  }
+
+  .slot-warning {
+    position: absolute;
+    top: 0.6875rem;
+    right: 0.625rem;
+  }
+
+  .slot-remove {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .slot--warning .slot-remove {
+    right: 1.75rem;
   }
 
   @media (pointer: coarse) {
-    .slot-body {
-      padding-top: 2rem;
+    .slot-remove {
+      top: 0;
+      right: 0;
+      width: 2.75rem;
+      height: 2.75rem;
+      box-shadow: none;
     }
 
-    .slot-remove {
-      width: 2rem;
-      height: 2rem;
+    .slot--warning .slot-remove {
+      right: 0;
+    }
+
+    .slot-body {
+      padding-inline-end: 2.5rem;
+    }
+
+    .slot-warning {
+      top: auto;
+      bottom: 0.75rem;
     }
   }
+
+  .slot-add {
+    display: flex;
+    flex: 1;
+    gap: var(--space-1);
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: var(--space-2);
+    color: var(--color-text-muted);
+    border-radius: inherit;
+  }
+
+  .slot-add:hover:not(:disabled) {
+    color: var(--color-primary);
+    background: var(--color-primary-tint);
+  }
+
+  .slot-add--blocked {
+    display: grid;
+    place-items: center;
+    cursor: not-allowed;
+  }
+
+  .slot-hint--overlay {
+    position: absolute;
+    inset: auto var(--space-2) var(--space-2);
+    padding: 0 var(--space-1);
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+  }
+
+  /* The row labels lose their words (icons only) when the columns get tight. */
+  @container planner (width < 64rem) {
+    .week-row-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  .week-grid .skeleton-day {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    padding: 0;
+    background: none;
+    border: 0;
+  }
+
+  .week-grid .skeleton-slot {
+    height: auto;
+    min-height: 7rem;
+  }
+}
+
+/* ---------- Slot states (drag, select, variety) ---------- */
+
+.slot--warning {
+  border-color: var(--color-accent);
+}
+
+.slot.slot--highlight {
+  background: var(--color-primary-tint);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-tint);
 }
 
 /* Drag and select states */
@@ -732,20 +1157,6 @@ button.issue-button:hover {
   font-weight: 700;
   text-align: center;
   color: var(--color-danger);
-}
-
-.slot-hint--overlay {
-  position: absolute;
-  inset: auto var(--space-1) var(--space-2);
-  padding: 0 var(--space-1);
-  background: var(--color-surface);
-  border-radius: var(--radius-sm);
-}
-
-.slot-add--blocked {
-  display: grid;
-  place-items: center;
-  border-color: var(--color-border);
 }
 
 .slot--pulse {
@@ -1061,12 +1472,7 @@ button.issue-button:hover {
   border-radius: 999px;
 }
 
-/* Special meals (eating out, leftovers, free): calm, dashed, no recipe icons. */
-.slot--special .slot-recipe {
-  background: var(--color-slot-bg);
-  border-style: dashed;
-}
-
+/* Special meals (eating out, leftovers, free): calm and dashed, with no recipe details. */
 .slot-special {
   -webkit-line-clamp: 2;
   line-clamp: 2;

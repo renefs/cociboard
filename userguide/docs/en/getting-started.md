@@ -32,9 +32,10 @@ On a computer, everything is on one screen:
 
 **Weekly planner** (right)
 :   Seven days, each with a lunch and a dinner slot. Above it are the week navigation, the
-    actions for the whole week and the variety indicator.
+    actions for the whole week (**Fill the week**, **Shopping list**, **Share** and a
+    **More** menu with *Copy last week* and *Clear week*) and the variety indicator.
 
-![The planner toolbar: week navigation, Suggest, Copy last week, Clear week, Shopping list, Share and the variety badge](images/planner-toolbar.png){ .screenshot }
+![The planner toolbar: week navigation on the left; Fill the week, Shopping list, Share and More on the right](images/planner-toolbar.png){ .screenshot }
 
 On a phone the same sections are shown one at a time, chosen in a bar at the bottom of the
 screen. See [On your phone](phone.md).

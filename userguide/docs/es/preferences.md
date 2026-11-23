@@ -8,7 +8,7 @@ personas que usan el mismo Cociboard.
 ## Dieta
 
 Marca **vegetariana**, **vegana**, **sin gluten** o **sin lácteos** y las sugerencias (el botón
-**Sugerir** y el orden de las mejores opciones en el selector de un hueco) solo propondrán
+**Completar semana** y el orden de las mejores opciones en el selector de un hueco) solo propondrán
 recetas etiquetadas con todas ellas.
 
 ## Evitar
@@ -22,7 +22,7 @@ cuenta como *vegetariana*, así que etiqueta bien tus recetas.
 !!! info "Las preferencias nunca te bloquean"
     Puedes poner cualquier receta en cualquier hueco tú mismo. En el selector de un hueco, las
     recetas fuera de tus preferencias van al final, marcadas como «Fuera de las preferencias del
-    hogar». Si tus preferencias dejan huecos sin rellenar, **Sugerir** te lo dice.
+    hogar». Si tus preferencias dejan huecos sin rellenar, **Completar semana** te lo dice.
 
 ## Objetivos de variedad
 

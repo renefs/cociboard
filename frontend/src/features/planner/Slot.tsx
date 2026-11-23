@@ -1,9 +1,9 @@
 import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
+import { AlertTriangle, Clock, Moon, Plus, Sun, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocale } from "../../i18n/useLocale";
 import type { MealSlot, Recipe, WeekPlan } from "../../api/types";
-import { MetaIcon } from "../recipes/MetaIcon";
-import { MEAL_TYPE_META, PROPERTY_META, PROTEIN_META } from "../recipes/recipeMeta";
+import { PROTEIN_META, proteinDotStyle } from "../recipes/recipeMeta";
 import {
   acceptsDrop,
   canDrop,
@@ -22,7 +22,6 @@ import {
   mealName,
   sameSlot,
   slotHint,
-  slotLabel,
   type SlotMeal,
 } from "./slots";
 
@@ -86,6 +85,7 @@ export function Slot({
         : null;
   const classes = [
     "slot",
+    `slot--${slot}`,
     meal ? "slot--filled" : "slot--empty",
     meal?.kind === "special" ? "slot--special" : "",
     source && dragAllowed ? "slot--drop-ok" : "",
@@ -107,20 +107,15 @@ export function Slot({
       aria-label={describeSlot(ref, t, locale)}
       data-select-target={selecting && selectAllowed ? (meal ? "true" : "empty") : undefined}
     >
-      <div className="slot-head">
-        <span className="slot-label">{slotLabel(slot, t)}</span>
-        {warnings.length > 0 && (
-          <span className="slot-warning" title={warnings.join("\n")}>
-            <span aria-hidden="true">⚠</span>
-            <span className="visually-hidden">{t("planner.varietyWarning", { messages: warnings.join(" ") })}</span>
-          </span>
-        )}
-      </div>
+      <span className="slot-icon" aria-hidden="true">
+        {slot === "lunch" ? <Sun size={18} /> : <Moon size={18} />}
+      </span>
       {meal ? (
         <FilledSlot
           day={day}
           slot={slot}
           meal={meal}
+          warnings={warnings}
           selecting={selecting !== null}
           disabled={selectBlocked}
           onActivate={onActivate}
@@ -134,7 +129,7 @@ export function Slot({
         </div>
       ) : (
         <button type="button" className="slot-add" onClick={() => onActivate(day, slot)}>
-          <span aria-hidden="true">+</span> {t(`planner.addSlot.${slot}`)}{" "}
+          <Plus aria-hidden="true" size={16} className="icon" /> {t(`planner.addSlot.${slot}`)}{" "}
           <span className="visually-hidden">{t("planner.onDay", dayParams(day, locale))}</span>
         </button>
       )}
@@ -151,13 +146,14 @@ interface FilledSlotProps {
   day: number;
   slot: MealSlot;
   meal: SlotMeal;
+  warnings: readonly string[];
   selecting: boolean;
   disabled: boolean;
   onActivate: (day: number, slot: MealSlot) => void;
   onRemove: (day: number, slot: MealSlot) => void;
 }
 
-function FilledSlot({ day, slot, meal, selecting, disabled, onActivate, onRemove }: FilledSlotProps) {
+function FilledSlot({ day, slot, meal, warnings, selecting, disabled, onActivate, onRemove }: FilledSlotProps) {
   const { t } = useTranslation();
   const locale = useLocale();
   const source: DragSource = { kind: "slot", meal, from: { day, slot } };
@@ -194,7 +190,7 @@ function FilledSlot({ day, slot, meal, selecting, disabled, onActivate, onRemove
         onClick={() => onActivate(day, slot)}
       >
         {meal.kind === "recipe" ? (
-          <RecipeBody recipe={meal.recipe} />
+          <RecipeName recipe={meal.recipe} />
         ) : (
           <span className="slot-name slot-special" title={name}>
             <span aria-hidden="true">{SPECIAL_META[meal.special].icon}</span> {name}
@@ -209,6 +205,15 @@ function FilledSlot({ day, slot, meal, selecting, disabled, onActivate, onRemove
           </span>
         )}
       </button>
+      {/* Outside the button, so its accessible name keeps starting with the name (WCAG 2.5.3);
+          the button's ::after stretches over the card, so a tap on this line still opens the actions. */}
+      {meal.kind === "recipe" && <RecipeMeta recipe={meal.recipe} />}
+      {warnings.length > 0 && (
+        <span className="slot-warning" title={warnings.join("\n")}>
+          <AlertTriangle aria-hidden="true" size={16} />
+          <span className="visually-hidden">{t("planner.varietyWarning", { messages: warnings.join(" ") })}</span>
+        </span>
+      )}
       <button
         type="button"
         className="slot-remove"
@@ -216,16 +221,14 @@ function FilledSlot({ day, slot, meal, selecting, disabled, onActivate, onRemove
         disabled={selecting}
         onClick={() => onRemove(day, slot)}
       >
-        <span aria-hidden="true">×</span>
+        <X aria-hidden="true" size={16} />
       </button>
     </div>
   );
 }
 
-function RecipeBody({ recipe }: { recipe: Recipe }) {
+function RecipeName({ recipe }: { recipe: Recipe }) {
   const { t } = useTranslation();
-  const meal = MEAL_TYPE_META[recipe.meal_type];
-  const protein = PROTEIN_META[recipe.protein];
   return (
     <>
       <span className="slot-name" lang={RECIPE_LANG} title={recipe.name}>
@@ -238,15 +241,26 @@ function RecipeBody({ recipe }: { recipe: Recipe }) {
           </span>{" "}
         </>
       )}
-      <span className="slot-icons">
-        <MetaIcon meta={meal} />
-        <span className="slot-protein" aria-hidden="true">
-          {protein.icon}
-        </span>
-        {recipe.properties.map((property) => (
-          <MetaIcon key={property} meta={PROPERTY_META[property]} />
-        ))}
-      </span>
     </>
+  );
+}
+
+/** The protein (a coloured dot and its name) and the prep time of a planned recipe. */
+function RecipeMeta({ recipe }: { recipe: Recipe }) {
+  const { t } = useTranslation();
+  const protein = PROTEIN_META[recipe.protein];
+  return (
+    <span className="slot-meta">
+      <span className="slot-protein">
+        <span className="protein-dot" style={proteinDotStyle(protein)} aria-hidden="true" />{" "}
+        <span className="slot-meta-text">{t(protein.labelKey)}</span>
+      </span>
+      {recipe.prep_minutes !== null && (
+        <span className="slot-time">
+          <Clock aria-hidden="true" size={13} className="icon" />{" "}
+          <span className="slot-meta-text">{t("recipes.minutes", { count: recipe.prep_minutes })}</span>
+        </span>
+      )}
+    </span>
   );
 }

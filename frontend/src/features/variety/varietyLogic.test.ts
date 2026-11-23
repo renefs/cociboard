@@ -9,6 +9,7 @@ import {
   issueCounts,
   issueId,
   issueSlotKeys,
+  proteinSegments,
   reasonText,
   scoreLevel,
   slotKey,
@@ -240,5 +241,23 @@ describe("usageCounts and sortByVariety", () => {
     const input = [steak, hake];
     sortByVariety(input, new Map(), { meat: 3 });
     expect(input.map((r) => r.name)).toEqual(["Bistec", "Merluza"]);
+  });
+});
+
+describe("proteinSegments", () => {
+  it("has no segments without any protein", () => {
+    expect(proteinSegments({})).toEqual([]);
+    expect(proteinSegments({ fish: 0 })).toEqual([]);
+  });
+
+  it("sizes the segments in proportion to the counts, in catalogue order", () => {
+    const segments = proteinSegments({ fish: 1, meat: 2, legumes: 1 });
+    expect(segments.map((segment) => segment.protein)).toEqual(["meat", "fish", "legumes"]);
+    expect(segments.map((segment) => segment.percent)).toEqual([50, 25, 25]);
+  });
+
+  it("adds up to 100 percent", () => {
+    const segments = proteinSegments({ meat: 1, poultry: 1, fish: 1 });
+    expect(segments.reduce((sum, segment) => sum + segment.percent, 0)).toBeCloseTo(100);
   });
 });

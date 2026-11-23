@@ -3,15 +3,15 @@
 Cociboard looks at the week as you plan it and tells you how varied it is. It never stops you
 from planning what you want: it only gives advice.
 
-## The variety badge
+## The variety bar
 
-Next to the week's buttons, a badge shows a **score out of 100** and how many warnings and tips
-there are. It is green for a varied week, amber when there is something to look at and red when
+Under the week's buttons, a bar shows a **score out of 100**, how many warnings and tips there
+are and a thin coloured strip with the week's main proteins, one colour each. The score is green for a varied week, amber when there is something to look at and red when
 the week is very repetitive.
 
-Click the badge to see the details:
+Click the bar to see the details:
 
-![The variety badge opened: one tip and the number of meals per main protein](images/variety-open.png){ .screenshot }
+![The variety bar opened: one tip and the number of meals per main protein](images/variety-open.png){ .screenshot }
 
 - Each line is a **warning** or a **tip**. Click it to highlight the meals involved in the
   grid; a :warning: mark on a slot means it takes part in a warning.
@@ -38,4 +38,4 @@ The numbers 4, 2 and 2 are the defaults. You can change them, or switch a tip of
 - In the recipe list, sort by **Best for variety**: recipes you haven't planned yet and the
   proteins you have used least come first. Recipes already in the week show **×1 this week**.
 - In the picker of a slot, the best fits come first with a **Good pick** mark and a reason.
-- **Suggest** always aims for a varied week.
+- **Fill the week** always aims for a varied week.

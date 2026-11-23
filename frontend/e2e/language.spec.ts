@@ -20,9 +20,12 @@ test.describe("language", () => {
     await expect(page.getByRole("heading", { name: "Planificador semanal" })).toBeVisible();
     await expect(page.getByRole("group", { name: "comida del lunes" })).toBeVisible();
     await expect(page.getByRole("group", { name: "cena del lunes" })).toBeVisible();
-    await expect(page.getByText("Comida", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Cena", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sugerir" })).toBeVisible();
+    // The phone's week list shows icons for the meals; the names are in the groups above.
+    if (!isMobile) {
+      await expect(page.getByText("Comida", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Cena", { exact: true }).first()).toBeVisible();
+    }
+    await expect(page.getByRole("button", { name: "Completar semana" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Semana anterior", exact: true })).toBeVisible();
 
     // The choice is remembered.

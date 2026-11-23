@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, ShoppingCart, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingCart, Sparkles } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -54,6 +54,7 @@ import { SlotActions } from "./SlotActions";
 import { dayParams, fitsSlot, mealAt, mealName, recipeOf, type SlotMeal } from "./slots";
 import { SPECIAL_META } from "./specialMeta";
 import { TodayView } from "./TodayView";
+import { WeekActionsMenu } from "./WeekActionsMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Toast, type ToastAction, type ToastMessage } from "./Toast";
 import { useMediaQuery, prefersReducedMotion } from "./useMediaQuery";
@@ -291,75 +292,63 @@ export function Planner({ now: nowProp }: PlannerProps) {
 
         <section className="planner" data-view="week" hidden={!shows("week")} aria-labelledby="planner-heading">
           <header className="planner-head">
-            <h2 id="planner-heading">{t("planner.heading")}</h2>
+            <h2 id="planner-heading" className="visually-hidden">
+              {t("planner.heading")}
+            </h2>
             <nav className="week-nav" aria-label={t("planner.weekNav")}>
               <button type="button" className="icon-button week-step" aria-label={t("planner.previousWeek")} onClick={previous}>
                 <ChevronLeft aria-hidden="true" size={20} />
-              </button>
-              <button type="button" className="btn week-today" disabled={isCurrentWeek} onClick={today}>
-                {t("planner.thisWeek")}
-              </button>
-              <button type="button" className="icon-button week-step" aria-label={t("planner.nextWeek")} onClick={next}>
-                <ChevronRight aria-hidden="true" size={20} />
               </button>
               <p className="week-range" aria-live="polite">
                 <span className="visually-hidden">{t("planner.weekOf")}</span>
                 {formatWeekRangeShort(weekStart, locale)}
               </p>
+              <button type="button" className="icon-button week-step" aria-label={t("planner.nextWeek")} onClick={next}>
+                <ChevronRight aria-hidden="true" size={20} />
+              </button>
+              <button type="button" className="btn week-today" disabled={isCurrentWeek} onClick={today}>
+                {t("planner.thisWeek")}
+              </button>
             </nav>
-          </header>
-
-          <div className="planner-toolbar">
-            <div className="toolbar-buttons" role="group" aria-label={t("planner.weekActions")}>
+            <div className="week-actions" role="group" aria-label={t("planner.weekActions")}>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary week-fill"
                 disabled={!plan || tools.busy || countFilled(plan) === 14}
                 title={t("planner.suggestTitle")}
                 onClick={() => void tools.suggest()}
               >
-                <Sparkles aria-hidden="true" size={18} className="icon" />{t("planner.suggest")}
+                <Sparkles aria-hidden="true" size={18} className="icon" />
+                {t("planner.suggest")}
               </button>
               <button
                 type="button"
-                className="btn"
-                disabled={!plan || tools.busy || countFilled(plan) === 14}
-                title={t("planner.copyLastWeekTitle")}
-                onClick={() => void tools.copyPrevious()}
-              >
-                <Copy aria-hidden="true" size={18} className="icon" />
-                <span className="label-long">{t("planner.copyLastWeek")}</span>
-                <span className="label-short" aria-hidden="true">
-                  {t("planner.copyLastWeekShort")}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="btn"
-                disabled={!plan || tools.busy || countFilled(plan) === 0}
-                onClick={() => setUi({ kind: "confirm-clear" })}
-              >
-                {t("planner.clearWeek")}
-              </button>
-              <button
-                type="button"
-                className="btn"
+                className="btn week-shopping"
                 disabled={!plan}
                 title={t("shopping.openTitle")}
                 onClick={() => (narrow ? go("open-shopping") : setUi({ kind: "shopping" }))}
               >
-                <ShoppingCart aria-hidden="true" size={18} className="icon" />{t("shopping.open")}
+                <ShoppingCart aria-hidden="true" size={18} className="icon" />
+                <span className="btn-label">{t("shopping.open")}</span>
               </button>
               <ShareMenu plan={plan} onNotify={notify} mealTimes={mealTimes} />
-            </div>
-            {plan && (
-              <VarietySummary
-                variety={plan.variety}
-                highlightedId={highlightedIssue ? highlightedId : null}
-                onHighlight={setHighlightedId}
+              <WeekActionsMenu
+                disabled={!plan}
+                copyDisabled={!plan || tools.busy || countFilled(plan) === 14}
+                clearDisabled={!plan || tools.busy || countFilled(plan) === 0}
+                onCopyPrevious={() => void tools.copyPrevious()}
+                onClear={() => setUi({ kind: "confirm-clear" })}
               />
-            )}
-          </div>
+            </div>
+          </header>
+
+          {plan && (
+            <VarietySummary
+              variety={plan.variety}
+              highlightedId={highlightedIssue ? highlightedId : null}
+              onHighlight={setHighlightedId}
+            />
+          )}
 
           {selecting && (
             <div className="select-banner" role="status">

@@ -31,7 +31,7 @@ verlo todo:
 - **Historial**: cuántas veces la has planificado, la próxima vez que está planificada y las
   últimas comidas.
 - :star: **Favorita** la marca como favorita. Las favoritas son un atajo para ti; no cambian lo
-  que propone **Sugerir**.
+  que propone **Completar semana**.
 - **Editar**, **Archivar** y **Eliminar**, abajo.
 
 ## Añadir una receta

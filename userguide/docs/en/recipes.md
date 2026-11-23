@@ -29,7 +29,7 @@ Click a recipe's name (or **View details** on a planned meal) to see everything 
 - **History**: how many times you have planned it, the next time it is planned and the latest
   meals.
 - :star: **Favourite** marks it as a favourite. Favourites are a shortcut for you; they don't
-  change what **Suggest** proposes.
+  change what **Fill the week** proposes.
 - **Edit**, **Archive** and **Delete** at the bottom.
 
 ## Adding a recipe

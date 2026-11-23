@@ -1,4 +1,4 @@
-import { dragAnnouncements, dragWithMouse, slot, varietyScore } from "./helpers";
+import { dragAnnouncements, dragWithMouse, openWeekActions, slot, varietyScore } from "./helpers";
 import { expect, openPlanner, test } from "./fixtures";
 
 test.describe("planning the week on a desktop", () => {
@@ -53,7 +53,7 @@ test.describe("planning the week on a desktop", () => {
 
     await page.getByRole("button", { name: "Remove Lentil stew from Thursday dinner" }).click();
     await expect(slot(page, "Thursday", "dinner").getByRole("button", { name: "Add dinner on Thursday" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Clear week" })).toBeDisabled();
+    await expect((await openWeekActions(page)).getByRole("button", { name: "Clear week" })).toBeDisabled();
     await expect(page.getByRole("region", { name: "Variety" }).getByRole("button")).toHaveAccessibleName(
       "Variety: not enough data yet",
     );

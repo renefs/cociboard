@@ -1,6 +1,7 @@
 import { addDays, today } from "./dates";
 import { RECIPES } from "./data";
 import { expect, openPlanner, test } from "./fixtures";
+import { openWeekActions } from "./helpers";
 import type { Page } from "@playwright/test";
 
 /** The number in the "Filled N slots" toast. */
@@ -11,9 +12,9 @@ async function filledCount(page: Page): Promise<number> {
 }
 
 test.describe("week tools", () => {
-  test("Suggest fills the empty slots, and Undo takes it back", async ({ page }) => {
+  test("Fill the week fills the empty slots, and Undo takes it back", async ({ page }) => {
     await openPlanner(page);
-    await page.getByRole("button", { name: "Suggest" }).click();
+    await page.getByRole("button", { name: "Fill the week" }).click();
     // Suggestions are randomised and respect the variety rules, so one slot may stay empty.
     const filled = await filledCount(page);
     expect(filled).toBeGreaterThanOrEqual(12);
@@ -23,13 +24,13 @@ test.describe("week tools", () => {
     await expect(page.getByRole("button", { name: /^Remove .+ from \w+ (lunch|dinner)$/ })).toHaveCount(0);
   });
 
-  test("Suggest keeps what is already planned", async ({ page }) => {
+  test("Fill the week keeps what is already planned", async ({ page }) => {
     await openPlanner(page);
     await page.getByRole("button", { name: "Add Lentil stew to the plan" }).click();
     await page.getByRole("button", { name: "Add lunch on Monday" }).click();
     await expect(page.getByRole("button", { name: "Remove Lentil stew from Monday lunch" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Suggest" }).click();
+    await page.getByRole("button", { name: "Fill the week" }).click();
     expect(await filledCount(page)).toBeGreaterThanOrEqual(11);
     await expect(page.getByRole("button", { name: "Remove Lentil stew from Monday lunch" })).toBeVisible();
   });
@@ -45,7 +46,7 @@ test.describe("week tools", () => {
       ],
     });
     await openPlanner(page);
-    await page.getByRole("button", { name: "Copy last week" }).click();
+    await (await openWeekActions(page)).getByRole("button", { name: "Copy last week" }).click();
     await expect(page.getByText("Copied 3 meals from last week.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove Lentil stew from Monday lunch" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove Baked salmon from Tuesday dinner" })).toBeVisible();
@@ -54,7 +55,7 @@ test.describe("week tools", () => {
 
   test("Copy last week says so when last week is empty", async ({ page }) => {
     await openPlanner(page);
-    await page.getByRole("button", { name: "Copy last week" }).click();
+    await (await openWeekActions(page)).getByRole("button", { name: "Copy last week" }).click();
     await expect(page.getByText("Last week has no meals.")).toBeVisible();
   });
 
@@ -68,7 +69,7 @@ test.describe("week tools", () => {
       ],
     });
     await openPlanner(page);
-    await page.getByRole("button", { name: "Clear week" }).click();
+    await (await openWeekActions(page)).getByRole("button", { name: "Clear week" }).click();
     const dialog = page.getByRole("dialog", { name: "Clear this week?" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Clear week" }).click();

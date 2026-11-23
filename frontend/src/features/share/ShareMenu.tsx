@@ -63,7 +63,7 @@ export function ShareMenu({ plan, onNotify, mealTimes, now = () => new Date() }:
     return (
       <button type="button" className="btn" disabled>
         <Share2 aria-hidden="true" size={18} className="icon" />
-        {t("share.menu")}
+        <span className="btn-label">{t("share.menu")}</span>
       </button>
     );
   }
@@ -113,7 +113,7 @@ export function ShareMenu({ plan, onNotify, mealTimes, now = () => new Date() }:
         onClick={() => setOpen((value) => !value)}
       >
         <Share2 aria-hidden="true" size={18} className="icon" />
-        {t("share.menu")}
+        <span className="btn-label">{t("share.menu")}</span>
       </button>
       {open && (
         <div className="share-panel" id={panelId} ref={panelRef} role="group" aria-label={t("share.menuLabel")}>

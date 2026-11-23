@@ -100,3 +100,25 @@ describe("recipe accent colours", () => {
     });
   }
 });
+
+describe("protein dots (non-text, 3:1)", () => {
+  const dotSurfaces = ["--color-surface", "--color-today", "--color-bg", "--color-surface-sunken"];
+  for (const [key, meta] of Object.entries(PROTEIN_META)) {
+    it(`${key} is visible as a dot on the cards in the light theme`, () => {
+      for (const surface of dotSurfaces) {
+        expect(contrast(meta.color, token(light, surface)), surface).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it(`${key} is visible as a dot on the cards in the dark theme`, () => {
+      for (const surface of dotSurfaces) {
+        expect(contrast(meta.darkColor, token(dark, surface)), surface).toBeGreaterThanOrEqual(3);
+      }
+    });
+  }
+
+  it("no two proteins share a dark-theme dot colour", () => {
+    const colours = Object.values(PROTEIN_META).map((meta) => meta.darkColor);
+    expect(new Set(colours).size).toBe(colours.length);
+  });
+});

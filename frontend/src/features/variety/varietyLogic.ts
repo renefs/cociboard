@@ -10,7 +10,7 @@ import type {
   VarietyReport,
   WeekPlan,
 } from "../../api/types";
-import { MEAL_SLOTS } from "../../api/types";
+import { MEAL_SLOTS, PROTEINS } from "../../api/types";
 import { describeSlot } from "../planner/slots";
 
 export type ScoreLevel = "none" | "good" | "fair" | "poor";
@@ -171,4 +171,18 @@ export function issueId(issue: VarietyIssue): string {
 
 export function findIssue(report: VarietyReport, id: string | null): VarietyIssue | null {
   return id === null ? null : (report.issues.find((issue) => issueId(issue) === id) ?? null);
+}
+
+export interface ProteinSegment {
+  protein: Protein;
+  count: number;
+  /** Share of the bar, 0-100; the segments of a bar add up to 100. */
+  percent: number;
+}
+
+/** The stacked bar of the variety summary: one segment per protein used, in catalogue order. */
+export function proteinSegments(counts: VarietyReport["protein_counts"]): ProteinSegment[] {
+  const used = PROTEINS.map((protein) => ({ protein, count: counts[protein] ?? 0 })).filter(({ count }) => count > 0);
+  const total = used.reduce((sum, { count }) => sum + count, 0);
+  return used.map(({ protein, count }) => ({ protein, count, percent: (count / total) * 100 }));
 }

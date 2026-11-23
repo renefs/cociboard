@@ -1,9 +1,10 @@
+import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PROTEINS, type VarietyIssue, type VarietyReport } from "../../api/types";
 import { useLocale } from "../../i18n/useLocale";
-import { PROTEIN_META } from "../recipes/recipeMeta";
-import { describeIssues, isWarning, issueId, issueMessage, scoreLevel } from "./varietyLogic";
+import { PROTEIN_META, proteinDotStyle } from "../recipes/recipeMeta";
+import { describeIssues, isWarning, issueId, issueMessage, proteinSegments, scoreLevel } from "./varietyLogic";
 
 interface VarietySummaryProps {
   variety: VarietyReport;
@@ -12,7 +13,7 @@ interface VarietySummaryProps {
   onHighlight: (id: string | null) => void;
 }
 
-/** Colour-coded score badge that expands into the list of issues. */
+/** The score, a thin stacked bar of the week's proteins and a chevron; expands into the issues. */
 export function VarietySummary({ variety, highlightedId, onHighlight }: VarietySummaryProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -43,7 +44,17 @@ export function VarietySummary({ variety, highlightedId, onHighlight }: VarietyS
           <span className="variety-title">{t("variety.heading")}</span>{" "}
           <span className="variety-summary">{summary}</span>
         </span>{" "}
-        <span className="variety-chevron" aria-hidden="true" />
+        {/* The counts are in the panel, so the bar is only for the eye. */}
+        <span className="variety-bar" aria-hidden="true">
+          {proteinSegments(variety.protein_counts).map((segment) => (
+            <span
+              key={segment.protein}
+              className="variety-segment"
+              style={{ ...proteinDotStyle(PROTEIN_META[segment.protein]), width: `${segment.percent}%` }}
+            />
+          ))}
+        </span>{" "}
+        <ChevronDown className="variety-chevron" aria-hidden="true" size={18} />
       </button>
 
       <div id={panelId} className="variety-panel" hidden={!open}>
@@ -121,7 +132,8 @@ function ProteinCounts({ counts }: { counts: VarietyReport["protein_counts"] }) 
     <ul className="protein-counts" aria-label={t("variety.proteinCounts")}>
       {used.map((protein) => (
         <li key={protein} className="protein-count">
-          <span aria-hidden="true">{PROTEIN_META[protein].icon}</span> {t(PROTEIN_META[protein].labelKey)}{" "}
+          <span className="protein-dot" style={proteinDotStyle(PROTEIN_META[protein])} aria-hidden="true" />{" "}
+          {t(PROTEIN_META[protein].labelKey)}{" "}
           <strong>×{counts[protein]}</strong>
         </li>
       ))}

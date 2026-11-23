@@ -8,7 +8,7 @@ shared by everyone using the same Cociboard.
 ## Diet
 
 Tick **vegetarian**, **vegan**, **gluten-free** or **dairy-free** and the suggestions (the
-**Suggest** button and the best-first order in the slot picker) only propose recipes tagged
+**Fill the week** button and the best-first order in the slot picker) only propose recipes tagged
 with all of them.
 
 ## Avoid
@@ -21,7 +21,7 @@ Recipes are matched on their tags as they are: a recipe tagged only *vegan* does
 !!! info "Preferences never block you"
     You can still put any recipe in any slot yourself. In the slot picker, recipes outside your
     preferences come last, marked "Outside your household preferences". If your preferences
-    leave slots empty, **Suggest** tells you.
+    leave slots empty, **Fill the week** tells you.
 
 ## Variety targets
 

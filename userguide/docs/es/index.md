@@ -52,7 +52,7 @@ compartir el menú.
 3. Abre la [lista de la compra](shopping.md) y a cocinar.
 
 !!! tip "¿Con prisa?"
-    Pulsa **Sugerir** en una semana vacía, revisa el resultado, cambia lo que no te apetezca y
+    Pulsa **Completar semana** en una semana vacía, revisa el resultado, cambia lo que no te apetezca y
     abre la **Lista de la compra**. Semana planificada en dos minutos.
 
 La interfaz está en español y en inglés, y esta guía también: usa el menú de idioma

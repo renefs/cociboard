@@ -120,6 +120,12 @@ export function dayName(day: number, locale: string, capitalize = true): string 
     : name.toLocaleLowerCase(lang);
 }
 
+/** Abbreviated weekday of day index 0-6 ("Mon" / "lun"), without a trailing full stop. */
+export function dayAbbr(day: number, locale: string): string {
+  const name = new Intl.DateTimeFormat(intlLocale(locale), { weekday: "short" }).format(addDays(REFERENCE_MONDAY, day));
+  return name.replace(/\.$/, "");
+}
+
 /** The Monday ``weeks`` weeks after (or before, when negative) ``weekStart``. */
 export function shiftWeek(weekStart: string, weeks: number): string {
   return toIsoDate(addDays(parseIsoDate(weekStart), weeks * 7));

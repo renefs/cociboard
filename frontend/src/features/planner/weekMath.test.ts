@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  dayAbbr,
   dayName,
   daysBetween,
   formatDateTime,
@@ -111,5 +112,14 @@ describe("formatDateTime", () => {
 
   it("accepts an ISO string", () => {
     expect(formatDateTime(new Date(2026, 10, 19, 9, 0).toISOString(), "en")).toBe("19 Nov 2026, 09:00");
+  });
+});
+
+describe("dayAbbr", () => {
+  it("abbreviates the weekday in each language", () => {
+    expect(dayAbbr(0, "en")).toBe("Mon");
+    expect(dayAbbr(6, "en")).toBe("Sun");
+    expect(dayAbbr(0, "es")).toBe("lun");
+    expect(dayAbbr(2, "es")).toBe("mié");
   });
 });

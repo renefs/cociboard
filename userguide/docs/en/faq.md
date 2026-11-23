@@ -4,16 +4,16 @@
 :   Its meal type is **Dinner**. Open the recipe, press **Edit** and set the meal type to
     **Both** if it suits both meals.
 
-**Suggest didn't fill some slots.**
-:   Suggest only uses recipes that fit the slot and your [household preferences](preferences.md).
+**Fill the week didn't fill some slots.**
+:   Fill the week only uses recipes that fit the slot and your [household preferences](preferences.md).
     When nothing matches, it leaves the slot empty and tells you. Loosen the preferences, add
     recipes, or fill the slot yourself.
 
-**Suggest changed a meal I had chosen!**
+**Fill the week changed a meal I had chosen!**
 :   It never does: it only fills empty slots. If you didn't like the result, press **Undo** in
     the message that appears.
 
-**Does marking a recipe as favourite make Suggest choose it more?**
+**Does marking a recipe as favourite make Fill the week choose it more?**
 :   No. Favourites are a shortcut for you to find recipes; suggestions only look at variety
     and your preferences.
 
