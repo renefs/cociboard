@@ -1,7 +1,8 @@
 # ADR-0011: Prebuilt image on the GitHub Container Registry
 
 ## Status
-Accepted
+Accepted. The visibility part is superseded: the package has since been made public, so
+hosts pull it without logging in (see the note at the end).
 
 ## Context
 ADR-0010 deploys by building the image on the host. On a NAS that takes several minutes
@@ -38,3 +39,9 @@ now and the image must stay private too.
 - The workflow does not run `make check`; it remains the gate before tagging a release.
 - The owner (`renefs`) is written in `docker-compose.ghcr.yml` and the README; a fork
   must change it.
+
+## Note: public image
+The package was later switched to public on GitHub (Package settings → Change visibility).
+Hosts no longer need a personal access token or `docker login`; on a Synology NAS the whole
+setup and update works from Container Manager without SSH. The README and user guide were
+updated accordingly.

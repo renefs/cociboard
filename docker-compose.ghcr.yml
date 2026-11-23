@@ -1,7 +1,7 @@
 # Cociboard from the prebuilt image on the GitHub Container Registry: nothing is built
 # on the host. Copy this file as `docker-compose.yml` into an empty folder (optionally
-# with a `.env`, see `.env.example`). The image is private: run `docker login ghcr.io`
-# first. See "Deployment (prebuilt image)" in README.md.
+# with a `.env`, see `.env.example`). The image is public, so no login is needed.
+# See "Deployment (prebuilt image)" in README.md.
 services:
   cociboard:
     image: ghcr.io/renefs/cociboard:${COCIBOARD_TAG:-latest}

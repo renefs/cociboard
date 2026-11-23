@@ -75,7 +75,7 @@ CHANGELOG entry.
 
 ### v0.8.0 — Prebuilt image on GitHub Container Registry (done)
 - GitHub Actions workflow that builds the image for amd64 and arm64 and pushes it to
-  the private `ghcr.io/renefs/cociboard` package (`main`, version tags, `latest`,
+  the `ghcr.io/renefs/cociboard` package (private at first, public since) (`main`, version tags, `latest`,
   `sha-<commit>`) (ADR-0011).
 - `docker-compose.ghcr.yml` runs the prebuilt image; `COCIBOARD_TAG` picks the tag.
 - README steps for logging in to ghcr.io, updating, and running on Synology.
