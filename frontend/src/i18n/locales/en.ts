@@ -571,7 +571,7 @@ const en = {
     planWeek: "Plan the week",
     nothingSlot: "Nothing planned yet.",
     note: "Note: {{note}}",
-    openRecipe: "View details of {{name}}",
+    openRecipe: "<hidden>View details of</hidden> <name>{{name}}</name>",
   },
   share: {
     menu: "Share",

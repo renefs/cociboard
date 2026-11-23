@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { useLocale } from "../../i18n/useLocale";
 import type { DayPlan, MealSlot, Recipe } from "../../api/types";
 import { MEAL_SLOTS } from "../../api/types";
@@ -115,10 +115,15 @@ function MealCard({
           <button
             type="button"
             className="meal-card-title"
-            aria-label={t("today.openRecipe", { name: meal.recipe.name })}
             onClick={() => onOpen(meal.recipe)}
           >
-            <span className="meal-card-name">{meal.recipe.name}</span>
+            {/* The verb is visually hidden text, not an aria-label, so the accessible
+                name keeps everything the button shows (the prep time too). */}
+            <Trans
+              i18nKey="today.openRecipe"
+              values={{ name: meal.recipe.name }}
+              components={{ hidden: <span className="visually-hidden" />, name: <span className="meal-card-name" /> }}
+            />{" "}
             {meal.recipe.prep_minutes !== null && (
               <span className="meal-card-prep">
                 <span aria-hidden="true">⏱️</span> {t("recipes.minutes", { count: meal.recipe.prep_minutes })}

@@ -214,7 +214,7 @@ describe("Today view", () => {
     expect(todayView().getByText("Nothing planned yet.")).toBeVisible();
 
     // Tapping a recipe opens the details.
-    await user.click(todayView().getByRole("button", { name: "View details of Fabada asturiana" }));
+    await user.click(todayView().getByRole("button", { name: "View details of Fabada asturiana 60 min" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
