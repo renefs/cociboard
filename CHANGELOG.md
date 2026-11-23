@@ -12,10 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows, the preparation time too ("View details of Lentil stew 30 min"). It used to be an
   `aria-label` without the time, which hides visible text from speech-input users and made
   the axe check of the main view fail on phones.
-
-## [0.28.3] - 2026-11-23
-
-### Fixed
 - On desktop, the focus outline of the recipe search field (and of other controls at the
   edges of the recipe panel) is no longer cut off on the left and right. The panel's scroll
   container clipped it; it now has room for the outline.
